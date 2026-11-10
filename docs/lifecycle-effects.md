@@ -52,9 +52,9 @@ No write is automatically retried. Provider rejection allows an explicit retry.
 
 The resolver adapter must establish listing completeness and record shape before
 supplying read facts. The pointer verifier must authenticate full pointer bytes
-against the pinned authority. Source contracts do neither. This session-local
-publisher is not atomic provider CAS, cross-browser serialization, durable
-recovery after reload, DNS propagation evidence, or a globally ordered log.
+against the pinned authority. Source contracts do neither. The optional session-local publisher is not restart-safe. The browser binds the
+origin-local journal described below; neither mode establishes atomic provider CAS,
+cross-device serialization, durable retention, DNS propagation, or global order.
 
 ## VM
 
@@ -114,3 +114,58 @@ Optional human label aliases use a disjoint prefix and also retain the full root
 so shortened root prefixes or sanitized labels cannot overwrite a different
 object. Guest file writes snapshot bytes before asynchronous calls. This is not
 a proof of guest isolation or a change to the VM's opt-in controls.
+
+## Origin-local signing authority and publication journal
+
+The browser now uses `BrowserAuthorityStore` and an IndexedDB `records` store.
+Saved authority setup is explicit. The private Ed25519 `CryptoKey` is
+nonextractable and stored using the browser's structured-clone algorithm, never
+serialized as secret bytes. Restoration validates the key type, usages and
+public/private correspondence. Missing or invalid storage never creates or
+rotates a key. Concurrent setup transactions keep the first committed authority.
+Session-only key creation remains an explicit alternative. There is no private-key
+export, import, rotation or backup flow; ordinary recovery bundles exclude keys.
+Changing trust anchors remains an independent administrative decision.
+
+DNS publication in the browser requires this journal even with a session-only
+signing key. The prior exact zone/name/pinned-key record is loaded under the Web Lock.
+Provider reads, signature/record validation and local resource admission occur
+before any unknown claim. Immediately before invoking the write adapter, one
+transaction commits the signed candidate, observed provider record ID, owner and
+unknown outcome. Failed reads, exhausted admission and aborted intent commits
+therefore do not invent an uncertain external write or prevent a repaired explicit
+retry. A provably undispatched adapter refusal is settled by its owned transaction;
+if saving that refusal fails, the committed intent remains unknown. A scoped browser Web Lock spans each provider operation and journal settlement,
+so a live suspended writer cannot be mistaken for an interrupted owner. The browser
+releases that lock on context termination; if Web Locks is unavailable publication
+is blocked. A competing tab then sees unknown and can only reconcile the retained exact
+candidate, not claim a new mutation. No lease timeout or owner-tab interruption
+allows another write. A definitive owner result may settle the claim; any tab may
+settle an authenticated exact-candidate read. A prior published record cannot be
+downgraded by a late refusal. Failure to save completion keeps the earlier unknown
+intent. A crash after the write-ahead commit but before dispatch is conservatively
+unknown too: absence is not proof that an earlier operation did not execute.
+
+The setup panel explicitly loads a scoped saved publication after restart. This
+allows read-only reconciliation without possession of the private signing key or
+live object bytes. It does not automatically import a retained observer head or
+assert that a provider record is globally current. Credentials are call-local;
+neither tokens nor private keys enter the DNS journal.
+
+`authorityMayCreate`, `journalMayClaim`, and `journalMayFinish` in
+`Stitch.Effects` are bound directly by this runtime; `Product.Experience` owns the
+explicit setup/load action descriptions. The transaction adapter and cryptographic
+checks are external host observations, not consequences of those Boolean proofs.
+
+IndexedDB success is origin-local retention, not a durability promise. Quota,
+private browsing, eviction, clearing storage, device loss and untrusted same-origin
+scripts remain risks. Storage failures block new publication rather than silently
+falling back to session-only mutation. Clearing a journal is not reconciliation.
+There is no application control to delete unresolved intent. This is not atomic
+provider CAS, cross-device coordination, exactly-once provider execution, global
+DNS ordering, or a substitute for a recent independently trusted pointer anchor.
+
+`tests/browser-authority.test.js` uses an isolated synthetic serialized transaction
+adapter for crashes, failed commits, concurrent callers and key restoration. It
+is not a real browser IndexedDB or quota/eviction qualification. Supported-browser
+storage behavior and provider trials remain required before release claims.

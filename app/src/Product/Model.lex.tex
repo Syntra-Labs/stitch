@@ -161,7 +161,7 @@ definition{
   name: componentPointerAuthority,
   parameters: [],
   result: Component,
-  body: (record Component {id := "pointerAuthority", role := "Independently pinned single-writer key", implementation := (cons "src/layer1-uor/pointer.js" (nil String)), models := (cons "Stitch.Pointer" (nil String)), trustBoundary := true})
+  body: (record Component {id := "pointerAuthority", role := "Independently pinned single-writer key", implementation := (cons "src/layer1-uor/pointer.js" (cons "src/layer1-uor/browser-authority.js" (nil String))), models := (cons "Stitch.Pointer" (cons "Stitch.Effects" (cons "Product.Host" (cons "Product.Experience" (nil String))))), trustBoundary := true})
 }
 
 definition{
@@ -231,7 +231,7 @@ definition{
   name: assumptionBrowserSemantics,
   parameters: [],
   result: Assumption,
-  body: (record Assumption {id := "browserSemantics", statement := "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch.", evidence := "Browser vendor assurance and independent integration testing, not a Stitch kernel theorem.", scope := "Host API behavior."})
+  body: (record Assumption {id := "browserSemantics", statement := "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch; optional saved authority and DNS publication additionally require correct IndexedDB CryptoKey structured cloning, transaction commit and Web Locks context-lifetime exclusion.", evidence := "Browser vendor assurance and independent integration testing, not a Stitch kernel theorem.", scope := "Host API behavior."})
 }
 
 definition{
@@ -396,10 +396,24 @@ definition{
 }
 
 definition{
+  name: capabilityOriginStorage,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "originStorage", owner := "pointerAuthority", capability := "OriginStorage", operation := "Explicitly retain nonextractable signing authority and exact DNS write-ahead intent", source := "src/layer1-uor/browser-authority.js", inputs := (cons "explicit authority setup" (cons "signed scoped publication candidate" (nil String))), outputs := (cons "restored CryptoKey" (cons "committed origin-local journal" (nil String))), preconditions := (cons "IndexedDB and CryptoKey structured cloning available" (cons "successful transaction commit before provider mutation" (nil String))), failures := (cons "quota or transaction abort" (cons "private browsing loss or eviction" (cons "invalid retained authority" (nil String)))), assumptions := (cons "browserSemantics" (cons "serializedJournal" (nil String))), proofScope := "Origin-local retention only; no backup, cross-device durability, automatic key rotation or provider exactly-once guarantee.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityWebLock,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "webLock", owner := "pointerAuthority", capability := "WebLock", operation := "Exclude same-origin concurrent DNS writers while reading, committing and settling", source := "src/layer1-uor/browser-authority.js", inputs := (cons "exact database zone name and authority scope" (nil String)), outputs := (cons "exclusive context-lifetime operation" (nil String)), preconditions := (cons "Web Locks available" (cons "same-origin lock scope" (nil String))), failures := (cons "API unavailable" (cons "owner context termination leaves journal unknown" (nil String))), assumptions := (cons "browserSemantics" (cons "serializedJournal" (nil String))), proofScope := "No timeout takeover, cross-device exclusion, provider CAS or ordering outside this application origin.", enabledByDefault := false})
+}
+
+definition{
   name: dependencyBrowserApis,
   parameters: [],
   result: Dependency,
-  body: (record Dependency {id := "browserApis", consumer := "runtimeHost", kind := "host", locator := "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC", versionPolicy := "Host-selected implementation; not byte-pinned", trust := "External API and OS trust boundary", required := true})
+  body: (record Dependency {id := "browserApis", consumer := "runtimeHost", kind := "host", locator := "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC; optional authority publication requires IndexedDB/Web Locks", versionPolicy := "Host-selected implementation; not byte-pinned", trust := "External API and OS trust boundary", required := true})
 }
 
 definition{
@@ -633,6 +647,13 @@ definition{
   body: (record Asset {path := "src/lib.rs", role := "Historical Rust conformance source; not loaded by the browser", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
 }
 
+definition{
+  name: assetBrowserAuthority,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/browser-authority.js", role := "Origin-local signing authority and transactional publication journal", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
 structure{
   name: Model,
   type_parameters: [],
@@ -697,7 +718,7 @@ definition{
   name: product,
   parameters: [],
   result: Model,
-  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (nil CapabilityContract))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (cons (assetRecovery) (cons (assetRecoveryUi) (cons (assetChannelFlow) (cons (assetVmAdministration) (nil Asset))))))))))))))))))))))))))))})
+  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (cons (capabilityOriginStorage) (cons (capabilityWebLock) (nil CapabilityContract))))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (cons (assetRecovery) (cons (assetRecoveryUi) (cons (assetChannelFlow) (cons (assetVmAdministration) (cons (assetBrowserAuthority) (nil Asset)))))))))))))))))))))))))))))})
 }
 
 definition{

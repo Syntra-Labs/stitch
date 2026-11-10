@@ -20617,6 +20617,111 @@ const definitions = {
       }
     }
   },
+  "Stitch.Effects.authorityMayCreate": {
+    "module": "Stitch.Effects",
+    "name": "authorityMayCreate",
+    "params": [
+      {
+        "name": "exists",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "explicitSetup",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "exists"
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "explicitSetup"
+      }
+    }
+  },
+  "Stitch.Effects.journalMayClaim": {
+    "module": "Stitch.Effects",
+    "name": "journalMayClaim",
+    "params": [
+      {
+        "name": "unresolved",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "not",
+      "value": {
+        "k": "var",
+        "name": "unresolved"
+      }
+    }
+  },
+  "Stitch.Effects.journalMayFinish": {
+    "module": "Stitch.Effects",
+    "name": "journalMayFinish",
+    "params": [
+      {
+        "name": "sameCandidate",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameOwner",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "exactPublishedRead",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "sameCandidate"
+      },
+      "right": {
+        "k": "binary",
+        "op": "||",
+        "left": {
+          "k": "var",
+          "name": "sameOwner"
+        },
+        "right": {
+          "k": "var",
+          "name": "exactPublishedRead"
+        }
+      }
+    }
+  },
   "Stitch.Encoding.dependenciesReady": {
     "module": "Stitch.Encoding",
     "name": "dependenciesReady",
@@ -30446,7 +30551,7 @@ const definitions = {
         },
         "detail": {
           "k": "string",
-          "value": "DNS records are discovery hints. Enter a key learned independently or explicitly trust the demo session key. A discovered key cannot authorize itself."
+          "value": "DNS records are discovery hints. Enter a key learned independently or explicitly choose and pin a saved or session-only signing key. A discovered key cannot authorize itself."
         }
       }
     }
@@ -31098,11 +31203,11 @@ const definitions = {
         },
         "label": {
           "k": "string",
-          "value": "Explicitly Trust Demo Session Key"
+          "value": "Trust Saved Key or Create Session Key"
         },
         "help": {
           "k": "string",
-          "value": "Demo identity lasts only in this session; use an independently trusted key for real authority."
+          "value": "Explicitly pin the restored saved key, or create a session-only key if none is loaded. A different key does not inherit earlier trust."
         }
       }
     }
@@ -31715,6 +31820,82 @@ const definitions = {
       }
     }
   },
+  "Product.Experience.actionSaveAuthority": {
+    "module": "Product.Experience",
+    "name": "actionSaveAuthority",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "27"
+        },
+        "id": {
+          "k": "string",
+          "value": "saveAuthority"
+        },
+        "control": {
+          "k": "string",
+          "value": "saveAuthorityBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Set Up or Restore Saved Authority"
+        },
+        "help": {
+          "k": "string",
+          "value": "Save a nonextractable origin-local signing key and explicitly pin it. Browser storage can be lost; there is no key backup or automatic replacement."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionLoadPublication": {
+    "module": "Product.Experience",
+    "name": "actionLoadPublication",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "28"
+        },
+        "id": {
+          "k": "string",
+          "value": "loadPublication"
+        },
+        "control": {
+          "k": "string",
+          "value": "loadPublicationBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Load Saved Publication"
+        },
+        "help": {
+          "k": "string",
+          "value": "Load the exact zone, name and authority journal before reconciliation. Never repeat an unknown write merely because its owner tab closed."
+        }
+      }
+    }
+  },
   "Product.Experience.actions": {
     "module": "Product.Experience",
     "name": "actions",
@@ -31915,9 +32096,25 @@ const definitions = {
                                                             "args": []
                                                           },
                                                           "tail": {
-                                                            "k": "nil",
-                                                            "type": {
-                                                              "kind": "Action"
+                                                            "k": "cons",
+                                                            "head": {
+                                                              "k": "call",
+                                                              "name": "actionSaveAuthority",
+                                                              "args": []
+                                                            },
+                                                            "tail": {
+                                                              "k": "cons",
+                                                              "head": {
+                                                                "k": "call",
+                                                                "name": "actionLoadPublication",
+                                                                "args": []
+                                                              },
+                                                              "tail": {
+                                                                "k": "nil",
+                                                                "type": {
+                                                                  "kind": "Action"
+                                                                }
+                                                              }
                                                             }
                                                           }
                                                         }
@@ -33839,8 +34036,32 @@ const definitions = {
                                                             "field": "vmCanForgetCommand"
                                                           },
                                                           "no": {
-                                                            "k": "bool",
-                                                            "value": false
+                                                            "k": "binary",
+                                                            "op": "||",
+                                                            "left": {
+                                                              "k": "binary",
+                                                              "op": "=?",
+                                                              "left": {
+                                                                "k": "var",
+                                                                "name": "action"
+                                                              },
+                                                              "right": {
+                                                                "k": "nat",
+                                                                "value": "27"
+                                                              }
+                                                            },
+                                                            "right": {
+                                                              "k": "binary",
+                                                              "op": "=?",
+                                                              "left": {
+                                                                "k": "var",
+                                                                "name": "action"
+                                                              },
+                                                              "right": {
+                                                                "k": "nat",
+                                                                "value": "28"
+                                                              }
+                                                            }
                                                           }
                                                         }
                                                       }
@@ -37879,12 +38100,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:409419a81ccd90d64737adc46522e75e70317853f24c5bbb7c096175b2f9ba03";
+export const modelSourceDigest = "sha256:8041e88ee3a9d9e516296511902098b8cc01d448e6b6d15c85b6d2afc84a1e0e";
 export const modelExecutionDigest = "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:409419a81ccd90d64737adc46522e75e70317853f24c5bbb7c096175b2f9ba03",
+  "sourceDigest": "sha256:8041e88ee3a9d9e516296511902098b8cc01d448e6b6d15c85b6d2afc84a1e0e",
   "executionDigest": "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc",
   "executionIdentity": {
     "adapterSources": [
@@ -39146,15 +39367,15 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
+      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
-      "sha256": "60e8927f3f2c1cd499549545481a3e2dc234febf9439b3d95bb80f5c48a741ac"
+      "sha256": "3bb2a621868dc683e776c9b65c58cc60cc2b89e5d007d54c4c152bedd4878871"
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "cec7acba23cff425cb45ab21fb609f15e63fc5a517b92551c1edc2b524d193ef"
+      "sha256": "4e134f136369c04a65cdf9ea3f7af13efecb63ddb572f8cba653472e01d64624"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -39174,7 +39395,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Effects.lex.tex",
-      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
@@ -39368,7 +39589,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Effects.lex.tex",
-      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
@@ -39412,7 +39633,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
+      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
     }
   ],
   "theorems": [
@@ -40413,6 +40634,24 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Effects.existingAuthorityNeverRotates",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unknownJournalCannotClaim",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.foreignCandidateCannotFinish",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Encoding.rawRecoveryExact",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Encoding.lex.tex",
@@ -40799,6 +41038,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.actionExecute",
     "Product.Experience.actionExport",
     "Product.Experience.actionJoin",
+    "Product.Experience.actionLoadPublication",
     "Product.Experience.actionPin",
     "Product.Experience.actionPublish",
     "Product.Experience.actionReconcile",
@@ -40811,6 +41051,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.actionRecoveryTrust",
     "Product.Experience.actionRenew",
     "Product.Experience.actionResume",
+    "Product.Experience.actionSaveAuthority",
     "Product.Experience.actionSrv",
     "Product.Experience.actionStart",
     "Product.Experience.actionStore",
@@ -41022,6 +41263,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Custody.selectionOfTruth",
     "Stitch.Custody.sourceLive",
     "Stitch.Custody.sourcePlaced",
+    "Stitch.Effects.authorityMayCreate",
     "Stitch.Effects.c1ConnectionQualified",
     "Stitch.Effects.c1DirectSuccess",
     "Stitch.Effects.c1InWindow",
@@ -41038,6 +41280,8 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Effects.dnsScopeMatches",
     "Stitch.Effects.dnsSelectGatedRead",
     "Stitch.Effects.dnsSelectRead",
+    "Stitch.Effects.journalMayClaim",
+    "Stitch.Effects.journalMayFinish",
     "Stitch.Effects.transportCanSend",
     "Stitch.Effects.transportChannelCallbackAllowed",
     "Stitch.Effects.transportClose",

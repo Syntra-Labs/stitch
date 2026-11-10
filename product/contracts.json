@@ -166,10 +166,14 @@
       "id": "pointerAuthority",
       "role": "Independently pinned single-writer key",
       "implementation": [
-        "src/layer1-uor/pointer.js"
+        "src/layer1-uor/pointer.js",
+        "src/layer1-uor/browser-authority.js"
       ],
       "models": [
-        "Stitch.Pointer"
+        "Stitch.Pointer",
+        "Stitch.Effects",
+        "Product.Host",
+        "Product.Experience"
       ],
       "trustBoundary": true
     },
@@ -303,7 +307,7 @@
       "declaration": "assumptionBrowserSemantics",
       "type": "Assumption",
       "id": "browserSemantics",
-      "statement": "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch.",
+      "statement": "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch; optional saved authority and DNS publication additionally require correct IndexedDB CryptoKey structured cloning, transaction commit and Web Locks context-lifetime exclusion.",
       "evidence": "Browser vendor assurance and independent integration testing, not a Stitch kernel theorem.",
       "scope": "Host API behavior."
     },
@@ -813,6 +817,67 @@
       ],
       "proofScope": "Unsupported boundary; browser has no BGP or WireGuard implementation.",
       "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityOriginStorage",
+      "type": "CapabilityContract",
+      "id": "originStorage",
+      "owner": "pointerAuthority",
+      "capability": "OriginStorage",
+      "operation": "Explicitly retain nonextractable signing authority and exact DNS write-ahead intent",
+      "source": "src/layer1-uor/browser-authority.js",
+      "inputs": [
+        "explicit authority setup",
+        "signed scoped publication candidate"
+      ],
+      "outputs": [
+        "restored CryptoKey",
+        "committed origin-local journal"
+      ],
+      "preconditions": [
+        "IndexedDB and CryptoKey structured cloning available",
+        "successful transaction commit before provider mutation"
+      ],
+      "failures": [
+        "quota or transaction abort",
+        "private browsing loss or eviction",
+        "invalid retained authority"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "serializedJournal"
+      ],
+      "proofScope": "Origin-local retention only; no backup, cross-device durability, automatic key rotation or provider exactly-once guarantee.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityWebLock",
+      "type": "CapabilityContract",
+      "id": "webLock",
+      "owner": "pointerAuthority",
+      "capability": "WebLock",
+      "operation": "Exclude same-origin concurrent DNS writers while reading, committing and settling",
+      "source": "src/layer1-uor/browser-authority.js",
+      "inputs": [
+        "exact database zone name and authority scope"
+      ],
+      "outputs": [
+        "exclusive context-lifetime operation"
+      ],
+      "preconditions": [
+        "Web Locks available",
+        "same-origin lock scope"
+      ],
+      "failures": [
+        "API unavailable",
+        "owner context termination leaves journal unknown"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "serializedJournal"
+      ],
+      "proofScope": "No timeout takeover, cross-device exclusion, provider CAS or ordering outside this application origin.",
+      "enabledByDefault": false
     }
   ],
   "dependencies": [
@@ -822,7 +887,7 @@
       "id": "browserApis",
       "consumer": "runtimeHost",
       "kind": "host",
-      "locator": "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC",
+      "locator": "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC; optional authority publication requires IndexedDB/Web Locks",
       "versionPolicy": "Host-selected implementation; not byte-pinned",
       "trust": "External API and OS trust boundary",
       "required": true
@@ -1005,8 +1070,19 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 59874,
-      "sha256": "88becaa2ca789944edb772587228741704726a84f0b99b54ebad3e01293a506d"
+      "bytes": 63965,
+      "sha256": "c6e3fab47a975032dc12c38b287a94640add6574f46d0d10e862669759a0acd9"
+    },
+    {
+      "declaration": "assetBrowserAuthority",
+      "type": "Asset",
+      "path": "src/layer1-uor/browser-authority.js",
+      "role": "Origin-local signing authority and transactional publication journal",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 5230,
+      "sha256": "6a56e1dbd9e17fccb54c59b6ba910dd2d8999cdcf36310b965c4a1e896269639"
     },
     {
       "declaration": "assetFile1",
@@ -1049,8 +1125,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 1024906,
-      "sha256": "beafbae848403bf04df2032fd13ad05f2382ff0d95481ee29e72494cda244ea0"
+      "bytes": 1032491,
+      "sha256": "99a81bebc211f46323aa37c34f24789c8cd27452b41b595c0f244e854ef448bc"
     },
     {
       "declaration": "assetFile4",
@@ -1071,8 +1147,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 12053,
-      "sha256": "50addeed75536b23ee4fdf9305f33ab7dac5cd11a091a867b3656b037afba9a5"
+      "bytes": 15611,
+      "sha256": "756463e4b79d697182ea6bf350533aecbf0e87a2cee50de675dde31c32acd2bc"
     },
     {
       "declaration": "assetFile6",
@@ -1819,7 +1895,9 @@
     "PublicRelay",
     "VirtualMachine",
     "ArtifactFetch",
-    "NativeRouting"
+    "NativeRouting",
+    "OriginStorage",
+    "WebLock"
   ],
   "sources": [
     {
@@ -1980,15 +2058,15 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
+      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
-      "sha256": "60e8927f3f2c1cd499549545481a3e2dc234febf9439b3d95bb80f5c48a741ac"
+      "sha256": "3bb2a621868dc683e776c9b65c58cc60cc2b89e5d007d54c4c152bedd4878871"
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "cec7acba23cff425cb45ab21fb609f15e63fc5a517b92551c1edc2b524d193ef"
+      "sha256": "4e134f136369c04a65cdf9ea3f7af13efecb63ddb572f8cba653472e01d64624"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -2008,7 +2086,7 @@
     },
     {
       "path": "app/src/Stitch/Effects.lex.tex",
-      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
@@ -2071,5 +2149,5 @@
       "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
     }
   ],
-  "sourceDigest": "sha256:0668736d6ec9544b82ab1c1d486dd5cb1c49907a7653393914cdf331f536b67f"
+  "sourceDigest": "sha256:2d498159d9ae8f34882563ffe563a7396ea4aaf07756ec741904a0f7f032959a"
 }

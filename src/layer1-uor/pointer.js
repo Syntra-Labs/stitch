@@ -99,14 +99,83 @@ export function parsePointerDnsText(text) {
   return structuredClone(parseCanonicalJson(chunks.map(part => parseCanonicalJson(part, limits)).join(''), limits));
 }
 
-/** Session-local DNS publication state, scoped to destination and pinned authority.
+/** DNS publication state scoped to destination and pinned authority.
+ * Optional origin-local journal provides conservative restart reconciliation.
  * Reconciliation observes the provider; it is neither atomic CAS nor global order.
  * Credentials are used for this call only and never retained in publication state.
  */
 export class PointerPublisher {
   #states = new Map();
   #busy = new Set();
-  constructor({ resolver, clock = Date.now }) { this.resolver = resolver; this.clock = clock; }
+  #journalBusy = false;
+  constructor({ resolver, clock = Date.now, journal = null }) { this.resolver = resolver; this.clock = clock; this.journal = journal; }
+  async restore(destination) {
+    const scope = JSON.stringify([String(destination.zoneId).toLowerCase(), destination.name, destination.trustedAuthorityKey]);
+    if (this.journal) {
+      const state = await this.journal.readPublication(scope);
+      if (state) this.#states.set(scope, state);
+      else this.#states.delete(scope);
+    }
+    return this.pending(destination);
+  }
+  async publish(request) {
+    if (!this.journal) return this.#publish(request);
+    if (this.#journalBusy) refuse('dns-publication-in-flight');
+    request = { ...request, candidate: snapshot(request.candidate) };
+    this.#journalBusy = true;
+    const scope = JSON.stringify([String(request.zoneId).toLowerCase(), request.name, request.trustedAuthorityKey]);
+    try { return await this.journal.exclusivePublication(scope, () => this.#publishJournal(request)); }
+    finally { this.#journalBusy = false; }
+  }
+  async #publishJournal(request) {
+    if (!this.journal) return this.#publish(request);
+    const { zoneId, name, trustedAuthorityKey } = request;
+    if (typeof zoneId !== 'string' || !/^[a-f0-9]{32}$/i.test(zoneId)) refuse('invalid-dns-destination');
+    identifier(name); unhex(trustedAuthorityKey, 32);
+    if (typeof request.apiToken !== 'string' || !request.apiToken) refuse('invalid-dns-destination');
+    const candidate = snapshot(request.candidate);
+    await verifyPointer(candidate, trustedAuthorityKey);
+    if (candidate.name !== name) refuse('pointer-name');
+    const scope = JSON.stringify([zoneId.toLowerCase(), name, trustedAuthorityKey]);
+    // Reads and local admission do not claim an uncertain external effect.
+    // The Web Lock spans the read, write-ahead commit, dispatch and settlement.
+    const prior = await this.journal.readPublication(scope);
+    const effective = prior?.outcome === 'unknown' ? prior.candidate : candidate;
+    if (prior) this.#states.set(scope, prior);
+    else this.#states.delete(scope);
+    let claim = null;
+    const settle = async () => {
+      const next = this.#states.get(scope);
+      if (next && next.outcome !== 'unknown' && (claim?.writer || prior?.outcome === 'unknown')) {
+        await this.journal.finishPublication(scope, effective.pointerDigest, claim?.owner, next);
+      }
+    };
+    let result;
+    try {
+      result = await this.#publish({ ...request, candidate: effective }, async pending => {
+        claim = await this.journal.claimPublication(scope, pending);
+        if (!claim.writer) throw Error('An earlier publication must be reconciled before dispatch.');
+      });
+    } catch (error) {
+      // A trusted adapter can prove it refused before dispatch. Persist that
+      // definite refusal using the claim owner; failed settlement stays unknown.
+      try { await settle(); }
+      catch {
+        await this.restore(request);
+        return { outcome: 'unknown', reason: 'Could not save the definite refusal. Reconcile the retained candidate before any further write.' };
+      }
+      await this.restore(request);
+      throw error;
+    }
+    try { await settle(); }
+    catch {
+      await this.restore(request);
+      return { outcome: 'unknown', reason: 'Provider result could not be saved. Reconcile the retained exact candidate; do not repeat the write.' };
+    }
+    if (claim?.writer || prior?.outcome === 'unknown') await this.restore(request);
+    return result;
+  }
+
   pending({ zoneId, name, trustedAuthorityKey }) {
     const state = this.#states.get(JSON.stringify([String(zoneId).toLowerCase(), name, trustedAuthorityKey]));
     return state?.outcome === 'unknown' ? structuredClone(state.candidate) : null;
@@ -115,7 +184,7 @@ export class PointerPublisher {
     const scope = JSON.stringify([String(zoneId).toLowerCase(), name, trustedAuthorityKey]);
     return dnsLifecycle(this.#states.get(scope), this.#busy.has(scope));
   }
-  async publish({ zoneId, apiToken, name, trustedAuthorityKey, candidate }) {
+  async #publish({ zoneId, apiToken, name, trustedAuthorityKey, candidate }, beforeWrite = async () => {}) {
     // Snapshot all caller-controlled data before the first await.
     candidate = snapshot(candidate);
     if (typeof zoneId !== 'string' || !/^[a-f0-9]{32}$/i.test(zoneId)
@@ -173,6 +242,7 @@ export class PointerPublisher {
       // Mark uncertain before dispatch. An adapter exception after this boundary
       // cannot silently authorize another mutation, even if it lost the response.
       const pending = dnsWriteState(destination, previous, candidate, remote, pointer, now);
+      await beforeWrite(pending);
       this.#states.set(scope, pending);
       let result;
       try {

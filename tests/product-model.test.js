@@ -41,3 +41,17 @@ test('asset substitution changes the exact artifact identity without inventing p
     assert.equal(after.releaseBlockers.some(x=>x.path==='v86/seabios.bin'),true);
   } finally{rmSync(dir,{recursive:true,force:true});}
 });
+
+test('origin persistence and Web Locks are explicit optional capabilities, not session RAM', () => {
+  const p = readProduct(root);
+  assert.deepEqual(p.hostCapabilities.slice(-2), ['OriginStorage', 'WebLock']);
+  for (const id of ['originStorage', 'webLock']) {
+    assert.equal(p.capabilities.find(c => c.id === id).enabledByDefault, false);
+    assert.equal(p.deployments.find(d => d.id === 'browserSession').requiredCapabilities.includes(id), false);
+  }
+  assert.match(p.capabilities.find(c => c.id === 'sessionStorage').operation, /RAM/);
+  const authority = p.components.find(c => c.id === 'pointerAuthority');
+  assert.ok(authority.implementation.includes('src/layer1-uor/browser-authority.js'));
+  assert.ok(authority.models.includes('Stitch.Effects'));
+  assert.ok(p.assets.some(a => a.path === 'src/layer1-uor/browser-authority.js'));
+});

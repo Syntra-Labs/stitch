@@ -24,7 +24,9 @@ inductive{
     {name: PublicRelay, fields: []},
     {name: VirtualMachine, fields: []},
     {name: ArtifactFetch, fields: []},
-    {name: NativeRouting, fields: []}
+    {name: NativeRouting, fields: []},
+    {name: OriginStorage, fields: []},
+    {name: WebLock, fields: []}
   ]
 }
 
@@ -126,7 +128,9 @@ definition{
     | Capability.PublicRelay => 10
     | Capability.VirtualMachine => 11
     | Capability.ArtifactFetch => 12
-    | Capability.NativeRouting => 13)
+    | Capability.NativeRouting => 13
+    | Capability.OriginStorage => 14
+    | Capability.WebLock => 15)
 }
 
 definition{

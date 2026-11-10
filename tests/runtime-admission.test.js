@@ -1,3 +1,4 @@
+import { SyntheticAuthorityStore } from './helpers/transactional-authority.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
@@ -214,7 +215,7 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
     fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
     URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
     installRecoveryControls, createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
-    ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
+    BrowserAuthorityStore: SyntheticAuthorityStore, ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
     BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,

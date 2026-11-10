@@ -629,6 +629,48 @@ theorem{
   proof: linear_arithmetic{definitions: [c1ConnectionQualified, c1InWindow]},
   axioms: [Quot.sound, propext]
 }
+
+definition{
+  name: authorityMayCreate,
+  parameters: [exists : Bool, explicitSetup : Bool],
+  result: Bool,
+  body: ((not exists) && explicitSetup)
+}
+
+theorem{
+  name: existingAuthorityNeverRotates,
+  parameters: [],
+  statement: (forall (explicitSetup : Bool), ((authorityMayCreate true explicitSetup) = false)),
+  proof: decide{}
+}
+
+definition{
+  name: journalMayClaim,
+  parameters: [unresolved : Bool],
+  result: Bool,
+  body: (not unresolved)
+}
+
+definition{
+  name: journalMayFinish,
+  parameters: [sameCandidate : Bool, sameOwner : Bool, exactPublishedRead : Bool],
+  result: Bool,
+  body: (sameCandidate && (sameOwner || exactPublishedRead))
+}
+
+theorem{
+  name: unknownJournalCannotClaim,
+  parameters: [],
+  statement: ((journalMayClaim true) = false),
+  proof: decide{}
+}
+
+theorem{
+  name: foreignCandidateCannotFinish,
+  parameters: [],
+  statement: (forall (sameOwner : Bool), (forall (exactPublishedRead : Bool), ((journalMayFinish false sameOwner exactPublishedRead) = false))),
+  proof: decide{}
+}
 \end{semanticmodule}
 
 \end{lexlean}

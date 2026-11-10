@@ -259,7 +259,7 @@ definition{
   name: pointerUnpinned,
   parameters: [],
   result: View,
-  body: (record View {id := "pointerUnpinned", journey := "pointers", title := "Authority must be pinned", evidence := "UNTRUSTED DISCOVERY", detail := "DNS records are discovery hints. Enter a key learned independently or explicitly trust the demo session key. A discovered key cannot authorize itself."})
+  body: (record View {id := "pointerUnpinned", journey := "pointers", title := "Authority must be pinned", evidence := "UNTRUSTED DISCOVERY", detail := "DNS records are discovery hints. Enter a key learned independently or explicitly choose and pin a saved or session-only signing key. A discovered key cannot authorize itself."})
 }
 
 definition{
@@ -385,7 +385,7 @@ definition{
   name: actionPin,
   parameters: [],
   result: Action,
-  body: (record Action {code := 10, id := "pin", control := "pinSessionAuthorityBtn", journey := "pointers", label := "Explicitly Trust Demo Session Key", help := "Demo identity lasts only in this session; use an independently trusted key for real authority."})
+  body: (record Action {code := 10, id := "pin", control := "pinSessionAuthorityBtn", journey := "pointers", label := "Trust Saved Key or Create Session Key", help := "Explicitly pin the restored saved key, or create a session-only key if none is loaded. A different key does not inherit earlier trust."})
 }
 
 definition{
@@ -501,10 +501,24 @@ definition{
 }
 
 definition{
+  name: actionSaveAuthority,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 27, id := "saveAuthority", control := "saveAuthorityBtn", journey := "pointers", label := "Set Up or Restore Saved Authority", help := "Save a nonextractable origin-local signing key and explicitly pin it. Browser storage can be lost; there is no key backup or automatic replacement."})
+}
+
+definition{
+  name: actionLoadPublication,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 28, id := "loadPublication", control := "loadPublicationBtn", journey := "pointers", label := "Load Saved Publication", help := "Load the exact zone, name and authority journal before reconciliation. Never repeat an unknown write merely because its owner tab closed."})
+}
+
+definition{
   name: actions,
   parameters: [],
   result: (List Action),
-  body: (cons (actionJoin) (cons (actionStore) (cons (actionClear) (cons (actionRecover) (cons (actionStart) (cons (actionResume) (cons (actionBoot) (cons (actionExecute) (cons (actionSrv) (cons (actionTxt) (cons (actionPin) (cons (actionAdmit) (cons (actionPublish) (cons (actionReconcile) (cons (actionRenew) (cons (actionExport) (cons (actionRecoveryExport) (cons (actionRecoveryImport) (cons (actionRecoverySave) (cons (actionRecoveryDownload) (cons (actionRecoveryFinish) (cons (actionRecoveryTrust) (cons (actionVmStop) (cons (actionVmDestroy) (cons (actionVmCancel) (cons (actionVmReconcile) (cons (actionVmForget) (nil Action))))))))))))))))))))))))))))
+  body: (cons (actionJoin) (cons (actionStore) (cons (actionClear) (cons (actionRecover) (cons (actionStart) (cons (actionResume) (cons (actionBoot) (cons (actionExecute) (cons (actionSrv) (cons (actionTxt) (cons (actionPin) (cons (actionAdmit) (cons (actionPublish) (cons (actionReconcile) (cons (actionRenew) (cons (actionExport) (cons (actionRecoveryExport) (cons (actionRecoveryImport) (cons (actionRecoverySave) (cons (actionRecoveryDownload) (cons (actionRecoveryFinish) (cons (actionRecoveryTrust) (cons (actionVmStop) (cons (actionVmDestroy) (cons (actionVmCancel) (cons (actionVmReconcile) (cons (actionVmForget) (cons (actionSaveAuthority) (cons (actionLoadPublication) (nil Action))))))))))))))))))))))))))))))
 }
 
 definition{
@@ -623,7 +637,7 @@ definition{
   name: actionAllowed,
   parameters: [action : Nat, facts : Facts],
   result: Bool,
-  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then (project facts vmCanAdminister) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else false)))))))))))))))))))))))))))
+  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then (project facts vmCanAdminister) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else ((action =? 27) || (action =? 28)))))))))))))))))))))))))))))
 }
 
 definition{

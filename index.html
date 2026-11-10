@@ -385,6 +385,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         <input type="text" id="cfZoneInput" placeholder="Cloudflare Zone ID" style="width: 150px;" />
         <input type="password" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
         <button id="writeSignedDnsBtn" class="secondary">Admit Next Pointer & Publish TXT</button>
+        <button id="loadPublicationBtn" class="secondary">Load Saved Publication</button>
         <button id="reconcilePointerBtn" class="secondary" hidden>Reconcile Unknown Publication</button>
       </div>
       </details>
@@ -393,7 +394,13 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         <input type="text" id="pointerAuthorityInput" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
         <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
       </div>
-      <div class="muted">Observer heads and demo keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <details><summary>Signing authority and browser storage</summary>
+        <p>Save a new nonextractable Ed25519 key on this origin, or restore the existing saved key. This also explicitly pins its public key. No key rotation, private-key export or import is performed. A different key requires independently distributing a new trust anchor. Origin scripts can use saved keys; only use a trusted deployment.</p>
+        <button id="saveAuthorityBtn" class="secondary">Set Up or Restore Saved Authority</button>
+        <p id="authorityStorageStatus" role="status">Checking saved signing authority…</p>
+        <p>Browser storage is not a backup: quota, eviction, clearing and private browsing can lose keys and journals. DNS publication requires IndexedDB, Web Locks and a committed write-ahead journal; storage failures block writes. Interrupted unknown writes permit exact-candidate reads only, with no timed retry or automatic takeover. API tokens are never saved.</p>
+      </details>
+      <div class="muted">Observer heads and session-only keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
       <div id="pointerAdmissionControls">
       <textarea id="pointerJsonInput" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
       <button id="admitPointerBtn" class="secondary">Admit Pasted Pointer</button>
@@ -493,6 +500,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     import { parseCanonicalJson } from './src/layer1-uor/custody.js';
     import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
     import { installRecoveryControls } from './src/recovery-ui.js';
+    import { BrowserAuthorityStore } from './src/layer1-uor/browser-authority.js';
     import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
 
     // One stable handle is shared by every adapter. Only the explicit renewal
@@ -527,7 +535,18 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       run(kind, cost, effect) { this.reserve(kind, cost); return effect(); }
     };
     const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.1.0' });
-    const authorityReady = generateAuthority();
+    const authorityStore = new BrowserAuthorityStore();
+    let authorityReady = Promise.resolve(null);
+    let persistentAuthority = false;
+    // Restore only; missing, blocked or invalid storage never silently creates a key.
+    const authorityRestore = authorityStore.restoreAuthority().then(authority => {
+      if (authority) { authorityReady = Promise.resolve(authority); persistentAuthority = true; }
+      document.getElementById('authorityStorageStatus').textContent = authority
+        ? 'Saved signing key restored. Explicitly pin it to trust it for this name.'
+        : 'No saved signing key. Choose session-only or saved authority explicitly.';
+    }).catch(() => {
+      document.getElementById('authorityStorageStatus').textContent = 'Browser storage unavailable or invalid. No key replaced. Session-only signing remains available; persistent publication is blocked until storage works.';
+    });
     const pointerObservers = new Map();
     const unpublishedPointers = new WeakMap();
     let pointerWriteInFlight = false;
@@ -891,7 +910,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
 
     // RFC8484 DNS-message discovery and Cloudflare multipart TXT publication controls
     const doh = new DohResolver({ admission });
-    const pointerPublisher = new PointerPublisher({ resolver: doh });
+    const pointerPublisher = new PointerPublisher({ resolver: doh, journal: authorityStore });
     bindModelAction('resolveSrvBtn', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
@@ -934,8 +953,28 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     }
 
     bindModelAction('pinSessionAuthorityBtn', async () => {
+      await authorityRestore;
+      if (!await authorityReady) authorityReady = generateAuthority();
       document.getElementById('pointerAuthorityInput').value = (await authorityReady).publicKey;
-      logWire('POINTER-PIN', 'Explicitly trusted this demo session key. This does not establish a persistent owner identity.');
+      logWire('POINTER-PIN', persistentAuthority ? 'Explicitly pinned the restored saved key. Existing trust is not transferred from other keys.' : 'Created and pinned a session-only key. Closing this tab loses signing authority; no automatic replacement after reload.');
+    });
+    bindModelAction('saveAuthorityBtn', async () => {
+      await authorityRestore;
+      const current = await authorityReady;
+      if (current && !persistentAuthority) throw Error('Session-only key already chosen. Reload and choose saved authority before signing; keys are never silently replaced.');
+      const authority = await authorityStore.setupAuthority();
+      authorityReady = Promise.resolve(authority); persistentAuthority = true;
+      document.getElementById('pointerAuthorityInput').value = authority.publicKey;
+      document.getElementById('authorityStorageStatus').textContent = 'Saved nonextractable signing key and pinned its public key. Browser clearing, eviction or private-session closure can destroy it. No private-key backup is included in evidence exports.';
+      logWire('AUTHORITY', 'Saved authority ready; public-key trust is explicit and origin-scoped.');
+    });
+    bindModelAction('loadPublicationBtn', async () => {
+      const destination = { zoneId: document.getElementById('cfZoneInput').value.trim(),
+        name: document.getElementById('dnsQueryInput').value.trim(),
+        trustedAuthorityKey: document.getElementById('pointerAuthorityInput').value.trim() };
+      const pending = await pointerPublisher.restore(destination);
+      if (pending) document.getElementById('pointerJsonInput').value = JSON.stringify(pending);
+      logWire('DNS-JOURNAL', pending ? 'Retained exact candidate loaded. Reconcile reads only; absence never authorizes repeating this write.' : 'No unknown write retained for this exact scope. Storage loss is not evidence that a write never happened.');
     });
     bindModelAction('admitPointerBtn', async () => {
       const text = document.getElementById('pointerJsonInput').value;
@@ -952,9 +991,11 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         const zoneId = document.getElementById('cfZoneInput').value.trim();
         const apiToken = document.getElementById('cfTokenInput').value.trim();
         const objectRoot = Array.from(liveDb.objects.values()).filter(e => e.verified).at(-1)?.manifest.object.contentDigest;
+        await authorityRestore;
         const authority = await authorityReady;
-        if (observer.trustedAuthorityKey !== authority.publicKey) throw Error('This session does not hold the private key for the pinned authority.');
-        const unresolved = pointerPublisher.pending({ zoneId, name: observer.name, trustedAuthorityKey: observer.trustedAuthorityKey });
+        const restored = /^[a-f0-9]{32}$/i.test(zoneId) ? await pointerPublisher.restore({ zoneId, name: observer.name, trustedAuthorityKey: observer.trustedAuthorityKey }) : null;
+        if (!restored && (!authority || observer.trustedAuthorityKey !== authority.publicKey)) throw Error('This session does not hold the private key for the pinned authority.');
+        const unresolved = restored;
         let candidate = unresolved ?? unpublishedPointers.get(observer) ?? null;
         // An unresolved candidate remains the reconciliation target even if the
         // latest object or its validity interval changed while publication awaited.
@@ -973,7 +1014,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         document.getElementById('pointerJsonInput').value = JSON.stringify(candidate);
         const txt = pointerDnsText(candidate);
         trialLogger.logTrial('ST-POINTER', { revision: candidate.revision, byte_length: new TextEncoder().encode(txt).length,
-          authority: 'explicit-session-pin', admission: 'observer-local', published: false });
+          authority: 'explicit-pinned-authority', admission: 'observer-local', published: false });
         if (!zoneId || !apiToken) {
           logWire('POINTER-LOCAL', `Admitted revision ${candidate.revision} locally; not published. Full signed JSON is above.`);
           return;
