@@ -766,16 +766,24 @@ test('browser static address controls reject invalid input, preserve offline boo
   for (const [address, prefix] of [['----', '24'], ['10.42.0.0', '24'], ['10.42.0.2', ''], ['10.42.0.2', '33']]) {
     field('vmIpv4Address').value = address; field('vmPrefixLength').value = prefix;
     await h.click('bootVmBtn'); assert.equal(h.vm.boots, 0);
+    assert.equal(field('vmNetworkPanel').open, true);
+    assert.ok(field('vmNetworkValidation').textContent.length > 0);
     assert.match(field('vmActionStatus').textContent, /VM-REFUSED/);
   }
   field('vmIpv4Address').value = ''; await h.click('bootVmBtn');
   assert.equal(h.vm.boots, 1); assert.equal(h.vm.networkConfiguration, null);
+  assert.equal(field('vmNetworkValidation').textContent, '');
+  assert.equal(field('vmNetworkSummary').textContent, 'offline');
   assert.match(field('vmNetworkStatus').textContent, /Offline configuration/);
   const checkbox = field('vmShareEthernet'); checkbox.checked = true;
   checkbox.listeners.change({ target: checkbox });
   assert.equal(checkbox.checked, false);
   assert.match(field('vmActionStatus').textContent, /Configure a unique static IPv4/);
   field('vmIpv4Address').value = '10.42.1.0'; field('vmPrefixLength').value = '23';
+  field('vmPrefixLength').listeners.change();
+  assert.equal(field('vmNetworkValidation').textContent, '');
+  assert.equal(field('vmNetworkSummary').textContent, '10.42.1.0/23');
+  assert.equal(h.vm.boots, 1);
   await h.click('bootVmBtn');
   assert.equal(h.vm.boots, 2);
   assert.match(field('vmNetworkStatus').textContent, /10.42.1.0\/23.*255.255.254.0/);
@@ -787,4 +795,48 @@ test('browser static address controls reject invalid input, preserve offline boo
   field('vmCommandSelection').listeners.change();
   assert.equal(field('vmIpv4Address').disabled, true); assert.equal(field('vmPrefixLength').disabled, true);
   assert.match(field('vmNetworkStatus').textContent, /Instance retained; configuration locked/);
+});
+
+test('browser administration refreshes settled locks after pending, unknown and confirmed destruction', async () => {
+  const h = await browserHarness({ VmClass: LinuxVmNode }), field = id => h.document.getElementById(id);
+  h.vm.setNetworkConfiguration('10.42.0.2', 24);
+  let settle;
+  h.vm.v86 = { destroy: () => new Promise((resolve, reject) => { settle = { resolve, reject }; }) };
+  field('vmCommandSelection').listeners.change();
+  const assertLocked = locked => {
+    for (const id of ['vmIpv4Address', 'vmPrefixLength', 'vmRuntimeSeconds'])
+      assert.equal(field(id).disabled, locked, id);
+    assert.equal(field('vmNetworkSummary').textContent.includes('configuration locked'), locked);
+  };
+  assertLocked(true);
+  const failed = h.click('destroyVmBtn');
+  assert.equal(h.vm.adminBusy, true); assertLocked(true);
+  settle.reject(Error('termination uncertain')); await failed;
+  assert.equal(h.vm.adminBusy, false); assert.equal(h.vm.lifecycle.terminationObservation, 'unknown');
+  assertLocked(true);
+  const success = h.click('destroyVmBtn');
+  assert.equal(h.vm.adminBusy, true); assertLocked(true);
+  settle.resolve(); await success;
+  assert.equal(h.vm.adminBusy, false); assert.equal(h.vm.lifecycle.terminationObservation, 'destroyed');
+  assertLocked(false);
+  assert.match(field('vmNetworkStatus').textContent, /Applied at next boot/);
+});
+
+test('browser administration refreshes current locks even if its promise rejects', async () => {
+  class RejectingVm extends LinuxVmNode {
+    async destroy() {
+      this.adminBusy = true;
+      this.onStatus({ state: 'stopping', message: 'Pending' });
+      await Promise.resolve();
+      this.adminBusy = false;
+      throw Error('observer rejected');
+    }
+  }
+  const h = await browserHarness({ VmClass: RejectingVm }), field = id => h.document.getElementById(id);
+  h.vm.v86 = {};
+  field('vmCommandSelection').listeners.change();
+  await assert.rejects(h.click('destroyVmBtn'), /observer rejected/);
+  assert.equal(h.vm.adminBusy, false);
+  for (const id of ['vmIpv4Address', 'vmPrefixLength', 'vmRuntimeSeconds']) assert.equal(field(id).disabled, true);
+  assert.match(field('vmNetworkSummary').textContent, /configuration locked/);
 });

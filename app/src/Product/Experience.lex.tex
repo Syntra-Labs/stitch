@@ -26,6 +26,9 @@ structure{
     {name: vmCanForgetCommand, type: Bool},
     {name: vmCanReconcileCommand, type: Bool},
     {name: vmAdminBlocked, type: Bool},
+    {name: vmTerminationPending, type: Bool},
+    {name: vmStopped, type: Bool},
+    {name: vmDestroyed, type: Bool},
     {name: disclosureAccepted, type: Bool},
     {name: meshJoined, type: Bool},
     {name: peersReachable, type: Bool},
@@ -94,7 +97,7 @@ definition{
   name: initialFacts,
   parameters: [],
   result: Facts,
-  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := false, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := false, headRetained := false, dnsConfigured := false, publicationBusy := false, publicationUnknown := false, publicationPublished := false, policyBlocked := false, policyAttention := false})
+  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, vmTerminationPending := false, vmStopped := false, vmDestroyed := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := false, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := false, headRetained := false, dnsConfigured := false, publicationBusy := false, publicationUnknown := false, publicationPublished := false, policyBlocked := false, policyAttention := false})
 }
 
 definition{
@@ -595,6 +598,27 @@ definition{
 }
 
 definition{
+  name: vmTerminationPending,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmTerminationPending", journey := "vm", title := "Awaiting VM termination confirmation", evidence := "HOST TERMINATION PENDING", detail := "Stop or destroy was requested. The instance remains retained and locked until the host confirms the outcome. Prior command evidence is unchanged; unknown guest effects are not rolled back."})
+}
+
+definition{
+  name: vmStopped,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmStopped", journey := "vm", title := "VM stop confirmed; instance retained", evidence := "HOST-OBSERVED STOPPED", detail := "The emulator confirmed stop. Destroy the retained instance before booting or changing configuration. Completed command evidence remains available; unknown prior guest effects remain unknown."})
+}
+
+definition{
+  name: vmDestroyed,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmDestroyed", journey := "vm", title := "VM destruction confirmed", evidence := "HOST-OBSERVED DESTROYED", detail := "The emulator confirmed destruction and released the instance. You may configure and boot a fresh VM. Retained command evidence is unchanged; unknown prior guest effects are not rolled back."})
+}
+
+definition{
   name: vmQuarantined,
   parameters: [],
   result: View,
@@ -633,7 +657,7 @@ definition{
   name: vmView,
   parameters: [facts : Facts],
   result: View,
-  body: (if (project facts vmAdminBlocked) then (vmQuarantined) else (if (project facts vmBooting) then (vmBooting) else (if (project facts vmReady) then (vmReady) else (if (project facts vmFailed) then (vmFailed) else (vmIdle)))))
+  body: (if (project facts vmTerminationPending) then (vmTerminationPending) else (if (project facts vmStopped) then (vmStopped) else (if (project facts vmAdminBlocked) then (vmQuarantined) else (if (project facts vmDestroyed) then (vmDestroyed) else (if (project facts vmBooting) then (vmBooting) else (if (project facts vmReady) then (vmReady) else (if (project facts vmFailed) then (vmFailed) else (vmIdle))))))))
 }
 
 definition{
@@ -682,7 +706,7 @@ definition{
   name: actionAllowed,
   parameters: [action : Nat, facts : Facts],
   result: Bool,
-  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then (project facts vmCanAdminister) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else (if (action =? 30) then (placementRepairAllowed (project facts placementObjectSelected) (project facts peersReachable) (project facts policyBlocked)) else (if (action =? 29) then ((not (project facts recoveryBusy)) && ((project facts recoveryAcceptedAnchor) && (project facts recoveryCanRestoreAnchor))) else ((action =? 27) || (action =? 28)))))))))))))))))))))))))))))))
+  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then ((project facts vmCanAdminister) && (not (project facts vmStopped))) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else (if (action =? 30) then (placementRepairAllowed (project facts placementObjectSelected) (project facts peersReachable) (project facts policyBlocked)) else (if (action =? 29) then ((not (project facts recoveryBusy)) && ((project facts recoveryAcceptedAnchor) && (project facts recoveryCanRestoreAnchor))) else ((action =? 27) || (action =? 28)))))))))))))))))))))))))))))))
 }
 
 definition{
@@ -731,7 +755,7 @@ definition{
   name: unknownPublicationFacts,
   parameters: [],
   result: Facts,
-  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := true, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := true, headRetained := true, dnsConfigured := true, publicationBusy := false, publicationUnknown := true, publicationPublished := false, policyBlocked := false, policyAttention := false})
+  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, vmTerminationPending := false, vmStopped := false, vmDestroyed := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := true, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := true, headRetained := true, dnsConfigured := true, publicationBusy := false, publicationUnknown := true, publicationPublished := false, policyBlocked := false, policyAttention := false})
 }
 
 theorem{
@@ -794,7 +818,7 @@ definition{
   name: viewStyle,
   parameters: [facts : Facts, journey : Nat],
   result: String,
-  body: (if (journey =? 0) then (if (project facts disclosureAccepted) then (if (project facts peersReachable) then "observed" else "pending") else "attention") else (if (journey =? 1) then (if (project facts hasObject) then "observed" else "unestablished") else (if (journey =? 2) then (if (project facts replayedJobs) then "observed" else "unestablished") else (if (journey =? 3) then (if (project facts vmBooting) then "pending" else (if (project facts vmFailed) then "attention" else "unestablished")) else (if (journey =? 4) then (if (project facts publicationUnknown) then "attention" else (if (project facts publicationBusy) then "pending" else (if (project facts headRetained) then "observed" else "unestablished"))) else (if (project facts policyBlocked) then "attention" else "observed"))))))
+  body: (if (journey =? 0) then (if (project facts disclosureAccepted) then (if (project facts peersReachable) then "observed" else "pending") else "attention") else (if (journey =? 1) then (if (project facts hasObject) then "observed" else "unestablished") else (if (journey =? 2) then (if (project facts replayedJobs) then "observed" else "unestablished") else (if (journey =? 3) then (if (project facts vmTerminationPending) then "pending" else (if (project facts vmStopped) then "observed" else (if (project facts vmAdminBlocked) then "attention" else (if (project facts vmDestroyed) then "observed" else (if (project facts vmBooting) then "pending" else (if (project facts vmFailed) then "attention" else "unestablished")))))) else (if (journey =? 4) then (if (project facts publicationUnknown) then "attention" else (if (project facts publicationBusy) then "pending" else (if (project facts headRetained) then "observed" else "unestablished"))) else (if (project facts policyBlocked) then "attention" else "observed"))))))
 }
 
 definition{name: statusLivePolicy, parameters: [], result: String, body: "polite"}

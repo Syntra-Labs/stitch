@@ -471,3 +471,52 @@ test('boot uses exact selected address and subnet; stopped and uncertain handles
   f.node.setNetworkConfiguration('10.42.0.3', 24);
   assert.equal(f.node.networkConfiguration.cidr, '10.42.0.3/24');
 });
+
+test('termination observations distinguish host confirmation from retained handles and command effects', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
+  const vm = f.node.v86;
+  const completed = { id: 'done', vm, dispatched: true, outcome: 'completed', termination: 'not-requested', output: Uint8Array.of(42) };
+  const unknown = { id: 'unknown', vm, dispatched: true, outcome: 'unknown', termination: 'not-requested' };
+  f.node.commands.set('done', completed); f.node.commands.set('unknown', unknown);
+  let finish;
+  vm.stop = () => new Promise(resolve => { finish = resolve; });
+  const pending = f.node.stop();
+  assert.equal(f.node.lifecycle.terminationObservation, 'pending');
+  assert.equal(f.node.lifecycle.canBoot, false);
+  finish(); assert.equal(await pending, true);
+  assert.equal(f.node.lifecycle.terminationObservation, 'stopped');
+  assert.equal(f.node.lifecycle.instancePresent, true);
+  assert.equal(f.node.lifecycle.adminBlocked, true);
+  assert.equal(f.node.lifecycle.canConfigureNetwork, false);
+  assert.equal(unknown.outcome, 'unknown'); assert.equal(unknown.termination, 'vm-stopped');
+  assert.equal(completed.outcome, 'completed'); assert.equal(completed.termination, 'not-requested');
+  assert.deepEqual(completed.output, Uint8Array.of(42));
+  vm.destroy = () => Promise.reject(Error('no confirmation'));
+  assert.equal(await f.node.destroy(), false);
+  assert.equal(f.node.lifecycle.terminationObservation, 'unknown');
+  assert.equal(f.node.lifecycle.instancePresent, true);
+  assert.equal(f.node.lifecycle.canBoot, false);
+  vm.destroy = () => {};
+  assert.equal(await f.node.destroy(), true);
+  assert.equal(f.node.lifecycle.terminationObservation, 'destroyed');
+  assert.equal(f.node.lifecycle.instancePresent, false);
+  assert.equal(f.node.lifecycle.canBoot, true);
+  assert.equal(unknown.outcome, 'unknown'); assert.equal(unknown.termination, 'vm-destroyed');
+  assert.deepEqual(completed.output, Uint8Array.of(42));
+  f.node.boot(); assert.equal(f.node.lifecycle.terminationObservation, 'none');
+});
+
+test('throwing or rejected stop stays unknown and observer failure cannot erase confirmed stop', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
+  for (const stop of [() => { throw Error('failed'); }, () => Promise.reject(Error('failed'))]) {
+    f.node.v86.stop = stop;
+    assert.equal(await f.node.stop(), false);
+    assert.equal(f.node.lifecycle.terminationObservation, 'unknown');
+    assert.equal(f.node.lifecycle.instancePresent, true);
+    assert.equal(f.node.lifecycle.canBoot, false);
+  }
+  f.node.v86.stop = () => {};
+  f.node.onStatus = () => { throw Error('observer failed'); };
+  assert.equal(await f.node.stop(), true);
+  assert.equal(f.node.lifecycle.terminationObservation, 'stopped');
+});

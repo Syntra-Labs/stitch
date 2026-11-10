@@ -282,6 +282,7 @@ export class LinuxVmNode {
     this.ethernetSharing = false;
     this.adminBlocked = false;
     this.adminBusy = false;
+    this.terminationObservation = 'none';
     this.commandBusy = false;
     this.commands = new Map();
     this.commandSequence = 0;
@@ -304,7 +305,7 @@ export class LinuxVmNode {
   get booted() { return vmCanExecute(this); }
   get booting() { return vmIsBooting(this); }
   get lifecycle() {
-    return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: !this.adminBlocked && !this.adminBusy && vmCanBoot(this), canExecute: vmCanExecute(this), instancePresent: !!this.v86, adminBusy: this.adminBusy, adminBlocked: this.adminBlocked, commandBusy: this.commandBusy, commandCapacity: this.commands.size < 128,
+    return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: !this.adminBlocked && !this.adminBusy && vmCanBoot(this), canExecute: vmCanExecute(this), instancePresent: !!this.v86, terminationObservation: this.terminationObservation, adminBusy: this.adminBusy, adminBlocked: this.adminBlocked, commandBusy: this.commandBusy, commandCapacity: this.commands.size < 128,
       networkConfiguration: this.#network, canConfigureNetwork: networkChangeAllowed(this), runtimeAllowanceMs: this.vmRuntimeMs, filesystemUsage: this.filesystemUsage ? { ...this.filesystemUsage } : null, boundaryReason: this.boundaryReason,
       canAdminister: administrationAllowed(this), ...this.commandLifecycle(this.lastCommandId) };
   }
@@ -361,13 +362,16 @@ export class LinuxVmNode {
     // a replacement VM to hide an emulator which may still be running.
     this.adminBlocked = true;
     this.adminBusy = true;
+    this.terminationObservation = 'pending';
     const cleaned = () => {
+      this.terminationObservation = 'destroyed';
       this.v86 = null;
       this.adminBlocked = false;
       this.adminBusy = false;
       this.onStatus({ state: 'error', message });
     };
     const uncertain = error => {
+      this.terminationObservation = 'unknown';
       this.adminBusy = false;
       this.onStatus({ state: 'error', message: `${message} Cleanup outcome unknown: ${error.message}. Instance retained; explicitly retry Destroy before Boot.` });
     };
@@ -399,6 +403,7 @@ export class LinuxVmNode {
   boot() {
     if (this.adminBlocked || this.adminBusy || !vmCanBoot(this)) return;
     const network = this.#network;
+    this.terminationObservation = 'none';
     this.boundaryReason = null;
     this.boundaryStop = null;
     this.filesystemUsage = null;
@@ -552,6 +557,7 @@ export class LinuxVmNode {
     const vm = this.v86;
     this.adminBusy = true;
     this.adminBlocked = true;
+    this.terminationObservation = 'pending';
     this.objectSharing = false;
     this.ethernetSharing = false;
     this.clearBootTimers();
@@ -567,18 +573,21 @@ export class LinuxVmNode {
     try {
       if (typeof vm[action] !== 'function') throw Error(`VM ${action} is unavailable`);
       const pending = vm[action]();
-      try { this.onStatus({ state: 'stopping', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}VM ${action} requested; awaiting emulator confirmation. Guest effects remain unknown.` }); }
+      try { this.onStatus({ state: 'stopping', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}VM ${action} requested; awaiting emulator confirmation. Prior command evidence is unchanged.` }); }
       catch { /* An observing UI callback must not prevent or abandon termination. */ }
       await pending;
+      this.terminationObservation = action === 'stop' ? 'stopped' : 'destroyed';
       if (action === 'destroy') {
         this.v86 = null;
         this.vmPhase = 'Idle';
         this.adminBlocked = false;
       }
       for (const command of this.commands.values()) if (command.vm === vm && command.dispatched && command.outcome !== 'completed') command.termination = action === 'stop' ? 'vm-stopped' : 'vm-destroyed';
-      this.onStatus({ state: 'offline', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}${action === 'stop' ? 'VM stopped. Destroy before booting a fresh VM.' : 'VM destroyed. Guest effects are not rolled back.'}` });
+      try { this.onStatus({ state: 'offline', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}${action === 'stop' ? 'VM stopped. Destroy before booting a fresh VM.' : 'VM destroyed. Guest effects are not rolled back.'}` }); }
+      catch { /* Observation callbacks cannot undo confirmed host termination. */ }
       return true;
     } catch (error) {
+      this.terminationObservation = 'unknown';
       for (const command of this.commands.values()) if (command.vm === vm && command.dispatched && command.outcome !== 'completed') command.termination = 'stop-unknown';
       this.onStatus({ state: 'error', message: `VM ${action} outcome unknown: ${error.message}. Grants revoked; instance retained for explicit destroy retry.` });
       return false;

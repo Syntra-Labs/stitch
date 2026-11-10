@@ -34090,6 +34090,18 @@ const definitions = {
           "k": "bool",
           "value": false
         },
+        "vmTerminationPending": {
+          "k": "bool",
+          "value": false
+        },
+        "vmStopped": {
+          "k": "bool",
+          "value": false
+        },
+        "vmDestroyed": {
+          "k": "bool",
+          "value": false
+        },
         "disclosureAccepted": {
           "k": "bool",
           "value": false
@@ -36905,6 +36917,108 @@ const definitions = {
       }
     }
   },
+  "Product.Experience.vmTerminationPending": {
+    "module": "Product.Experience",
+    "name": "vmTerminationPending",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmTerminationPending"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "Awaiting VM termination confirmation"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST TERMINATION PENDING"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Stop or destroy was requested. The instance remains retained and locked until the host confirms the outcome. Prior command evidence is unchanged; unknown guest effects are not rolled back."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmStopped": {
+    "module": "Product.Experience",
+    "name": "vmStopped",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmStopped"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM stop confirmed; instance retained"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST-OBSERVED STOPPED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The emulator confirmed stop. Destroy the retained instance before booting or changing configuration. Completed command evidence remains available; unknown prior guest effects remain unknown."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmDestroyed": {
+    "module": "Product.Experience",
+    "name": "vmDestroyed",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmDestroyed"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM destruction confirmed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST-OBSERVED DESTROYED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The emulator confirmed destruction and released the instance. You may configure and boot a fresh VM. Retained command evidence is unchanged; unknown prior guest effects are not rolled back."
+        }
+      }
+    }
+  },
   "Product.Experience.vmQuarantined": {
     "module": "Product.Experience",
     "name": "vmQuarantined",
@@ -37249,11 +37363,11 @@ const definitions = {
           "k": "var",
           "name": "facts"
         },
-        "field": "vmAdminBlocked"
+        "field": "vmTerminationPending"
       },
       "yes": {
         "k": "call",
-        "name": "vmQuarantined",
+        "name": "vmTerminationPending",
         "args": []
       },
       "no": {
@@ -37264,11 +37378,11 @@ const definitions = {
             "k": "var",
             "name": "facts"
           },
-          "field": "vmBooting"
+          "field": "vmStopped"
         },
         "yes": {
           "k": "call",
-          "name": "vmBooting",
+          "name": "vmStopped",
           "args": []
         },
         "no": {
@@ -37279,11 +37393,11 @@ const definitions = {
               "k": "var",
               "name": "facts"
             },
-            "field": "vmReady"
+            "field": "vmAdminBlocked"
           },
           "yes": {
             "k": "call",
-            "name": "vmReady",
+            "name": "vmQuarantined",
             "args": []
           },
           "no": {
@@ -37294,17 +37408,65 @@ const definitions = {
                 "k": "var",
                 "name": "facts"
               },
-              "field": "vmFailed"
+              "field": "vmDestroyed"
             },
             "yes": {
               "k": "call",
-              "name": "vmFailed",
+              "name": "vmDestroyed",
               "args": []
             },
             "no": {
-              "k": "call",
-              "name": "vmIdle",
-              "args": []
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "facts"
+                },
+                "field": "vmBooting"
+              },
+              "yes": {
+                "k": "call",
+                "name": "vmBooting",
+                "args": []
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "vmReady"
+                },
+                "yes": {
+                  "k": "call",
+                  "name": "vmReady",
+                  "args": []
+                },
+                "no": {
+                  "k": "if",
+                  "cond": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "facts"
+                    },
+                    "field": "vmFailed"
+                  },
+                  "yes": {
+                    "k": "call",
+                    "name": "vmFailed",
+                    "args": []
+                  },
+                  "no": {
+                    "k": "call",
+                    "name": "vmIdle",
+                    "args": []
+                  }
+                }
+              }
             }
           }
         }
@@ -38580,12 +38742,27 @@ const definitions = {
                                                     }
                                                   },
                                                   "yes": {
-                                                    "k": "project",
-                                                    "value": {
-                                                      "k": "var",
-                                                      "name": "facts"
+                                                    "k": "binary",
+                                                    "op": "&&",
+                                                    "left": {
+                                                      "k": "project",
+                                                      "value": {
+                                                        "k": "var",
+                                                        "name": "facts"
+                                                      },
+                                                      "field": "vmCanAdminister"
                                                     },
-                                                    "field": "vmCanAdminister"
+                                                    "right": {
+                                                      "k": "not",
+                                                      "value": {
+                                                        "k": "project",
+                                                        "value": {
+                                                          "k": "var",
+                                                          "name": "facts"
+                                                        },
+                                                        "field": "vmStopped"
+                                                      }
+                                                    }
                                                   },
                                                   "no": {
                                                     "k": "if",
@@ -39013,6 +39190,18 @@ const definitions = {
           "k": "bool",
           "value": false
         },
+        "vmTerminationPending": {
+          "k": "bool",
+          "value": false
+        },
+        "vmStopped": {
+          "k": "bool",
+          "value": false
+        },
+        "vmDestroyed": {
+          "k": "bool",
+          "value": false
+        },
         "disclosureAccepted": {
           "k": "bool",
           "value": false
@@ -39345,7 +39534,7 @@ const definitions = {
                   "k": "var",
                   "name": "facts"
                 },
-                "field": "vmBooting"
+                "field": "vmTerminationPending"
               },
               "yes": {
                 "k": "string",
@@ -39359,15 +39548,75 @@ const definitions = {
                     "k": "var",
                     "name": "facts"
                   },
-                  "field": "vmFailed"
+                  "field": "vmStopped"
                 },
                 "yes": {
                   "k": "string",
-                  "value": "attention"
+                  "value": "observed"
                 },
                 "no": {
-                  "k": "string",
-                  "value": "unestablished"
+                  "k": "if",
+                  "cond": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "facts"
+                    },
+                    "field": "vmAdminBlocked"
+                  },
+                  "yes": {
+                    "k": "string",
+                    "value": "attention"
+                  },
+                  "no": {
+                    "k": "if",
+                    "cond": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "facts"
+                      },
+                      "field": "vmDestroyed"
+                    },
+                    "yes": {
+                      "k": "string",
+                      "value": "observed"
+                    },
+                    "no": {
+                      "k": "if",
+                      "cond": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
+                        },
+                        "field": "vmBooting"
+                      },
+                      "yes": {
+                        "k": "string",
+                        "value": "pending"
+                      },
+                      "no": {
+                        "k": "if",
+                        "cond": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "vmFailed"
+                        },
+                        "yes": {
+                          "k": "string",
+                          "value": "attention"
+                        },
+                        "no": {
+                          "k": "string",
+                          "value": "unestablished"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             },
@@ -42636,6 +42885,24 @@ const types = {
         }
       },
       {
+        "name": "vmTerminationPending",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmStopped",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmDestroyed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
         "name": "disclosureAccepted",
         "type": {
           "kind": "Bool"
@@ -42892,12 +43159,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:b257b6e63232e446f9d6889d96f796ed76b7d9b5743f780919beba7b8c4e4f1d";
+export const modelSourceDigest = "sha256:69bcf9d254f77116308f73b9c688fc38f160d16f4c28a6078adeb5bf7716d9ca";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:b257b6e63232e446f9d6889d96f796ed76b7d9b5743f780919beba7b8c4e4f1d",
+  "sourceDigest": "sha256:69bcf9d254f77116308f73b9c688fc38f160d16f4c28a6078adeb5bf7716d9ca",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -46511,7 +46778,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "3ee723767b00d0fb0de6e4b9a7ca75ff3613fa68fbe9b4d035c0e4ab3b2f3c28"
+      "sha256": "6f2625fdce3d3d51899cabc17ce3d57ec0a9381dd3bf3e6477da6ae3ccfb84bd"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -46793,7 +47060,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "3ee723767b00d0fb0de6e4b9a7ca75ff3613fa68fbe9b4d035c0e4ab3b2f3c28"
+      "sha256": "6f2625fdce3d3d51899cabc17ce3d57ec0a9381dd3bf3e6477da6ae3ccfb84bd"
     }
   ],
   "theorems": [
@@ -48459,10 +48726,13 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.viewStyle",
     "Product.Experience.vmBooting",
     "Product.Experience.vmCommandVisible",
+    "Product.Experience.vmDestroyed",
     "Product.Experience.vmFailed",
     "Product.Experience.vmIdle",
     "Product.Experience.vmQuarantined",
     "Product.Experience.vmReady",
+    "Product.Experience.vmStopped",
+    "Product.Experience.vmTerminationPending",
     "Product.Experience.vmView",
     "Stitch.Authority.anchorChronologyAllowed",
     "Stitch.Authority.anchorSaveAllowed",
