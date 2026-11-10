@@ -41,14 +41,17 @@ claiming this immutable package selection remains current forever.
 
 ## What has actually been checked
 
-On 2026-11-10 the pinned Buildroot `stitch_v86_defconfig` configuration step
-succeeded. Resolved `.config` retains initramfs, 32-bit target, kernel version,
-source hash enforcement, rootfs overlay and BusyBox fragment. Kernel/BusyBox
-fragment symbol resolution needs their source configuration phase and is **not**
-yet verified. Buildroot's official `dependencies` target fails because this
-machine lacks **cpio, rsync and bc**. The supplied build script reports those
-same prerequisites and exits before creating an output directory. No expensive
-full build, image change or runtime test has been performed.
+The pinned recipe built a candidate and collected its source/license materials
+in [run42906244489](https://github.com/afflom/stitch/actions/runs/42906244489).
+The initial probe failed because it bypassed Buildroot's `/init` device setup
+and recognized a kernel banner as a shell prompt. The unchanged image passed
+real v86 boot, serial shell, bidirectional 9p and Ethernet configuration in
+4.68seconds after those host-probe corrections. See the exact image identity,
+logs and source inventory in [the candidate evidence](../../docs/guest-candidate-evidence.md).
+
+This is not adoption: production browser/VM lifecycle and consented-network
+qualification, plus durable reviewed corresponding-source distribution, remain
+required. The current shipped guest is unchanged.
 
 ## Build and retain source materials
 
@@ -104,7 +107,9 @@ image URLs, model inventories, hashes and source-package pointers change.
 ## Purpose-specific GitHub build
 
 `.github/workflows/guest-candidate.yml` runs only on manual dispatch or changes
-to this guest recipe/workflow on `feat/**` branches. It is not added to the
+to image-producing board/configuration/build-script inputs on `feat/**` branches.
+Documentation and probe changes reuse existing images; workflow-only edits are
+run explicitly when needed. It is not added to the
 ordinary per-push model/runtime gate. The job installs official Ubuntu host
 prerequisites, checks out the exact Buildroot commit, requires at least 20 GiB
 free disk, and bounds the build step to 175 minutes (200-minute total job).

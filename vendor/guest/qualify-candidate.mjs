@@ -1,5 +1,6 @@
 // Real bundled v86 execution. This does not certify browser VGA/UI or peer transport.
 import fs from 'node:fs';
+import { guestShellReady } from './qualification-protocol.mjs';
 import os from 'node:os';
 import path from 'node:path';
 import { createRequire } from 'node:module';
@@ -33,7 +34,7 @@ try {
     bzimage: { buffer: bytes(candidate) },
     memory_size: 64 * 1024 * 1024, vga_memory_size: 2 * 1024 * 1024,
     filesystem: {}, net_device: { type: 'ne2k' }, autostart: false,
-    cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/sbin/init',
+    cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/init',
   });
   emulator.add_listener('emulator-loaded', async () => {
     try { console.log('Bundled v86 loaded; booting real guest.'); await emulator.create_file('host-probe', new TextEncoder().encode('host-9p-value\n')); console.log('Host 9p input prepared; starting CPU.'); emulator.run(); }
@@ -43,7 +44,7 @@ try {
     const c = String.fromCharCode(byte);
     process.stdout.write(c);
     tail = (tail + c).slice(-65536);
-    if (!sent && /(?:#|~%)\s*$/.test(tail)) {
+    if (!sent && guestShellReady(tail)) {
       sent = true;
       // Split success token so serial input echo alone cannot satisfy the check.
       emulator.serial0_send("mkdir -p /mnt/stitch-probe && mount -t 9p -o trans=virtio host9p /mnt/stitch-probe && test \"$(cat /mnt/stitch-probe/host-probe)\" = host-9p-value && printf 'guest-9p-value\\n' > /mnt/stitch-probe/guest-probe && test -d /sys/class/net/eth0 && ifconfig eth0 10.77.0.2 netmask 255.255.255.0 up && printf 'STITCH_%s\\n' GUEST_OK\n");
