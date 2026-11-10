@@ -1,16 +1,22 @@
 {
   "name": "@syntra-labs/stitch",
   "version": "0.2.0",
-  "description": "Stratified routing persistence, UOR content-addressed ephemeral database, and distributed ring compute",
+  "description": "Model-driven recoverable objects and replayable computation across changing peers",
   "type": "module",
   "main": "src/layer1-uor/index.js",
   "scripts": {
-    "test": "node tests/run_all.js",
-    "serve": "python3 -m http.server 8080"
+    "test": "node scripts/check-model.mjs && node --test scripts/check-model-tests.mjs tests/*.test.js && node tests/run_all.js",
+    "serve": "python3 -m http.server 8080",
+    "model:write": "node scripts/check-model.mjs --write",
+    "model:check": "node scripts/check-model.mjs",
+    "test:independent": "python3 scripts/verify-custody.py"
   },
   "repository": {
     "type": "git",
     "url": "https://github.com/Syntra-Labs/stitch.git"
   },
-  "license": "MIT"
+  "license": "MIT",
+  "devDependencies": {
+    "prism-code": "0.7.2"
+  }
 }

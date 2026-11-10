@@ -462,8 +462,8 @@ export class Trace {
 }
 
 /**
- * Re-derive a Certified GroundingCertificate from a Trace via structural validation
- * + fingerprint passthrough (matches `uor_foundation_verify::verify_trace`).
+ * Check structural trace well-formedness and preserve the legacy UOR grounding record.
+ * This does NOT replay the named program/input or certify execution. Use replay.js for that.
  *
  * @param {Trace} trace
  * @returns {{ ok: boolean, error?: string, certificate?: { fingerprint: ContentFingerprint, wittLevelBits: number, kind: number } }}
@@ -494,6 +494,7 @@ export function verifyTrace(trace) {
 
   return {
     ok: true,
+    evidence: 'structure-only',
     certificate: {
       fingerprint: trace.fingerprint,
       wittLevelBits: trace.wittLevelBits,

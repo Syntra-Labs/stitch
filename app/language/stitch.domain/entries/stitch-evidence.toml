@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-evidence"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Evidence"
+component = "Evidence"
+
+[[form]]
+id = "stitch-evidence"
+channel = "text"
+surface = "scoped evidence"
+canonical_source = true
+features = ["sentence-case", "singular"]

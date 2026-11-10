@@ -1,0 +1,99 @@
+\begin{lexlean}{StitchApp}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{prism.arch@1.0.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Foundation.Bytes}
+\importmodule{Foundation.View.Text.V1.Model}
+\importmodule{Stitch.System}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+definition{
+  name: byteNat,
+  parameters: [request : Bytes, offset : Nat],
+  result: Nat,
+  body: (match (Foundation.Bytes::byteAt request offset) | Option.none => 0 | Option.some byte => (prim to_nat byte : Nat))
+}
+
+definition{
+  name: unsignedBE,
+  parameters: [request : Bytes, offset : Nat, remaining : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match remaining | Nat.zero => accumulated | Nat.succ rest => (unsignedBE request (offset + 1) rest ((prim multiply accumulated 256 : Nat) + (byteNat request offset)))),
+  recursive_argument: remaining
+}
+
+definition{
+  name: flag,
+  parameters: [request : Bytes, offset : Nat],
+  result: Bool,
+  body: ((byteNat request offset) =? 1)
+}
+
+definition{
+  name: flagsCanonical,
+  parameters: [request : Bytes, offset : Nat, remaining : Nat],
+  result: Bool,
+  body: (match remaining | Nat.zero => true | Nat.succ rest => (((byteNat request offset) <=? 1) && (flagsCanonical request (offset + 1) rest))),
+  recursive_argument: remaining
+}
+
+
+
+definition{
+  name: verdict,
+  parameters: [allowed : Bool],
+  result: Bytes,
+  body: (if allowed then (prim utf8_encode "admit" : Bytes) else (prim utf8_encode "refuse" : Bytes))
+}
+
+definition{
+  name: ringProbe,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if ((Foundation.Bytes::byteLength request) =? 36) then (if (Stitch.Compute::supportedWidth (byteNat request 2)) then (if (Stitch.Compute::instructionAllowed (byteNat request 3)) then (prim utf8_encode (prim format_decimal (Stitch.Compute::ringStep (record Stitch.Compute::Instruction {opcode := (byteNat request 3), argument := (unsignedBE request 20 16 0)}) (unsignedBE request 4 16 0) (Stitch.Compute::ringModulus (byteNat request 2))) : String) : Bytes) else (prim utf8_encode "unsupported operation" : Bytes)) else (prim utf8_encode "unsupported width" : Bytes)) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: budgetProbe,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if ((Foundation.Bytes::byteLength request) =? 58) then (verdict (Stitch.Budget::reserveAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (unsignedBE request 18 8 0) (unsignedBE request 26 8 0) (unsignedBE request 34 8 0) (unsignedBE request 42 8 0) (unsignedBE request 50 8 0))) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: pointerProbe,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if (((Foundation.Bytes::byteLength request) =? 45) && (flagsCanonical request 18 3)) then (verdict (Stitch.Pointer::successorAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (flag request 18) (flag request 19) (flag request 20) (unsignedBE request 21 8 0) (unsignedBE request 29 8 0) (unsignedBE request 37 8 0))) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: custodyProbe,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if (((Foundation.Bytes::byteLength request) =? 10) && (flagsCanonical request 2 8)) then (verdict (Stitch.Custody::commitAllowed (flag request 2) (flag request 3) (flag request 4) (flag request 5) (flag request 6) (flag request 7) (flag request 8) (flag request 9))) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: pairProbe,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if (((Foundation.Bytes::byteLength request) =? 7) && (flagsCanonical request 4 3)) then (verdict (Stitch.Fragments::pairAllowed (byteNat request 2) (byteNat request 3) (flag request 4) (flag request 5) (flag request 6))) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: dispatch,
+  parameters: [request : Bytes],
+  result: Bytes,
+  body: (if ((2 <=? (Foundation.Bytes::byteLength request)) && ((Foundation.Bytes::byteLength request) <=? 58)) then (if ((byteNat request 0) =? 1) then (let operation : Nat := (byteNat request 1); (if (operation =? 0) then (ringProbe request) else (if (operation =? 1) then (budgetProbe request) else (if (operation =? 2) then (pointerProbe request) else (if (operation =? 3) then (custodyProbe request) else (if (operation =? 4) then (pairProbe request) else (prim utf8_encode "unsupported request" : Bytes))))))) else (prim utf8_encode "unsupported version" : Bytes)) else (prim utf8_encode "invalid request" : Bytes))
+}
+
+definition{
+  name: application,
+  parameters: [],
+  result: Foundation.View.Text.V1.Model::TextApplication,
+  body: (record Foundation.View.Text.V1.Model::TextApplication {profile := "prismpm/text-application/1", name := "Stitch conformance probe", cargoName := "stitch-model-probe", cargoVersion := "0.3.0", cargoDescription := "A full-width pure conformance probe for the Stitch source model. The separate browser and host network are not certified by this probe.", cargoRepository := "https://github.com/afflom/stitch", cargoHomepage := "https://github.com/afflom/stitch", libraryRoots := (cons "StitchModel.StitchApp.dispatch" (nil String)), acceptanceVectors := (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01000804000000000000000000000000000000ff00000000000000000000000000000001, response := 0x30}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01008004ffffffffffffffffffffffffffffffff00000000000000000000000000000001, response := 0x30}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01008007aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa55555555555555555555555555555555, response := 0x333430323832333636393230393338343633343633333734363037343331373638323131343535}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0100400f0000000000000000000000000000000a00000000000000000000000000000000, response := 0x30}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0100200e0000000000000000000000000000000a00000000000000000000000000000003, response := 0x756e737570706f72746564206f7065726174696f6e}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x010018040000000000000000000000000000000100000000000000000000000000000002, response := 0x756e737570706f72746564207769647468}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01010000000000000001000000000000000200000000000000030000000000000006000000000000000100000000000000000000000000000002, response := 0x61646d6974}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01018000000000000000000000000000000000000000000000018000000000000000000000000000000100000000000000000000000000000002, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01010000000000000001000000000000000200000000000000030000000000000006000000000000000100000000000000020000000000000003, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0102000000000000000300000000000000040101010000000000000000000000000000000a0000000000000001, response := 0x61646d6974}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0102000000000000000300000000000000030101010000000000000000000000000000000a0000000000000001, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0102000000000000000300000000000000040100010000000000000000000000000000000a0000000000000001, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01030101010101010101, response := 0x61646d6974}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01030100010101010101, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01030102010101010101, response := 0x696e76616c69642072657175657374}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01040002010101, response := 0x61646d6974}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01040101010101, response := 0x726566757365}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x02040002010101, response := 0x756e737570706f727465642076657273696f6e}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x01ff, response := 0x756e737570706f727465642072657175657374}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x, response := 0x696e76616c69642072657175657374}) (cons (record Foundation.View.Text.V1.Model::AcceptanceVector {request := 0x0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000, response := 0x696e76616c69642072657175657374}) (nil Foundation.View.Text.V1.Model::AcceptanceVector)))))))))))))))))))))), entryRoot := "StitchModel.StitchApp.dispatch", coreContract := "hologram:guest/core-wasm@1", requestMaximum := (58 : UInt32), responseMaximum := (64 : UInt32), guestAllocationMaximum := (512 : UInt32), capabilitiesEmpty := true, fatArchive := true, primaryLayer := (0 : UInt8), viewLayer := (1 : UInt8), view := (record Foundation.View.Text.V1.Model::TextView {title := "Stitch conformance probe", heading := "Stitch pure model conformance probe", inputLabel := "Versioned binary model request", submitLabel := "Evaluate pure contract", outputLabel := "Model result", inputError := "Invalid request", responseError := "Invalid response"})})
+}
+\end{semanticmodule}
+\end{lexlean}

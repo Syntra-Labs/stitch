@@ -1,0 +1,107 @@
+\begin{lexlean}{Stitch.Budget}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Resources,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: transferBytes, type: Nat}, {name: storageBytes, type: Nat}, {name: computeWork, type: Nat}, {name: refreshRequests, type: Nat}]
+}
+structure{
+  name: Budget,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: epoch, type: Nat}, {name: start, type: Nat}, {name: end, type: Nat}, {name: last, type: Nat}, {name: limit, type: Resources}, {name: spent, type: Resources}, {name: reserved, type: Resources}]
+}
+definition{
+  name: reserveAllowed,
+  parameters: [spent : Nat, reserved : Nat, cost : Nat, limit : Nat, now : Nat, last : Nat, end : Nat],
+  result: Bool,
+  body: ((last <=? now) && ((now <? end) && ((spent + (reserved + cost)) <=? limit)))
+}
+definition{
+  name: reserveAmount,
+  parameters: [spent : Nat, reserved : Nat, cost : Nat, limit : Nat, now : Nat, last : Nat, end : Nat],
+  result: Nat,
+  body: (if (reserveAllowed spent reserved cost limit now last end) then (reserved + cost) else reserved)
+}
+definition{
+  name: settlementAllowed,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Bool,
+  body: (known && ((actual <=? ceiling) && (ceiling <=? reserved)))
+}
+definition{
+  name: settleReserved,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Nat,
+  body: (if (settlementAllowed reserved ceiling actual known) then (prim subtract reserved ceiling : Nat) else reserved)
+}
+definition{
+  name: settleSpent,
+  parameters: [spent : Nat, reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Nat,
+  body: (if (settlementAllowed reserved ceiling actual known) then (spent + actual) else spent)
+}
+definition{
+  name: resourcesWithin,
+  parameters: [spent : Resources, reserved : Resources, cost : Resources, limit : Resources],
+  result: Bool,
+  body: ((((project spent transferBytes) + ((project reserved transferBytes) + (project cost transferBytes))) <=? (project limit transferBytes)) && ((((project spent storageBytes) + ((project reserved storageBytes) + (project cost storageBytes))) <=? (project limit storageBytes)) && ((((project spent computeWork) + ((project reserved computeWork) + (project cost computeWork))) <=? (project limit computeWork)) && (((project spent refreshRequests) + ((project reserved refreshRequests) + (project cost refreshRequests))) <=? (project limit refreshRequests)))))
+}
+definition{
+  name: admitAction,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  result: Bool,
+  body: (((project budget start) <=? now) && (((project budget last) <=? now) && ((now <? (project budget end)) && (resourcesWithin (project budget spent) (project budget reserved) cost (project budget limit)))))
+}
+definition{
+  name: reserveAction,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  result: Budget,
+  body: (if (admitAction budget cost now) then (record Budget {epoch := (project budget epoch), start := (project budget start), end := (project budget end), last := now, limit := (project budget limit), spent := (project budget spent), reserved := (record Resources {transferBytes := ((project (project budget reserved) transferBytes) + (project cost transferBytes)), storageBytes := ((project (project budget reserved) storageBytes) + (project cost storageBytes)), computeWork := ((project (project budget reserved) computeWork) + (project cost computeWork)), refreshRequests := ((project (project budget reserved) refreshRequests) + (project cost refreshRequests))})}) else budget)
+}
+theorem{
+  name: reservationPreservesLimit,
+  parameters: [spent : Nat, reserved : Nat, cost : Nat, limit : Nat, now : Nat, last : Nat, end : Nat],
+  statement: (((spent + reserved) <= limit) -> ((spent + (reserveAmount spent reserved cost limit now last end)) <= limit)),
+  proof: linear_arithmetic{definitions: [reserveAllowed, reserveAmount]}
+}
+theorem{
+  name: unknownSettlementRetainsReservation,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat],
+  statement: ((settleReserved reserved ceiling actual false) = reserved),
+  proof: linear_arithmetic{definitions: [settleReserved, settlementAllowed]}
+}
+theorem{
+  name: settlementDoesNotIncreaseCharge,
+  parameters: [spent : Nat, reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  statement: (((settleSpent spent reserved ceiling actual known) + (settleReserved reserved ceiling actual known)) <= (spent + reserved)),
+  proof: linear_arithmetic{definitions: [settleReserved, settleSpent, settlementAllowed]}
+}
+theorem{
+  name: clockRollbackRefused,
+  parameters: [spent : Nat, reserved : Nat, cost : Nat, limit : Nat, now : Nat, last : Nat, end : Nat],
+  statement: ((now < last) -> ((reserveAllowed spent reserved cost limit now last end) = false)),
+  proof: linear_arithmetic{definitions: [reserveAllowed]}
+}
+
+definition{
+  name: budgetValid,
+  parameters: [budget : Budget],
+  result: Bool,
+  body: (resourcesWithin (project budget spent) (project budget reserved) (record Resources {transferBytes := 0, storageBytes := 0, computeWork := 0, refreshRequests := 0}) (project budget limit))
+}
+
+theorem{
+  name: vectorReservationPreservesBudget,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  statement: (((budgetValid budget) = true) -> ((budgetValid (reserveAction budget cost now)) = true)),
+  proof: linear_arithmetic{definitions: [admitAction, budgetValid, reserveAction, resourcesWithin]}
+}
+
+\end{semanticmodule}
+\end{lexlean}

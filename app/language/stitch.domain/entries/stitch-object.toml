@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-object"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Identity"
+component = "Object"
+
+[[form]]
+id = "stitch-object"
+channel = "text"
+surface = "immutable object"
+canonical_source = true
+features = ["sentence-case", "singular"]

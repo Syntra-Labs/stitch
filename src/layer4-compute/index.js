@@ -21,6 +21,10 @@ import {
   verifyTrace,
   Fnv1aHasher16
 } from '../layer1-uor/index.js';
+import { createCheckpoint, verifyCheckpoint, demoProgram, identifyProgram, MAX_PROGRAM_STEPS } from './replay.js';
+import { ResourceAdmission, reserveNetwork } from '../layer2-schedulers/policy.js';
+import { snapshotRecord } from '../layer1-uor/custody.js';
+import { record, identifier, natural, refuse } from '../layer1-uor/contracts.js';
 import { computeSurvivalProbability } from '../layer2-schedulers/index.js';
 
 /**
@@ -64,7 +68,8 @@ export function finalizeAndVerifyExecution(datum, events) {
   return {
     datum,
     trace,
-    verified: verification.ok,
+    verified: verification.ok, // Legacy field means structure-only, not execution correctness.
+    verification: 'structure-only',
     certificate: verification.certificate ?? null
   };
 }
@@ -380,166 +385,147 @@ export class LinuxVmNode {
  * opened tab reading the warm cache) resumes execution from the last verified step!
  */
 export class LiveDistributedComputeCoordinator {
-  constructor({ transport, liveDb, onJobUpdate = () => {} }) {
+  constructor({ transport, liveDb, onJobUpdate = () => {}, allowPublicRelay = false, maxJobs = 128, admission = liveDb?.admission ?? transport?.admission ?? new ResourceAdmission() }) {
+    natural(maxJobs, 4096);
     this.transport = transport;
     this.liveDb = liveDb;
     this.onJobUpdate = onJobUpdate;
-    /** @type {Map<string, object>} */
+    this.allowPublicRelay = allowPublicRelay;
+    this.maxJobs = maxJobs;
+    this.admission = admission;
     this.jobs = new Map();
+    this.running = new Map();
+    this.ingress = Promise.resolve();
+    this.pendingIngress = 0;
+    this.maxPendingIngress = 128;
   }
 
   async handleMeshMessage(fromPeerId, msg) {
-    if (!msg || msg.type !== 'compute_ckpt') return;
-    await this.ingestCheckpoint(msg, `webrtc:${fromPeerId}`);
+    if (!msg || msg.type !== 'compute_ckpt') return false;
+    return this.ingestCheckpoint(msg, `webrtc:${fromPeerId}`);
   }
 
-  async ingestCheckpoint(ckpt, sourceTag = 'remote') {
-    const existing = this.jobs.get(ckpt.jobId);
-    if (existing && existing.stepIndex >= ckpt.stepIndex && existing.status === 'completed') {
-      return;
+  ingestCheckpoint(packet, sourceTag = 'remote') {
+    // Serialize validation plus commit: two concurrent packets must not overwrite a newer head.
+    // Snapshot before queueing; later caller mutation cannot alter the admitted message.
+    if (this.pendingIngress >= this.maxPendingIngress) return Promise.resolve(false);
+    try { packet = snapshotRecord(packet); } catch { return Promise.resolve(false); }
+    this.pendingIngress++;
+    const task = this.ingress.then(() => this.acceptCheckpoint(packet, sourceTag)).finally(() => { this.pendingIngress--; });
+    this.ingress = task.catch(() => {});
+    return task;
+  }
+
+  async acceptCheckpoint(packet, sourceTag) {
+    try {
+      record(packet, ['type', 'jobId', 'program', 'checkpoint', 'ownerPeerId']);
+      if (packet.type !== 'compute_ckpt') refuse('unsupported-checkpoint');
+      identifier(packet.jobId); identifier(packet.ownerPeerId);
+      const verification = await verifyCheckpoint(packet.program, packet.checkpoint, undefined, { admission: this.admission });
+      const existing = this.jobs.get(packet.jobId);
+      if (existing) {
+        if (existing.checkpoint.jobId !== packet.checkpoint.jobId) refuse('job-conflict');
+        if (packet.checkpoint.stepIndex <= existing.stepIndex) {
+          if (packet.checkpoint.stepIndex === existing.stepIndex &&
+              packet.checkpoint.stateHex !== existing.currentValueHex) refuse('job-conflict');
+          return false;
+        }
+        // Every accepted state is replayed independently. Missing network checkpoints are
+        // allowed, but a direct successor must bind the retained predecessor.
+        if (packet.checkpoint.stepIndex === existing.stepIndex + 1) {
+          await verifyCheckpoint(packet.program, packet.checkpoint, existing.checkpoint, { admission: this.admission });
+        }
+      } else if (this.jobs.size >= this.maxJobs) refuse('job-capacity');
+      this.admission.reserve('checkpoint', { storageBytes: new TextEncoder().encode(JSON.stringify(packet)).length });
+      const job = { jobId: packet.jobId, program: structuredClone(packet.program),
+        checkpoint: structuredClone(packet.checkpoint), totalSteps: packet.program.instructions.length,
+        stepIndex: packet.checkpoint.stepIndex, currentValueHex: packet.checkpoint.stateHex,
+        ownerPeerId: packet.ownerPeerId, status: verification.complete ? 'completed' : 'running',
+        resultAddressHex: null, verified: true, verification: 'replayed', updatedAtMs: Date.now(), sourceTag };
+      this.jobs.set(packet.jobId, job);
+      this.onJobUpdate(job);
+      return true;
+    } catch (error) {
+      this.onJobUpdate({ type: 'checkpoint_refused', code: error.code || 'invalid-checkpoint' });
+      return false;
     }
-
-    const job = {
-      jobId: ckpt.jobId,
-      totalSteps: ckpt.totalSteps,
-      stepIndex: ckpt.stepIndex,
-      currentValueHex: ckpt.currentValueHex,
-      events: ckpt.events.map(e => new TraceEvent(e.stepIndex, e.op, {
-        isZero: () => false,
-        toHex: () => e.targetHex
-      })),
-      rawEvents: ckpt.events,
-      ownerPeerId: ckpt.ownerPeerId,
-      status: ckpt.status,
-      resultAddressHex: ckpt.resultAddressHex || null,
-      verified: ckpt.verified || false,
-      updatedAtMs: Date.now(),
-      sourceTag
-    };
-    this.jobs.set(ckpt.jobId, job);
-    this.onJobUpdate(job);
   }
 
-  /**
-   * Start or resume a multi-step UOR reduction job across the live network.
-   * Each step executes a Z/(2^64)Z ring operation, commits a checkpoint over WebRTC
-   * and to the warm relay cache, and pauses `stepDelayMs` so you can test closing the tab mid-job.
-   */
-  async startOrResumeJob({
-    jobId = 'job-' + Math.random().toString(36).slice(2, 7),
-    totalSteps = 12,
-    initialValue = 104729n,
-    stepDelayMs = 700
-  } = {}) {
-    let job = this.jobs.get(jobId);
-    let step = job ? job.stepIndex : 0;
-    let curDatum = job ? Datum.w64(BigInt(job.currentValueHex)) : Datum.w64(BigInt(initialValue));
-    let rawEvents = job ? [...job.rawEvents] : [];
+  async startOrResumeJob({ jobId = 'job-' + crypto.randomUUID(), totalSteps = 12,
+    initialValue = 104729n, stepDelayMs = 700, program = null } = {}) {
+    identifier(jobId); natural(totalSteps, MAX_PROGRAM_STEPS); natural(stepDelayMs, 60000);
+    if (this.running.has(jobId)) return this.running.get(jobId);
+    const work = this.runJob({ jobId, totalSteps, initialValue, stepDelayMs, program });
+    this.running.set(jobId, work);
+    try { return await work; } finally { this.running.delete(jobId); }
+  }
 
-    while (step < totalSteps) {
-      const op = step % 3 === 0
-        ? PrimitiveOp.ADD
-        : step % 3 === 1
-        ? PrimitiveOp.XOR
-        : PrimitiveOp.SUCC;
-      const arg = step % 3 === 0
-        ? Datum.w64(BigInt((step + 1) * 257))
-        : step % 3 === 1
-        ? Datum.w64(0x9e3779b97f4a7c15n)
-        : null;
-
-      curDatum = applyPrimitiveOp(op, curDatum, arg);
-      const { address } = mintContentAddress(curDatum.toBytes(), Fnv1aHasher16);
-      rawEvents.push({
-        stepIndex: step,
-        op,
-        targetHex: address.toHex()
-      });
-      step++;
-
-      const isFinal = step >= totalSteps;
-      let resultAddressHex = null;
-      let verified = false;
-
-      if (isFinal) {
-        const traceEvents = rawEvents.map(e => {
-          const hex = e.targetHex.replace('uor:ca:', '');
-          return new TraceEvent(e.stepIndex, e.op, {
-            raw: BigInt('0x' + hex),
-            isZero: () => BigInt('0x' + hex) === 0n,
-            toHex: () => e.targetHex
-          });
-        });
-        const finalCheck = finalizeAndVerifyExecution(curDatum, traceEvents);
-        verified = finalCheck.verified;
-
-        const stored = await this.liveDb.put(
-          JSON.stringify({
-            jobId,
-            finalDatumHex: '0x' + curDatum.value.toString(16),
-            totalSteps,
-            verified,
-            certificateFingerprint: finalCheck.certificate?.fingerprint?.toHex() || null
-          }),
-          { label: `job_${jobId}_result.json`, persistWarm: true }
-        );
-        resultAddressHex = stored.addressHex;
+  async runJob({ jobId, totalSteps, initialValue, stepDelayMs, program }) {
+    const existing = this.jobs.get(jobId);
+    if (!existing && this.jobs.size >= this.maxJobs) refuse('job-capacity');
+    program = structuredClone(existing?.program ?? program ?? demoProgram(totalSteps, initialValue));
+    await identifyProgram(program);
+    let checkpoint = existing?.checkpoint ?? null;
+    let step = checkpoint?.stepIndex ?? 0;
+    if (checkpoint) await verifyCheckpoint(program, checkpoint, undefined, { admission: this.admission });
+    // Empty jobs have a valid initial/final state and still emit a replayable checkpoint.
+    do {
+      if (step < program.instructions.length) step++;
+      else if (checkpoint !== null) break;
+      checkpoint = await createCheckpoint(program, step, checkpoint, { admission: this.admission });
+      const packet = { type: 'compute_ckpt', jobId, program, checkpoint, ownerPeerId: this.transport.peerId };
+      if (!await this.ingestCheckpoint(packet, `local:${this.transport.peerId}`)) {
+        const head = this.jobs.get(jobId);
+        if (!head || head.checkpoint.jobId !== checkpoint.jobId || head.stepIndex < step) refuse('checkpoint-refused');
+        checkpoint = head.checkpoint; step = head.stepIndex;
+        // An independently accepted newer head wins. Never publish our refused state.
+        continue;
       }
-
-      const ckptPacket = {
-        type: 'compute_ckpt',
-        jobId,
-        totalSteps,
-        stepIndex: step,
-        currentValueHex: '0x' + curDatum.value.toString(16),
-        events: rawEvents,
-        ownerPeerId: this.transport.peerId,
-        status: isFinal ? 'completed' : 'running',
-        resultAddressHex,
-        verified
-      };
-
-      await this.ingestCheckpoint(ckptPacket, `local:${this.transport.peerId}`);
-      this.transport.broadcast(ckptPacket);
-      if (step % 3 === 0 || isFinal) {
-        await this.transport.publishWarmEnvelope(ckptPacket);
+      if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'checkpoint', packet, (this.transport.openPeers?.() || []).length);
+      this.transport.broadcast(packet);
+      // Explicit public-data opt-in. A relay is storage with an external retention policy.
+      if (this.allowPublicRelay && (step % 3 === 0 || step === program.instructions.length)) {
+        if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'checkpoint', { ...packet, from: this.transport.peerId, tsMs: Date.now() });
+        await this.transport.publishWarmEnvelope(packet);
       }
-
-      if (!isFinal && stepDelayMs > 0) {
-        await new Promise(r => setTimeout(r, stepDelayMs));
-      }
+      if (step < program.instructions.length && stepDelayMs > 0) await new Promise(r => setTimeout(r, stepDelayMs));
+    } while (step < program.instructions.length);
+    const job = this.jobs.get(jobId);
+    if (job?.status === 'completed') {
+      const stored = await this.liveDb.put(JSON.stringify({ jobId, program, checkpoint }),
+        { label: `job_${jobId}_result.json`, persistWarm: this.allowPublicRelay, publicData: this.allowPublicRelay });
+      job.resultAddressHex = stored.addressHex;
+      this.onJobUpdate(job);
     }
-
-    return this.jobs.get(jobId);
+    return job;
   }
 
-  /**
-   * Recover in-flight or completed jobs from the warm relay ring-buffer,
-   * and automatically take over any unfinished (`running`) job whose original owner died!
-   */
   async syncAndTakeOverJobs(sinceWindow = '30m') {
-    const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow);
-    for (const env of envelopes) {
-      if (env && env.type === 'compute_ckpt') {
-        await this.ingestCheckpoint(env, `warm-relay:${env.ownerPeerId || 'cache'}`);
+    if (this.allowPublicRelay) {
+      if (this.transport.admission !== this.admission) this.admission.reserve('retrieve', { requests: 1, transferBytes: 2 * 1024 * 1024 });
+      const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow);
+      if (!Array.isArray(envelopes) || envelopes.length > this.maxJobs * 4) refuse('job-capacity');
+      for (const env of envelopes) {
+        if (env?.type !== 'compute_ckpt') continue;
+        // Transport delivery metadata is not authority or signed program state.
+        try {
+          const packet = snapshotRecord(env);
+          if (Object.hasOwn(packet, 'from') || Object.hasOwn(packet, 'tsMs')) {
+            identifier(packet.from); natural(packet.tsMs);
+            delete packet.from; delete packet.tsMs;
+          }
+          await this.ingestCheckpoint(packet, 'warm-relay');
+        } catch { this.onJobUpdate({ type: 'checkpoint_refused', code: 'invalid-checkpoint' }); }
       }
     }
-
-    const activePeerIds = new Set(this.transport.openPeers().map(p => p.remoteId));
+    const active = new Set(this.transport.openPeers().map(p => p.remoteId));
     const resumed = [];
     for (const job of this.jobs.values()) {
-      if (
-        job.status === 'running' &&
-        job.stepIndex < job.totalSteps &&
-        job.ownerPeerId !== this.transport.peerId &&
-        !activePeerIds.has(job.ownerPeerId)
-      ) {
+      if (job.status === 'running' && job.ownerPeerId !== this.transport.peerId && !active.has(job.ownerPeerId)) {
         resumed.push(job.jobId);
-        this.startOrResumeJob({
-          jobId: job.jobId,
-          totalSteps: job.totalSteps,
-          stepDelayMs: 400
-        });
+        // Reachability loss is an observation, not proof of death or exclusive ownership.
+        this.startOrResumeJob({ jobId: job.jobId, stepDelayMs: 0 }).catch(error =>
+          this.onJobUpdate({ type: 'job_refused', code: error.code || 'host-effect-failed' }));
       }
     }
     return resumed;

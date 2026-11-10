@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-encoding"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Encoding"
+component = "Encoding"
+
+[[form]]
+id = "stitch-encoding"
+channel = "text"
+surface = "exact encoding"
+canonical_source = true
+features = ["sentence-case", "singular"]

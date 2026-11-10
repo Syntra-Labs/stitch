@@ -1,0 +1,65 @@
+\begin{lexlean}{Stitch.Evidence}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+inductive{
+  name: ClaimKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Integrity, fields: []}, {name: Authorization, fields: []}, {name: Reconstruction, fields: []}, {name: PureExecution, fields: []}, {name: Availability, fields: []}, {name: Durability, fields: []}, {name: Confidentiality, fields: []}]
+}
+inductive{
+  name: EvidenceKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Specified, fields: []}, {name: KernelChecked, fields: []}, {name: ImplementationTested, fields: []}, {name: IndependentlyReplayed, fields: []}, {name: FieldMeasured, fields: []}, {name: Refuted, fields: []}, {name: Untested, fields: []}]
+}
+inductive{
+  name: HostEffect,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: ReadClock, fields: []}, {name: SendFragment, fields: []}, {name: PersistFragment, fields: []}, {name: ReadDNS, fields: []}, {name: WriteDNS, fields: []}, {name: ReceivePeer, fields: []}, {name: RunVM, fields: []}, {name: FetchDependency, fields: []}, {name: VerifySignature, fields: []}, {name: HashBytes, fields: []}]
+}
+structure{
+  name: Evidence,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: claim, type: ClaimKind}, {name: kind, type: EvidenceKind}, {name: modelRoot, type: Stitch.Identity::Digest}, {name: artifactRoot, type: Stitch.Identity::Digest}, {name: subjectRoot, type: Stitch.Identity::Digest}, {name: assumptionsRoot, type: Stitch.Identity::Digest}, {name: observedAt, type: Nat}, {name: validUntil, type: Nat}, {name: horizon, type: Nat}, {name: failureBound, type: Nat}]
+}
+structure{
+  name: Scope,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: horizon, type: Nat}, {name: failures, type: Nat}, {name: hostEffects, type: Nat}]
+}
+definition{
+  name: scopeReusable,
+  parameters: [provedHorizon : Nat, requestedHorizon : Nat, provedFailures : Nat, requestedFailures : Nat, bindingsMatch : Bool, assumptionsMatch : Bool, dependencyClosureUnchanged : Bool],
+  result: Bool,
+  body: ((requestedHorizon <=? provedHorizon) && ((requestedFailures <=? provedFailures) && (bindingsMatch && (assumptionsMatch && dependencyClosureUnchanged))))
+}
+definition{
+  name: pureEffectAllowed,
+  parameters: [effect : HostEffect],
+  result: Bool,
+  body: false
+}
+theorem{
+  name: cannotExtendEvidenceHorizon,
+  parameters: [provedHorizon : Nat, requestedHorizon : Nat, provedFailures : Nat, requestedFailures : Nat, bindingsMatch : Bool, assumptionsMatch : Bool, dependencyClosureUnchanged : Bool],
+  statement: ((provedHorizon < requestedHorizon) -> ((scopeReusable provedHorizon requestedHorizon provedFailures requestedFailures bindingsMatch assumptionsMatch dependencyClosureUnchanged) = false)),
+  proof: linear_arithmetic{definitions: [scopeReusable]}
+}
+
+structure{
+  name: HostAssumptions,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: digestCollisionResistance, type: Bool}, {name: signatureUnforgeability, type: Bool}, {name: authorizedKeyBinding, type: Bool}, {name: receiptAuthentication, type: Bool}, {name: storageRetentionForLease, type: Bool}, {name: independentFailureDomains, type: Bool}, {name: monotonicElapsedClock, type: Bool}, {name: releasedRuntimeMatchesModel, type: Bool}]
+}
+
+\end{semanticmodule}
+\end{lexlean}

@@ -4,6 +4,32 @@
  * Layer-2 Ethernet Frame Bridge (for v86 Linux VMs), and RFC 8484 DoH + Lightweight DNS TXT Writer.
  */
 
+import { ResourceAdmission, reserveNetwork, wireBytes } from '../layer2-schedulers/policy.js';
+import { refuse } from '../layer1-uor/contracts.js';
+
+/** Bounded application response body, not a bound on browser/network overhead. */
+export async function readBoundedText(response, maxBytes) {
+  const advertised = response.headers?.get?.('content-length');
+  if (advertised && Number(advertised) > maxBytes) refuse('response-limit');
+  if (!response.body?.getReader) {
+    const text = await response.text();
+    if (wireBytes(text) > maxBytes) refuse('response-limit');
+    return text;
+  }
+  const reader = response.body.getReader(), decoder = new TextDecoder();
+  let total = 0, text = '';
+  try {
+    for (;;) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      total += value.byteLength;
+      if (total > maxBytes) refuse('response-limit');
+      text += decoder.decode(value, { stream: true });
+    }
+    return text + decoder.decode();
+  } finally { await reader.cancel().catch(() => {}); reader.releaseLock(); }
+}
+
 const DEFAULT_DOH_ENDPOINT = 'https://cloudflare-dns.com/dns-query';
 const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
@@ -132,6 +158,8 @@ export class DohResolver {
     this.endpoint = options.endpoint ?? DEFAULT_DOH_ENDPOINT;
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
     this.history = [];
+    this.admission = options.admission ?? new ResourceAdmission();
+    this.maxResponseBytes = 128 * 1024;
   }
 
   async resolve(name, type = 'SRV') {
@@ -140,11 +168,13 @@ export class DohResolver {
     }
     const t0 = performance.now();
     const url = `${this.endpoint}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+    this.admission.reserve('retrieve', { requests: 1, transferBytes: wireBytes(url) + this.maxResponseBytes });
     const res = await this.fetchImpl(url, { headers: { accept: 'application/dns-json' } });
     if (!res.ok) {
       throw new Error(`HTTP ${res.status}`);
     }
-    const body = await res.json();
+    const body = res.body?.getReader || res.text
+      ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
     const rttMs = Number((performance.now() - t0).toFixed(1));
     const answers = Array.isArray(body.Answer) ? body.Answer : [];
     const ttlSeconds = answers.length > 0
@@ -169,9 +199,11 @@ export class DohResolver {
       ttl_seconds: ttlSeconds,
       rtt_ms: rttMs,
       cache_hit_inferred: cacheHitInferred,
+      rawRecords: answers.map(a => a.data),
       records: parsedRecords
     };
     this.history.push(record);
+    if (this.history.length > 128) this.history.shift();
     return record;
   }
 
@@ -186,8 +218,9 @@ export class DohResolver {
   async writeDuckDnsTxt({ subdomain, token, txtValue }) {
     if (!this.fetchImpl) throw new Error('fetch unavailable');
     const url = `https://www.duckdns.org/update?domains=${encodeURIComponent(subdomain)}&token=${encodeURIComponent(token)}&txt=${encodeURIComponent(txtValue)}`;
+    this.admission.reserve('refresh', { requests: 1, transferBytes: wireBytes(url) + this.maxResponseBytes });
     const res = await this.fetchImpl(url);
-    const text = (await res.text()).trim();
+    const text = (await readBoundedText(res, this.maxResponseBytes)).trim();
     return { ok: text === 'OK', response: text, fqdn: `${subdomain}.duckdns.org` };
   }
 
@@ -235,6 +268,7 @@ export class DohResolver {
     } else {
       body.content = String(content);
     }
+    this.admission.reserve('refresh', { requests: 1, transferBytes: wireBytes(url) + wireBytes(body) + this.maxResponseBytes });
     const res = await this.fetchImpl(url, {
       method: recordId ? 'PUT' : 'POST',
       headers: {
@@ -243,7 +277,8 @@ export class DohResolver {
       },
       body: JSON.stringify(body)
     });
-    const json = await res.json();
+    const json = res.body?.getReader || res.text
+      ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
     return {
       ok: Boolean(json?.success),
       id: json?.result?.id || recordId,
@@ -357,6 +392,10 @@ export class ExperimentTrialLogger {
  */
 export class WebRtcTransportNode {
   constructor(options = {}) {
+    this.admission = options.admission ?? new ResourceAdmission();
+    this.maxRelayResponseBytes = 2 * 1024 * 1024;
+    this.maxDataMessageBytes = 512 * 1024;
+    this.maxPeers = 64;
     this.peerId = options.peerId || ('node-' + Math.random().toString(36).slice(2, 8));
     this.channelKey = options.channelKey ?? 'syntra-uor-bus-01';
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5000;
@@ -409,6 +448,8 @@ export class WebRtcTransportNode {
       return entry;
     }
 
+    if (this.peers.size >= this.maxPeers) refuse('peer-capacity');
+    this.admission.reserve('refresh', { requests: 1 });
     const pc = new RTCPeerConnection({ iceServers: DEFAULT_ICE_SERVERS });
     entry = {
       pc,
@@ -491,6 +532,7 @@ export class WebRtcTransportNode {
       const rawLen = typeof e.data === 'string' ? e.data.length : (e.data?.byteLength || 0);
       this.bytesReceived += rawLen;
       try {
+        if (rawLen > this.maxDataMessageBytes) return;
         const msg = JSON.parse(e.data);
         this.handleDataMessage(remoteId, msg);
       } catch {
@@ -571,6 +613,7 @@ export class WebRtcTransportNode {
     const entry = this.peers.get(remoteId);
     if (!entry || !entry.dc || entry.dc.readyState !== 'open') return false;
     const raw = JSON.stringify(payloadObj);
+    reserveNetwork(this.admission, 'place', raw);
     entry.dc.send(raw);
     this.bytesSent += raw.length;
     return true;
@@ -581,6 +624,7 @@ export class WebRtcTransportNode {
     let sentCount = 0;
     for (const { dc } of this.openPeers()) {
       try {
+        reserveNetwork(this.admission, 'place', raw);
         dc.send(raw);
         this.bytesSent += raw.length;
         sentCount++;
@@ -597,6 +641,7 @@ export class WebRtcTransportNode {
     if (typeof fetch === 'undefined') return false;
     try {
       const raw = JSON.stringify({ ...envelopeObj, from: this.peerId, tsMs: Date.now() });
+      reserveNetwork(this.admission, 'place', raw);
       this.bytesSent += raw.length;
       const res = await fetch(`https://ntfy.sh/${this.warmCacheTopic()}`, {
         method: 'POST',
@@ -615,9 +660,11 @@ export class WebRtcTransportNode {
   async fetchWarmEnvelopes(sinceWindow = '30m') {
     if (typeof fetch === 'undefined') return [];
     try {
-      const res = await fetch(`https://ntfy.sh/${this.warmCacheTopic()}/json?poll=1&since=${encodeURIComponent(sinceWindow)}`);
+      const url = `https://ntfy.sh/${this.warmCacheTopic()}/json?poll=1&since=${encodeURIComponent(sinceWindow)}`;
+      this.admission.reserve('retrieve', { requests: 1, transferBytes: wireBytes(url) + this.maxRelayResponseBytes });
+      const res = await fetch(url);
       if (!res.ok) return [];
-      const text = await res.text();
+      const text = await readBoundedText(res, this.maxRelayResponseBytes);
       const lines = text.split('\n').filter(Boolean);
       const envelopes = [];
       for (const line of lines) {
@@ -636,6 +683,11 @@ export class WebRtcTransportNode {
   }
 
   connect(channelKey = this.channelKey) {
+    if (channelKey !== this.channelKey) {
+      // A new mesh must not keep sending object/VM bytes to the old mesh.
+      for (const { pc, dc } of [...this.peers.values()]) { dc?.close(); pc?.close(); }
+      this.peers.clear(); this.stopHeartbeat();
+    }
     this.channelKey = channelKey;
     if (this.bc) this.bc.close();
     if (this.ws) this.ws.close();
@@ -650,6 +702,7 @@ export class WebRtcTransportNode {
     if (typeof WebSocket !== 'undefined') {
       const topic = this.signalTopic();
       try {
+        this.admission.reserve('refresh', { requests: 1 });
         this.ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`);
         this.ws.onopen = () => {
           this.emit('signaling_ready', { topic, channelKey: this.channelKey });
@@ -657,6 +710,7 @@ export class WebRtcTransportNode {
         };
         this.ws.onmessage = e => {
           try {
+            if (typeof e.data !== 'string' || e.data.length > this.maxDataMessageBytes) return;
             const env = JSON.parse(e.data);
             if (env.event !== 'message' || !env.message) return;
             const msg = JSON.parse(env.message);
@@ -673,6 +727,8 @@ export class WebRtcTransportNode {
 
   sendSignal(payload) {
     const frame = { ...payload, from: this.peerId, channelKey: this.channelKey };
+    try { reserveNetwork(this.admission, 'refresh', frame, (this.bc ? 1 : 0) + (typeof fetch !== 'undefined' ? 1 : 0)); }
+    catch (error) { this.emit('policy_refused', { code: error.code || 'budget-exhausted' }); return false; }
     if (this.bc) this.bc.postMessage(frame);
     if (typeof fetch !== 'undefined') {
       fetch(`https://ntfy.sh/${this.signalTopic()}`, {

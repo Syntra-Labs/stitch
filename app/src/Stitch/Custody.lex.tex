@@ -1,0 +1,277 @@
+\begin{lexlean}{Stitch.Custody}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\importmodule{Stitch.Fragments}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+inductive{
+  name: TransferPhase,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Requested, fields: []}, {name: Acknowledged, fields: []}, {name: Committed, fields: []}, {name: Failed, fields: []}, {name: Uncertain, fields: []}]
+}
+structure{
+  name: Receipt,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: requestRoot, type: Stitch.Identity::Digest}, {name: manifestRoot, type: Stitch.Identity::Digest}, {name: fragmentRoot, type: Stitch.Identity::Digest}, {name: holderId, type: Nat}, {name: index, type: Nat}, {name: observedAt, type: Nat}, {name: leaseUntil, type: Nat}, {name: identityAuthenticated, type: Bool}]
+}
+structure{
+  name: Transfer,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: requestRoot, type: Stitch.Identity::Digest}, {name: manifestRoot, type: Stitch.Identity::Digest}, {name: fragmentRoot, type: Stitch.Identity::Digest}, {name: sourceHolder, type: Nat}, {name: targetHolder, type: Nat}, {name: index, type: Nat}, {name: placementRevision, type: Nat}, {name: phase, type: TransferPhase}, {name: receipt, type: Receipt}]
+}
+structure{
+  name: Placement,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: manifestRoot, type: Stitch.Identity::Digest}, {name: revision, type: Nat}, {name: holder0, type: Nat}, {name: holder1, type: Nat}, {name: holder2, type: Nat}, {name: active0, type: Bool}, {name: active1, type: Bool}, {name: active2, type: Bool}]
+}
+definition{
+  name: distinctHolders,
+  parameters: [a : Nat, b : Nat, c : Nat],
+  result: Bool,
+  body: ((not (a =? b)) && ((not (a =? c)) && (not (b =? c))))
+}
+definition{
+  name: activeCount,
+  parameters: [placement : Placement],
+  result: Nat,
+  body: ((if (project placement active0) then 1 else 0) + ((if (project placement active1) then 1 else 0) + (if (project placement active2) then 1 else 0)))
+}
+definition{
+  name: recoverable,
+  parameters: [placement : Placement],
+  result: Bool,
+  body: ((distinctHolders (project placement holder0) (project placement holder1) (project placement holder2)) && (2 <=? (activeCount placement)))
+}
+definition{
+  name: commitAllowed,
+  parameters: [requested : Bool, acknowledged : Bool, manifestMatches : Bool, fragmentMatches : Bool, holderMatches : Bool, leaseLive : Bool, sourceCurrent : Bool, targetDistinct : Bool],
+  result: Bool,
+  body: (requested && (acknowledged && (manifestMatches && (fragmentMatches && (holderMatches && (leaseLive && (sourceCurrent && targetDistinct)))))))
+}
+definition{
+  name: retireAllowed,
+  parameters: [targetCommitted : Bool, remainingDistinctIndices : Nat, threshold : Nat],
+  result: Bool,
+  body: (targetCommitted && (threshold <=? remainingDistinctIndices))
+}
+definition{
+  name: receiptBound,
+  parameters: [transfer : Transfer, receipt : Receipt, now : Nat],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project transfer requestRoot) (project receipt requestRoot)) && ((Stitch.Identity::sameDigest (project transfer manifestRoot) (project receipt manifestRoot)) && ((Stitch.Identity::sameDigest (project transfer fragmentRoot) (project receipt fragmentRoot)) && (((project transfer index) =? (project receipt index)) && (((project transfer targetHolder) =? (project receipt holderId)) && (((project receipt observedAt) <=? now) && ((now <? (project receipt leaseUntil)) && (project receipt identityAuthenticated))))))))
+}
+definition{
+  name: failTransfer,
+  parameters: [transfer : Transfer, uncertain : Bool],
+  result: Transfer,
+  body: (match (project transfer phase) | TransferPhase.Requested => (record Transfer {requestRoot := (project transfer requestRoot), manifestRoot := (project transfer manifestRoot), fragmentRoot := (project transfer fragmentRoot), sourceHolder := (project transfer sourceHolder), targetHolder := (project transfer targetHolder), index := (project transfer index), placementRevision := (project transfer placementRevision), phase := (if uncertain then (ctor TransferPhase.Uncertain) else (ctor TransferPhase.Failed)), receipt := (project transfer receipt)}) | TransferPhase.Acknowledged => (record Transfer {requestRoot := (project transfer requestRoot), manifestRoot := (project transfer manifestRoot), fragmentRoot := (project transfer fragmentRoot), sourceHolder := (project transfer sourceHolder), targetHolder := (project transfer targetHolder), index := (project transfer index), placementRevision := (project transfer placementRevision), phase := (if uncertain then (ctor TransferPhase.Uncertain) else (ctor TransferPhase.Failed)), receipt := (project transfer receipt)}) | TransferPhase.Committed => transfer | TransferPhase.Failed => transfer | TransferPhase.Uncertain => transfer)
+}
+theorem{
+  name: unacknowledgedCannotCommit,
+  parameters: [requested : Bool, manifestMatches : Bool, fragmentMatches : Bool, holderMatches : Bool, leaseLive : Bool, sourceCurrent : Bool, targetDistinct : Bool],
+  statement: ((commitAllowed requested false manifestMatches fragmentMatches holderMatches leaseLive sourceCurrent targetDistinct) = false),
+  proof: linear_arithmetic{definitions: [commitAllowed]}
+}
+theorem{
+  name: uncommittedCannotRetire,
+  parameters: [remainingDistinctIndices : Nat, threshold : Nat],
+  statement: ((retireAllowed false remainingDistinctIndices threshold) = false),
+  proof: linear_arithmetic{definitions: [retireAllowed]}
+}
+theorem{
+  name: retirementPreservesThreshold,
+  parameters: [targetCommitted : Bool, remainingDistinctIndices : Nat, threshold : Nat],
+  statement: (((retireAllowed targetCommitted remainingDistinctIndices threshold) = true) -> (threshold <= remainingDistinctIndices)),
+  proof: linear_arithmetic{definitions: [retireAllowed]}
+}
+
+definition{
+  name: replaceFirst,
+  parameters: [placement : Placement, target : Nat, committed : Bool],
+  result: Placement,
+  body: (if (committed && ((not (target =? (project placement holder1))) && (not (target =? (project placement holder2))))) then (record Placement {manifestRoot := (project placement manifestRoot), revision := ((project placement revision) + 1), holder0 := target, holder1 := (project placement holder1), holder2 := (project placement holder2), active0 := true, active1 := (project placement active1), active2 := (project placement active2)}) else placement)
+}
+
+definition{
+  name: retireFirst,
+  parameters: [placement : Placement],
+  result: Placement,
+  body: (if ((project placement active1) && (project placement active2)) then (record Placement {manifestRoot := (project placement manifestRoot), revision := ((project placement revision) + 1), holder0 := (project placement holder0), holder1 := (project placement holder1), holder2 := (project placement holder2), active0 := false, active1 := (project placement active1), active2 := (project placement active2)}) else placement)
+}
+
+theorem{
+  name: committedMigrationPreservesRecovery,
+  parameters: [placement : Placement, target : Nat, committed : Bool],
+  statement: (((recoverable placement) = true) -> ((recoverable (replaceFirst placement target committed)) = true)),
+  proof: linear_arithmetic{definitions: [activeCount, distinctHolders, replaceFirst, recoverable]}
+}
+
+theorem{
+  name: retirementPreservesRecovery,
+  parameters: [placement : Placement],
+  statement: (((recoverable placement) = true) -> ((recoverable (retireFirst placement)) = true)),
+  proof: linear_arithmetic{definitions: [activeCount, distinctHolders, recoverable, retireFirst]}
+}
+
+
+definition{
+  name: replaceIndex,
+  parameters: [placement : Placement, index : Nat, target : Nat, committed : Bool],
+  result: Placement,
+  body: (if (index =? 0) then (if (committed && ((not (target =? (project placement holder1))) && (not (target =? (project placement holder2))))) then (record Placement {manifestRoot := (project placement manifestRoot), revision := ((project placement revision) + 1), holder0 := target, holder1 := (project placement holder1), holder2 := (project placement holder2), active0 := true, active1 := (project placement active1), active2 := (project placement active2)}) else placement) else (if (index =? 1) then (if (committed && ((not (target =? (project placement holder0))) && (not (target =? (project placement holder2))))) then (record Placement {manifestRoot := (project placement manifestRoot), revision := ((project placement revision) + 1), holder0 := (project placement holder0), holder1 := target, holder2 := (project placement holder2), active0 := (project placement active0), active1 := true, active2 := (project placement active2)}) else placement) else (if (index =? 2) then (if (committed && ((not (target =? (project placement holder0))) && (not (target =? (project placement holder1))))) then (record Placement {manifestRoot := (project placement manifestRoot), revision := ((project placement revision) + 1), holder0 := (project placement holder0), holder1 := (project placement holder1), holder2 := target, active0 := (project placement active0), active1 := (project placement active1), active2 := true}) else placement) else placement)))
+}
+
+theorem{
+  name: indexedMigrationPreservesRecovery,
+  parameters: [placement : Placement, index : Nat, target : Nat, committed : Bool],
+  statement: (((recoverable placement) = true) -> ((recoverable (replaceIndex placement index target committed)) = true)),
+  proof: linear_arithmetic{definitions: [activeCount, distinctHolders, replaceIndex, recoverable]}
+}
+
+
+definition{
+  name: acknowledgeTransfer,
+  parameters: [transfer : Transfer, receipt : Receipt, now : Nat],
+  result: Transfer,
+  body: (match (project transfer phase) | TransferPhase.Requested => (if (receiptBound transfer receipt now) then (record Transfer {requestRoot := (project transfer requestRoot), manifestRoot := (project transfer manifestRoot), fragmentRoot := (project transfer fragmentRoot), sourceHolder := (project transfer sourceHolder), targetHolder := (project transfer targetHolder), index := (project transfer index), placementRevision := (project transfer placementRevision), phase := (ctor TransferPhase.Acknowledged), receipt := receipt}) else transfer) | TransferPhase.Acknowledged => transfer | TransferPhase.Committed => transfer | TransferPhase.Failed => transfer | TransferPhase.Uncertain => transfer)
+}
+
+definition{
+  name: commitTransfer,
+  parameters: [transfer : Transfer, now : Nat, fragmentVerified : Bool, sourceCurrent : Bool, targetDistinct : Bool],
+  result: Transfer,
+  body: (match (project transfer phase) | TransferPhase.Requested => transfer | TransferPhase.Acknowledged => (if ((receiptBound transfer (project transfer receipt) now) && (fragmentVerified && (sourceCurrent && targetDistinct))) then (record Transfer {requestRoot := (project transfer requestRoot), manifestRoot := (project transfer manifestRoot), fragmentRoot := (project transfer fragmentRoot), sourceHolder := (project transfer sourceHolder), targetHolder := (project transfer targetHolder), index := (project transfer index), placementRevision := (project transfer placementRevision), phase := (ctor TransferPhase.Committed), receipt := (project transfer receipt)}) else transfer) | TransferPhase.Committed => transfer | TransferPhase.Failed => transfer | TransferPhase.Uncertain => transfer)
+}
+
+
+structure{
+  name: PhysicalCopy,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: index, type: Nat}, {name: holder, type: Nat}, {name: byteLength, type: Nat}, {name: retained, type: Bool}, {name: superseded, type: Bool}, {name: externalRelay, type: Bool}]
+}
+
+definition{
+  name: physicalBytes,
+  parameters: [copies : (List PhysicalCopy)],
+  result: Nat,
+  body: (match copies | List.nil => 0 | List.cons head tail => ((if (project head retained) then (project head byteLength) else 0) + (physicalBytes tail))),
+  recursive_argument: copies
+}
+
+definition{
+  name: requestedPhase,
+  parameters: [transfer : Transfer],
+  result: Bool,
+  body: (match (project transfer phase) | TransferPhase.Requested => true | TransferPhase.Acknowledged => false | TransferPhase.Committed => false | TransferPhase.Failed => false | TransferPhase.Uncertain => false)
+}
+
+definition{
+  name: committedPhase,
+  parameters: [transfer : Transfer],
+  result: Bool,
+  body: (match (project transfer phase) | TransferPhase.Requested => false | TransferPhase.Acknowledged => false | TransferPhase.Committed => true | TransferPhase.Failed => false | TransferPhase.Uncertain => false)
+}
+
+definition{
+  name: sameRequest,
+  parameters: [left : Transfer, right : Transfer],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project left requestRoot) (project right requestRoot)) && ((Stitch.Identity::sameDigest (project left manifestRoot) (project right manifestRoot)) && ((Stitch.Identity::sameDigest (project left fragmentRoot) (project right fragmentRoot)) && (((project left sourceHolder) =? (project right sourceHolder)) && (((project left targetHolder) =? (project right targetHolder)) && (((project left index) =? (project right index)) && ((project left placementRevision) =? (project right placementRevision))))))))
+}
+
+definition{
+  name: requestWellFormed,
+  parameters: [transfer : Transfer],
+  result: Bool,
+  body: ((Stitch.Identity::digestWellFormed (project transfer requestRoot)) && ((Stitch.Identity::digestWellFormed (project transfer manifestRoot)) && ((Stitch.Identity::digestWellFormed (project transfer fragmentRoot)) && ((project transfer index) <? 3))))
+}
+
+definition{
+  name: requestUnused,
+  parameters: [transfers : (List Transfer), requestRoot : Stitch.Identity::Digest],
+  result: Bool,
+  body: (match transfers | List.nil => true | List.cons head tail => ((not (Stitch.Identity::sameDigest (project head requestRoot) requestRoot)) && (requestUnused tail requestRoot))),
+  recursive_argument: transfers
+}
+
+definition{
+  name: requestRecorded,
+  parameters: [transfers : (List Transfer), transfer : Transfer],
+  result: Bool,
+  body: (match transfers | List.nil => false | List.cons head tail => (((sameRequest head transfer) && (requestedPhase head)) || (requestRecorded tail transfer))),
+  recursive_argument: transfers
+}
+
+definition{
+  name: recordCompletion,
+  parameters: [transfers : (List Transfer), completed : Transfer],
+  result: (List Transfer),
+  body: (match transfers | List.nil => (nil Transfer) | List.cons head tail => (cons (if (Stitch.Identity::sameDigest (project head requestRoot) (project completed requestRoot)) then completed else head) (recordCompletion tail completed))),
+  recursive_argument: transfers
+}
+
+definition{
+  name: sourcePlaced,
+  parameters: [placement : Placement, transfer : Transfer],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project placement manifestRoot) (project transfer manifestRoot)) && (((project placement revision) =? (project transfer placementRevision)) && (if ((project transfer index) =? 0) then ((project placement active0) && (((project transfer sourceHolder) =? (project placement holder0)) && ((not ((project transfer targetHolder) =? (project placement holder0))) && ((not ((project transfer targetHolder) =? (project placement holder1))) && (not ((project transfer targetHolder) =? (project placement holder2))))))) else (if ((project transfer index) =? 1) then ((project placement active1) && (((project transfer sourceHolder) =? (project placement holder1)) && ((not ((project transfer targetHolder) =? (project placement holder0))) && ((not ((project transfer targetHolder) =? (project placement holder1))) && (not ((project transfer targetHolder) =? (project placement holder2))))))) else (if ((project transfer index) =? 2) then ((project placement active2) && (((project transfer sourceHolder) =? (project placement holder2)) && ((not ((project transfer targetHolder) =? (project placement holder0))) && ((not ((project transfer targetHolder) =? (project placement holder1))) && (not ((project transfer targetHolder) =? (project placement holder2))))))) else false)))))
+}
+
+definition{
+  name: fragmentBound,
+  parameters: [transfer : Transfer, fragment : Stitch.Fragments::Fragment],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project transfer manifestRoot) (project fragment manifestRoot)) && ((Stitch.Identity::sameDigest (project transfer fragmentRoot) (project fragment payloadRoot)) && ((project transfer index) =? (project fragment index))))
+}
+
+structure{
+  name: FragmentIntegrityObservation,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: fragmentRoot, type: Stitch.Identity::Digest}, {name: encodingRoot, type: Stitch.Identity::Digest}, {name: index, type: Nat}, {name: payload, type: Bytes}, {name: digest, type: Stitch.Identity::DigestObservation}]
+}
+
+definition{
+  name: fragmentIntegrityAccepted,
+  parameters: [transfer : Transfer, fragment : Stitch.Fragments::Fragment, observation : FragmentIntegrityObservation],
+  result: Bool,
+  body: ((fragmentBound transfer fragment) && ((Stitch.Identity::digestAccepted (project observation digest)) && ((Stitch.Identity::sameDigest (project transfer fragmentRoot) (project observation fragmentRoot)) && ((Stitch.Identity::sameDigest (project observation fragmentRoot) (project (project observation digest) expected)) && ((Stitch.Identity::sameDigest (project fragment encodingRoot) (project observation encodingRoot)) && (((project fragment index) =? (project observation index)) && (prim equal (project fragment payload) (project observation payload) : Bool)))))))
+}
+
+definition{
+  name: prepareCompletion,
+  parameters: [placement : Placement, transfer : Transfer, receipt : Receipt, fragment : Stitch.Fragments::Fragment, integrity : FragmentIntegrityObservation, now : Nat],
+  result: Transfer,
+  body: (commitTransfer (acknowledgeTransfer transfer receipt now) now (fragmentIntegrityAccepted transfer fragment integrity) (sourcePlaced placement transfer) (not ((project transfer sourceHolder) =? (project transfer targetHolder))))
+}
+
+definition{
+  name: migrationAllowed,
+  parameters: [placement : Placement, completed : Transfer, now : Nat],
+  result: Bool,
+  body: ((committedPhase completed) && ((receiptBound completed (project completed receipt) now) && (sourcePlaced placement completed)))
+}
+
+definition{
+  name: migrate,
+  parameters: [placement : Placement, completed : Transfer, now : Nat],
+  result: Placement,
+  body: (if (migrationAllowed placement completed now) then (replaceIndex placement (project completed index) (project completed targetHolder) true) else placement)
+}
+
+theorem{
+  name: typedMigrationPreservesRecovery,
+  parameters: [placement : Placement, completed : Transfer, now : Nat],
+  statement: (((recoverable placement) = true) -> ((recoverable (migrate placement completed now)) = true)),
+  proof: linear_arithmetic{definitions: [activeCount, distinctHolders, migrationAllowed, replaceIndex, migrate, recoverable]}
+}
+
+\end{semanticmodule}
+\end{lexlean}

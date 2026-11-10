@@ -1,0 +1,88 @@
+name: Stitch model and runtime
+on:
+  push:
+    branches: [main, 'feat/**']
+  pull_request:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: stitch-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: python3 scripts/verify-custody.py
+      - run: cargo test --locked
+  model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 55
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Load the exact SDK identity
+        run: |
+          node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("prismpm.lock"));if(!/^ghcr\.io\/uor-foundation\/[a-z0-9-]+@sha256:[0-9a-f]{64}$/.test(x.sdk_image))throw Error("unpinned SDK");fs.appendFileSync(process.env.GITHUB_ENV,`SDK_IMAGE=${x.sdk_image}\n`)'
+      - name: Prepare SDK runner
+        run: |
+          docker pull "$SDK_IMAGE"
+          mkdir -p verification-output
+          cat > "$RUNNER_TEMP/run-sdk" <<'SH'
+          #!/bin/sh
+          set -eu
+          docker run --rm --user "$(id -u):$(id -g)" \
+            --group-add "$(stat -c '%g' /var/run/docker.sock)" \
+            --tmpfs /tmp:rw,exec,nosuid,size=3g \
+            --volume "$PWD:$PWD" --workdir "$PWD" \
+            --volume /var/run/docker.sock:/var/run/docker.sock \
+            --env HOME=/tmp/prismpm-home --env PRISMPM_EPHEMERAL_HOME=1 \
+            "$SDK_IMAGE" "$@"
+          SH
+          chmod +x "$RUNNER_TEMP/run-sdk"
+      - name: Generate initial lock and observed axiom policies when absent
+        if: ${{ hashFiles('app/lexlean.lock') == '' }}
+        run: |
+          set -o pipefail
+          "$RUNNER_TEMP/run-sdk" sh scripts/check-model-sdk.sh --prepare 2>&1 | tee verification-output/prepare.log
+          node node_modules/prism-code/bin/prism-code.mjs axioms --write --project app 2>&1 | tee verification-output/axioms.log
+          node scripts/check-model.mjs --write
+          echo 'Initial SDK-authored source/lock must be reviewed and committed before this gate can pass.'
+          git diff --exit-code
+          test -n "$(git ls-files app/lexlean.lock)"
+      - name: Verify exact canonical source, Lean proofs and Prism artifact
+        run: |
+          set -o pipefail
+          "$RUNNER_TEMP/run-sdk" sh scripts/check-model-sdk.sh --check 2>&1 | tee verification-output/verify.log
+          git diff --exit-code
+      - name: Retain exact diagnostics and generated model evidence
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stitch-model-${{ github.sha }}
+          include-hidden-files: true
+          path: |
+            verification-output/
+            app/src/
+            app/language/
+            app/lexlean.lock
+            app/.lexlean/
+            app/.prism/
+            src/layer1-uor/generated-model.js
+          if-no-files-found: error

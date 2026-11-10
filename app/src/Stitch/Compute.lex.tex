@@ -1,0 +1,179 @@
+\begin{lexlean}{Stitch.Compute}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Instruction,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: opcode, type: Nat}, {name: argument, type: Nat}]
+}
+structure{
+  name: Program,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: programRoot, type: Stitch.Identity::Digest}, {name: modelRoot, type: Stitch.Identity::Digest}, {name: bits, type: Nat}, {name: instructions, type: (List Instruction)}]
+}
+structure{
+  name: Job,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: jobRoot, type: Stitch.Identity::Digest}, {name: program, type: Program}, {name: inputRoot, type: Stitch.Identity::Digest}, {name: initialValue, type: Nat}]
+}
+structure{
+  name: Checkpoint,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: jobRoot, type: Stitch.Identity::Digest}, {name: programRoot, type: Stitch.Identity::Digest}, {name: inputRoot, type: Stitch.Identity::Digest}, {name: modelRoot, type: Stitch.Identity::Digest}, {name: step, type: Nat}, {name: priorRoot, type: Stitch.Identity::Digest}, {name: stateRoot, type: Stitch.Identity::Digest}, {name: checkpointRoot, type: Stitch.Identity::Digest}, {name: value, type: Nat}]
+}
+definition{
+  name: instructionAllowed,
+  parameters: [opcode : Nat],
+  result: Bool,
+  body: ((opcode <=? 13) || ((opcode =? 15) || (opcode =? 16)))
+}
+definition{
+  name: ringModulus,
+  parameters: [bits : Nat],
+  result: Nat,
+  body: (prim shift_left 1 bits : Nat)
+}
+definition{
+  name: normalize,
+  parameters: [value : Nat, modulus : Nat],
+  result: Nat,
+  body: (prim remainder value modulus 0 : Nat)
+}
+definition{
+  name: ringStep,
+  parameters: [instruction : Instruction, value : Nat, modulus : Nat],
+  result: Nat,
+  body: (let x : Nat := (normalize value modulus); (let y : Nat := (normalize (project instruction argument) modulus); (let op : Nat := (project instruction opcode); (normalize (if (op =? 0) then (prim subtract modulus x : Nat) else (if (op =? 1) then (prim subtract (prim subtract modulus 1 : Nat) x : Nat) else (if (op =? 2) then (x + 1) else (if (op =? 3) then (prim subtract (x + modulus) 1 : Nat) else (if (op =? 4) then (x + y) else (if (op =? 5) then (prim subtract (x + modulus) y : Nat) else (if (op =? 6) then (prim multiply x y : Nat) else (if (op =? 7) then (prim bit_xor x y : Nat) else (if (op =? 8) then (prim bit_and x y : Nat) else (if (op =? 9) then (prim bit_or x y : Nat) else (if (op =? 10) then (if (x <=? y) then 1 else 0) else (if (op =? 11) then (if (x <? y) then 1 else 0) else (if (op =? 12) then (if (y <=? x) then 1 else 0) else (if (op =? 13) then (if (y <? x) then 1 else 0) else (if (op =? 15) then (prim quotient x y 0 : Nat) else (if (op =? 16) then (prim remainder x y 0 : Nat) else x)))))))))))))))) modulus))))
+}
+definition{
+  name: execute,
+  parameters: [instructions : (List Instruction), value : Nat, modulus : Nat],
+  result: Nat,
+  body: (match instructions | List.nil => value | List.cons head tail => (execute tail (ringStep head value modulus) modulus)),
+  recursive_argument: instructions
+}
+definition{
+  name: appendProgram,
+  parameters: [prefix : (List Instruction), suffix : (List Instruction)],
+  result: (List Instruction),
+  body: (match prefix | List.nil => suffix | List.cons head tail => (cons head (appendProgram tail suffix))),
+  recursive_argument: prefix
+}
+definition{
+  name: checkpointLinkAllowed,
+  parameters: [jobMatches : Bool, programMatches : Bool, inputMatches : Bool, modelMatches : Bool, predecessorMatches : Bool, replayMatches : Bool, currentStep : Nat, nextStep : Nat, programLength : Nat],
+  result: Bool,
+  body: (jobMatches && (programMatches && (inputMatches && (modelMatches && (predecessorMatches && (replayMatches && ((currentStep <? nextStep) && (nextStep <=? programLength))))))))
+}
+theorem{
+  name: semanticTamperingRefused,
+  parameters: [jobMatches : Bool, programMatches : Bool, inputMatches : Bool, modelMatches : Bool, predecessorMatches : Bool, currentStep : Nat, nextStep : Nat, programLength : Nat],
+  statement: ((checkpointLinkAllowed jobMatches programMatches inputMatches modelMatches predecessorMatches false currentStep nextStep programLength) = false),
+  proof: linear_arithmetic{definitions: [checkpointLinkAllowed]}
+}
+theorem{
+  name: resumeEqualsUninterrupted,
+  parameters: [prefix : (List Instruction), suffix : (List Instruction), value : Nat, modulus : Nat],
+  statement: ((execute (appendProgram prefix suffix) value modulus) = (execute suffix (execute prefix value modulus) modulus)),
+  proof: induction{
+    branches: [
+      {proof: simplify{definitions: [appendProgram, execute]}, binders: [], constructor: nil},
+      {proof: simplify{definitions: [appendProgram, execute, hypothesis]}, binders: [head, tail, hypothesis], constructor: cons}
+    ],
+    generalizing: [value],
+    scrutinee: prefix
+  }
+}
+
+theorem{
+  name: checkpointStrictlyAdvances,
+  parameters: [jobMatches : Bool, programMatches : Bool, inputMatches : Bool, modelMatches : Bool, predecessorMatches : Bool, replayMatches : Bool, currentStep : Nat, nextStep : Nat, programLength : Nat],
+  statement: (((checkpointLinkAllowed jobMatches programMatches inputMatches modelMatches predecessorMatches replayMatches currentStep nextStep programLength) = true) -> (currentStep < nextStep)),
+  proof: linear_arithmetic{definitions: [checkpointLinkAllowed]}
+}
+
+
+definition{
+  name: supportedWidth,
+  parameters: [bits : Nat],
+  result: Bool,
+  body: ((bits =? 8) || ((bits =? 16) || ((bits =? 32) || ((bits =? 64) || (bits =? 128)))))
+}
+
+definition{
+  name: instructionsAllowed,
+  parameters: [instructions : (List Instruction)],
+  result: Bool,
+  body: (match instructions | List.nil => true | List.cons head tail => ((instructionAllowed (project head opcode)) && (instructionsAllowed tail))),
+  recursive_argument: instructions
+}
+
+definition{
+  name: instructionCount,
+  parameters: [instructions : (List Instruction)],
+  result: Nat,
+  body: (match instructions | List.nil => 0 | List.cons head tail => (1 + (instructionCount tail))),
+  recursive_argument: instructions
+}
+
+definition{
+  name: programAllowed,
+  parameters: [program : Program, maximumSteps : Nat],
+  result: Bool,
+  body: ((supportedWidth (project program bits)) && ((instructionsAllowed (project program instructions)) && ((instructionCount (project program instructions)) <=? maximumSteps)))
+}
+
+
+definition{
+  name: takeSteps,
+  parameters: [instructions : (List Instruction), count : Nat],
+  result: (List Instruction),
+  body: (match count | Nat.zero => (nil Instruction) | Nat.succ rest => (match instructions | List.nil => (nil Instruction) | List.cons head tail => (cons head (takeSteps tail rest)))),
+  recursive_argument: count
+}
+
+definition{
+  name: replayedValue,
+  parameters: [job : Job, checkpoint : Checkpoint],
+  result: Nat,
+  body: (execute (takeSteps (project (project job program) instructions) (project checkpoint step)) (project job initialValue) (ringModulus (project (project job program) bits)))
+}
+
+definition{
+  name: checkpointMatchesJob,
+  parameters: [job : Job, checkpoint : Checkpoint],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project job jobRoot) (project checkpoint jobRoot)) && ((Stitch.Identity::sameDigest (project (project job program) programRoot) (project checkpoint programRoot)) && ((Stitch.Identity::sameDigest (project job inputRoot) (project checkpoint inputRoot)) && ((Stitch.Identity::sameDigest (project (project job program) modelRoot) (project checkpoint modelRoot)) && (((project checkpoint step) <=? (instructionCount (project (project job program) instructions))) && ((project checkpoint value) =? (replayedValue job checkpoint)))))))
+}
+
+definition{
+  name: checkpointSuccessor,
+  parameters: [job : Job, current : Checkpoint, candidate : Checkpoint],
+  result: Bool,
+  body: ((checkpointMatchesJob job current) && ((checkpointMatchesJob job candidate) && ((Stitch.Identity::sameDigest (project candidate priorRoot) (project current checkpointRoot)) && ((project current step) <? (project candidate step)))))
+}
+
+definition{
+  name: jobAllowed,
+  parameters: [job : Job, maximumSteps : Nat],
+  result: Bool,
+  body: ((programAllowed (project job program) maximumSteps) && ((project job initialValue) <? (ringModulus (project (project job program) bits))))
+}
+
+theorem{
+  name: acceptedCheckpointIsSemanticReplay,
+  parameters: [job : Job, checkpoint : Checkpoint],
+  statement: (((checkpointMatchesJob job checkpoint) = true) -> ((project checkpoint value) = (replayedValue job checkpoint))),
+  proof: linear_arithmetic{definitions: [checkpointMatchesJob]}
+}
+
+\end{semanticmodule}
+\end{lexlean}

@@ -1,0 +1,130 @@
+\begin{lexlean}{Stitch.System}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\importmodule{Stitch.Encoding}
+\importmodule{Stitch.Fragments}
+\importmodule{Stitch.Custody}
+\importmodule{Stitch.Observation}
+\importmodule{Stitch.Budget}
+\importmodule{Stitch.Pointer}
+\importmodule{Stitch.Compute}
+\importmodule{Stitch.Evidence}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+inductive{
+  name: ActionKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Place, fields: []}, {name: Repair, fields: []}, {name: Refresh, fields: []}, {name: Checkpoint, fields: []}, {name: Reencode, fields: []}, {name: PublishPointer, fields: []}]
+}
+structure{
+  name: State,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: objects, type: (List Stitch.Identity::Object)}, {name: encodings, type: (List Stitch.Encoding::Encoding)}, {name: placement, type: Stitch.Custody::Placement}, {name: peers, type: (List Stitch.Observation::PeerObservation)}, {name: pointers, type: (List Stitch.Pointer::Pointer)}, {name: jobs, type: (List Stitch.Compute::Job)}, {name: checkpoints, type: (List Stitch.Compute::Checkpoint)}, {name: budget, type: Stitch.Budget::Budget}, {name: evidence, type: (List Stitch.Evidence::Evidence)}, {name: transfers, type: (List Stitch.Custody::Transfer)}]
+}
+structure{
+  name: Action,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: kind, type: ActionKind}, {name: cost, type: Stitch.Budget::Resources}, {name: preconditionsChecked, type: Bool}, {name: dependenciesPresent, type: Bool}, {name: authorizationChecked, type: Bool}]
+}
+definition{
+  name: admit,
+  parameters: [state : State, action : Action, now : Nat],
+  result: Bool,
+  body: ((Stitch.Budget::admitAction (project state budget) (project action cost) now) && ((project action preconditionsChecked) && ((project action dependenciesPresent) && (project action authorizationChecked))))
+}
+definition{
+  name: requestAction,
+  parameters: [state : State, action : Action, now : Nat],
+  result: State,
+  body: (if (admit state action now) then (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), evidence := (project state evidence), transfers := (project state transfers), budget := (Stitch.Budget::reserveAction (project state budget) (project action cost) now)}) else state)
+}
+theorem{
+  name: requestDoesNotChangeObjectCustody,
+  parameters: [state : State, action : Action, now : Nat],
+  statement: ((project (requestAction state action now) placement) = (project state placement)),
+  proof: linear_arithmetic{definitions: [admit, requestAction]}
+}
+theorem{
+  name: requestDoesNotCreateEvidence,
+  parameters: [state : State, action : Action, now : Nat],
+  statement: ((project (requestAction state action now) evidence) = (project state evidence)),
+  proof: linear_arithmetic{definitions: [admit, requestAction]}
+}
+
+definition{
+  name: valid,
+  parameters: [state : State],
+  result: Bool,
+  body: ((Stitch.Budget::budgetValid (project state budget)) && (Stitch.Custody::recoverable (project state placement)))
+}
+
+definition{
+  name: requestMigrationAllowed,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  result: Bool,
+  body: ((Stitch.Budget::admitAction (project state budget) cost now) && ((Stitch.Custody::requestWellFormed transfer) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestUnused (project state transfers) (project transfer requestRoot)) && (Stitch.Custody::sourcePlaced (project state placement) transfer)))))
+}
+
+definition{
+  name: requestMigration,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  result: State,
+  body: (if (requestMigrationAllowed state transfer cost now) then (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), budget := (Stitch.Budget::reserveAction (project state budget) cost now), evidence := (project state evidence), transfers := (cons transfer (project state transfers))}) else state)
+}
+
+definition{
+  name: completeMigrationAllowed,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  result: Bool,
+  body: (((project (project state budget) last) <=? now) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestRecorded (project state transfers) transfer) && (Stitch.Custody::migrationAllowed (project state placement) (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now) now))))
+}
+
+definition{
+  name: completionBudget,
+  parameters: [budget : Stitch.Budget::Budget, now : Nat],
+  result: Stitch.Budget::Budget,
+  body: (record Stitch.Budget::Budget {epoch := (project budget epoch), start := (project budget start), end := (project budget end), last := now, limit := (project budget limit), spent := (project budget spent), reserved := (project budget reserved)})
+}
+
+definition{
+  name: applyMigration,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  result: State,
+  body: (if (completeMigrationAllowed state transfer receipt fragment integrity now) then (let completed : Stitch.Custody::Transfer := (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now); (record State {objects := (project state objects), encodings := (project state encodings), placement := (Stitch.Custody::migrate (project state placement) completed now), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), budget := (completionBudget (project state budget) now), evidence := (project state evidence), transfers := (Stitch.Custody::recordCompletion (project state transfers) completed)})) else state)
+}
+
+theorem{
+  name: migrationRequestDoesNotEstablishCustody,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  statement: ((project (requestMigration state transfer cost now) placement) = (project state placement)),
+  proof: linear_arithmetic{definitions: [requestMigration, requestMigrationAllowed]}
+}
+
+theorem{
+  name: migrationRequestPreservesProductInvariant,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  statement: (((valid state) = true) -> ((valid (requestMigration state transfer cost now)) = true)),
+  proof: linear_arithmetic{definitions: [Stitch.Budget::admitAction, Stitch.Budget::budgetValid, Stitch.Budget::reserveAction, Stitch.Budget::resourcesWithin, requestMigration, requestMigrationAllowed, valid]}
+}
+
+theorem{
+  name: migrationPreservesProductInvariant,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  statement: (((valid state) = true) -> ((valid (applyMigration state transfer receipt fragment integrity now)) = true)),
+  proof: linear_arithmetic{definitions: [Stitch.Budget::budgetValid, Stitch.Budget::resourcesWithin, Stitch.Custody::activeCount, Stitch.Custody::distinctHolders, Stitch.Custody::migrationAllowed, Stitch.Custody::replaceIndex, Stitch.Custody::migrate, Stitch.Custody::recoverable, applyMigration, completeMigrationAllowed, completionBudget, valid]}
+}
+
+theorem{
+  name: migrationCompletionDoesNotRefundBudget,
+  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  statement: ((project (project (applyMigration state transfer receipt fragment integrity now) budget) reserved) = (project (project state budget) reserved)),
+  proof: linear_arithmetic{definitions: [applyMigration, completeMigrationAllowed, completionBudget]}
+}
+
+\end{semanticmodule}
+\end{lexlean}

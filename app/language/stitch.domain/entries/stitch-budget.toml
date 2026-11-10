@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-budget"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Budget"
+component = "Budget"
+
+[[form]]
+id = "stitch-budget"
+channel = "text"
+surface = "resource budget"
+canonical_source = true
+features = ["sentence-case", "singular"]

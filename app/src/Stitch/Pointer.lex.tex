@@ -1,0 +1,51 @@
+\begin{lexlean}{Stitch.Pointer}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Authority,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: nameRoot, type: Stitch.Identity::Digest}, {name: keyRoot, type: Stitch.Identity::Digest}, {name: epoch, type: Nat}]
+}
+structure{
+  name: Pointer,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: nameRoot, type: Stitch.Identity::Digest}, {name: authorityRoot, type: Stitch.Identity::Digest}, {name: revision, type: Nat}, {name: predecessor, type: Stitch.Identity::Digest}, {name: objectRoot, type: Stitch.Identity::Digest}, {name: transitionRoot, type: Stitch.Identity::Digest}, {name: pointerRoot, type: Stitch.Identity::Digest}, {name: notBefore, type: Nat}, {name: expires, type: Nat}, {name: signature, type: Bytes}]
+}
+definition{
+  name: successorAllowed,
+  parameters: [currentRevision : Nat, nextRevision : Nat, predecessorMatches : Bool, authorityMatches : Bool, signatureValid : Bool, notBefore : Nat, expires : Nat, now : Nat],
+  result: Bool,
+  body: ((nextRevision =? (currentRevision + 1)) && (predecessorMatches && (authorityMatches && (signatureValid && ((notBefore <=? now) && (now <? expires))))))
+}
+definition{
+  name: acceptPointer,
+  parameters: [current : Pointer, candidate : Pointer, signatureValid : Bool, now : Nat],
+  result: Bool,
+  body: (successorAllowed (project current revision) (project candidate revision) (Stitch.Identity::sameDigest (project candidate predecessor) (project current pointerRoot)) ((Stitch.Identity::sameDigest (project current authorityRoot) (project candidate authorityRoot)) && (Stitch.Identity::sameDigest (project current nameRoot) (project candidate nameRoot))) signatureValid (project candidate notBefore) (project candidate expires) now)
+}
+theorem{
+  name: successorStrictlyAdvances,
+  parameters: [currentRevision : Nat, nextRevision : Nat, predecessorMatches : Bool, authorityMatches : Bool, signatureValid : Bool, notBefore : Nat, expires : Nat, now : Nat],
+  statement: (((successorAllowed currentRevision nextRevision predecessorMatches authorityMatches signatureValid notBefore expires now) = true) -> (currentRevision < nextRevision)),
+  proof: linear_arithmetic{definitions: [successorAllowed]}
+}
+theorem{
+  name: wrongAuthorityRefused,
+  parameters: [currentRevision : Nat, nextRevision : Nat, predecessorMatches : Bool, signatureValid : Bool, notBefore : Nat, expires : Nat, now : Nat],
+  statement: ((successorAllowed currentRevision nextRevision predecessorMatches false signatureValid notBefore expires now) = false),
+  proof: linear_arithmetic{definitions: [successorAllowed]}
+}
+theorem{
+  name: rollbackRefused,
+  parameters: [currentRevision : Nat, nextRevision : Nat, predecessorMatches : Bool, authorityMatches : Bool, signatureValid : Bool, notBefore : Nat, expires : Nat, now : Nat],
+  statement: ((nextRevision <= currentRevision) -> ((successorAllowed currentRevision nextRevision predecessorMatches authorityMatches signatureValid notBefore expires now) = false)),
+  proof: linear_arithmetic{definitions: [successorAllowed]}
+}
+\end{semanticmodule}
+\end{lexlean}

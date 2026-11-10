@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-checkpoint"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Compute"
+component = "Checkpoint"
+
+[[form]]
+id = "stitch-checkpoint"
+channel = "text"
+surface = "deterministic checkpoint"
+canonical_source = true
+features = ["sentence-case", "singular"]

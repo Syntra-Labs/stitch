@@ -9,6 +9,8 @@
  * Zero upward dependencies.
  */
 
+import { budgetReserveAllowed } from '../layer1-uor/generated-model.js';
+
 const LN2 = Math.LN2;
 
 /**
@@ -311,6 +313,10 @@ export class BudgetPacedSurvivalScheduler {
   static NAME = 'Budget-Paced-Survival';
 
   constructor({ ttlSeconds = 60, durationSeconds = 600, maxRefreshBudget = 30, minFloorSeconds = 5 } = {}) {
+    if (![ttlSeconds, durationSeconds, minFloorSeconds].every(x => Number.isFinite(x) && x > 0) ||
+        !Number.isSafeInteger(maxRefreshBudget) || maxRefreshBudget < 0) throw new RangeError('Invalid scheduler policy');
+    this.epochStartSec = null;
+    this.lastObservedSec = 0;
     this.ttlSeconds = ttlSeconds;
     this.durationSeconds = durationSeconds;
     this.maxRefreshBudget = maxRefreshBudget;
@@ -321,25 +327,46 @@ export class BudgetPacedSurvivalScheduler {
   }
 
   recordFailure(timestampSec) {
+    if (!Number.isFinite(timestampSec)) throw new RangeError('Invalid failure observation');
     this.failureTimestamps.push(timestampSec);
+    if (this.failureTimestamps.length > 256) this.failureTimestamps.shift();
   }
 
   markRefreshed(timestampSec) {
+    if (!Number.isFinite(timestampSec) || timestampSec < 0) throw new RangeError('Invalid elapsed time');
+    if (this.epochStartSec === null) {
+      this.epochStartSec = timestampSec;
+      this.lastRefreshSec = timestampSec;
+      this.lastObservedSec = timestampSec;
+      this.refreshCount = 1; // Initial observation is not a network refresh.
+      return true;
+    }
+    if (timestampSec < this.lastObservedSec) return false;
+    const elapsedMs = Math.floor((timestampSec - this.epochStartSec) * 1000);
+    const lastMs = Math.floor((this.lastObservedSec - this.epochStartSec) * 1000);
+    if (!budgetReserveAllowed(this.refreshCount - 1, 0, 1, this.maxRefreshBudget,
+      elapsedMs, lastMs, Math.ceil(this.durationSeconds * 1000))) return false;
     this.lastRefreshSec = timestampSec;
+    this.lastObservedSec = timestampSec;
     this.refreshCount++;
+    return true;
   }
 
   evaluate(nowSec) {
+    if (!Number.isFinite(nowSec) || nowSec < this.lastObservedSec) throw new RangeError('Clock regression');
+    if (this.epochStartSec === null) this.markRefreshed(nowSec);
+    this.lastObservedSec = nowSec;
+    const elapsedSeconds = nowSec - this.epochStartSec;
     const ageSeconds = Math.max(0, nowSec - this.lastRefreshSec);
     const shortFailures = this.failureTimestamps.slice(-4);
     const lambdaShort = estimatePoissonRate(shortFailures, 1 / this.ttlSeconds);
     const lambdaLong = estimatePoissonRate(this.failureTimestamps, 1 / this.ttlSeconds);
-    // Cauchy-Schwarz optimal refresh spacing under budget constraint: dt* proportional to (lambda_long / lambda_short)^(1/2)
+    // Candidate hazard pacing only; no general optimality claim for observed churn.
     const sqrtHazardRatio = Math.max(0.5, Math.min(2.5, Math.sqrt(lambdaShort / Math.max(1e-6, lambdaLong))));
 
     const refreshesUsed = Math.max(0, this.refreshCount - 1);
     const budgetRemaining = Math.max(1, this.maxRefreshBudget - refreshesUsed);
-    const timeRemaining = Math.max(this.minFloorSeconds, this.durationSeconds - nowSec);
+    const timeRemaining = Math.max(this.minFloorSeconds, this.durationSeconds - elapsedSeconds);
     const nominalBudgetInterval = timeRemaining / budgetRemaining;
 
     const targetIntervalSeconds = Math.max(
@@ -347,8 +374,12 @@ export class BudgetPacedSurvivalScheduler {
       Math.min(this.ttlSeconds * 0.9, nominalBudgetInterval / sqrtHazardRatio)
     );
     const pAlive = computeSurvivalProbability(lambdaShort, ageSeconds);
-    const shouldRefresh = ageSeconds >= targetIntervalSeconds;
+    const exhausted = refreshesUsed >= this.maxRefreshBudget || elapsedSeconds >= this.durationSeconds;
+    const shouldRefresh = !exhausted && ageSeconds >= targetIntervalSeconds;
     return {
+      elapsedSeconds,
+      budgetRemaining: Math.max(0, this.maxRefreshBudget - refreshesUsed),
+      exhausted,
       ageSeconds,
       lambda: lambdaShort,
       pAlive,

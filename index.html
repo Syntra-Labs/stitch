@@ -153,7 +153,8 @@
         WebRTC Open Peers: <strong id="peerCountLabel">0</strong> |
         Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
         P(alive): <strong id="schedPAliveLabel">1.000</strong> |
-        H(p): <strong id="schedEntropyLabel">0.000 bit</strong>
+        H(p): <strong id="schedEntropyLabel">0.000 bit</strong> |
+        Application budget: <strong id="budgetLabel">0 requests</strong>
       </div>
     </div>
     <div class="controls">
@@ -168,12 +169,12 @@
   <!-- EXTERNAL INFRASTRUCTURE PROOF BANNER (PROVES EXECUTION OUTSIDE BROWSER MEMORY) -->
   <section class="stratum" style="margin-bottom: 12px;">
     <div class="stratum-head">
-      <h2>External Infrastructure Proof & Independent CLI Verification (Zero Local-Only Simulation)</h2>
+      <h2>Network evidence and independent verification</h2>
       <span class="muted"> Cloudflare Edge PoP: <strong id="cfTraceLabel">probing 1.1.1.1...</strong> | STUN Candidate: <strong id="stunTypeLabel">waiting</strong></span>
     </div>
     <div class="controls" style="justify-content: space-between;">
-      <span class="muted">Run these commands in any external Linux terminal (or another machine) to verify live shards, checkpoints, and DNS pointers outside this browser:</span>
-      <button id="copyCliProofBtn" class="secondary">Copy Terminal Proof Command</button>
+      <span class="muted">These commands inspect external records. Inspection alone does not establish integrity, authority, or durability; use the repository verifier for exported object evidence:</span>
+      <button id="copyCliProofBtn" class="secondary">Copy Inspection Commands</button>
     </div>
     <div class="mono-out" id="cliProofBox" style="max-height: 76px;">curl -s "https://ntfy.sh/syntra-warm-syntra-uor-bus-01/json?poll=1&since=30m" | tail -n 5</div>
   </section>
@@ -184,7 +185,7 @@
     <section class="stratum">
       <div class="stratum-head">
         <h2>Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
-        <span class="muted">Survives tab closes & 0-peer gaps</span>
+        <span class="muted">Recovery requires enough reachable fragments; relay storage is optional</span>
       </div>
 
       <div class="controls">
@@ -192,13 +193,14 @@
         <input type="text" id="dbPayloadInput" value="Hello from live UOR mesh storage" style="flex: 1;" />
         <button id="dbPutBtn">Put & Replicate</button>
         <button id="dbWipeLocalBtn" class="secondary" title="Clears this browser tab's memory to 0 objects to prove recovery comes from external infrastructure">Wipe Local RAM</button>
-        <button id="dbSyncBtn" class="secondary">Recover from Public Bus</button>
+        <button id="dbSyncBtn" class="secondary">Fetch Reachable Fragments</button>
+        <label><input type="checkbox" id="allowPublicRelayInput" /> Public relay: share object/job bytes on ntfy.sh (not private)</label>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>UOR ContentAddress (u128)</th>
+            <th>Object commitment (SHA-256)</th>
             <th>Label (/mnt)</th>
             <th>Size</th>
             <th>Verified</th>
@@ -216,7 +218,7 @@
     <section class="stratum">
       <div class="stratum-head">
         <h2>Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
-        <span class="muted">Close tab mid-job; peer tab resumes from last step</span>
+        <span class="muted">Pure jobs replay before resume; VM effects are outside this contract</span>
       </div>
 
       <div class="controls">
@@ -236,7 +238,7 @@
             <th>Owner Node</th>
             <th>Current W64 Ring Value</th>
             <th>Status</th>
-            <th>Trace Verified</th>
+            <th>Execution evidence</th>
           </tr>
         </thead>
         <tbody id="liveJobsBody">
@@ -279,11 +281,18 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
 
       <div class="controls">
-        <input type="text" id="cfZoneInput" placeholder="CF Zone ID or DuckDNS sub" style="width: 150px;" />
-        <input type="text" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
-        <button id="writeSignedDnsBtn" class="secondary">Sign (Ed25519) & Write DNS</button>
+        <input type="text" id="cfZoneInput" placeholder="Cloudflare Zone ID" style="width: 150px;" />
+        <input type="password" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
+        <button id="writeSignedDnsBtn" class="secondary">Admit Next Pointer & Publish TXT</button>
       </div>
 
+      <div class="controls">
+        <input type="text" id="pointerAuthorityInput" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
+        <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
+      </div>
+      <div class="muted">Observer heads and demo keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <textarea id="pointerJsonInput" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
+      <button id="admitPointerBtn" class="secondary">Admit Pasted Pointer</button>
       <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
     </section>
   </div>
@@ -344,7 +353,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
       <table>
         <thead>
-          <tr><th>Strategy</th><th>Done</th><th>Latency (ticks)</th><th>Total Ops</th><th>Wasted Ops</th><th>Trace Verified</th></tr>
+          <tr><th>Strategy</th><th>Done</th><th>Latency (ticks)</th><th>Total Ops</th><th>Wasted Ops</th><th>Execution evidence</th></tr>
         </thead>
         <tbody id="l4BenchBody"></tbody>
       </table>
@@ -370,17 +379,19 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     import {
       DohResolver,
       WebRtcTransportNode,
-      generatePointerKeyPair,
-      signPointerTxt,
-      verifyPointerTxt,
+      readBoundedText,
       ExperimentTrialLogger
     } from './src/layer5-transport/index.js';
 
+    import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
+    import { generateAuthority, signPointer, PointerObserver, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
+
+    const admission = new ResourceAdmission();
     const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.0.0' });
-    let peerSigningKeys = null;
-    generatePointerKeyPair().then(kp => {
-      peerSigningKeys = kp;
-    });
+    const authorityReady = generateAuthority();
+    const pointerObservers = new Map();
+    const unpublishedPointers = new WeakMap();
+    let pointerWriteInFlight = false;
 
     const logBox = document.getElementById('wireLogBox');
     const cliProofBox = document.getElementById('cliProofBox');
@@ -388,6 +399,11 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       const ts = new Date().toISOString().slice(11, 19);
       logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
     }
+
+    window.addEventListener('unhandledrejection', ev => {
+      logWire('REFUSED', ev.reason?.code || ev.reason?.message || String(ev.reason));
+      ev.preventDefault();
+    });
 
     function updateCliProof(extraLine = '') {
       const warmTopic = transport.warmCacheTopic();
@@ -403,8 +419,9 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     }
 
     // Probe real Cloudflare edge datacenter & client egress IP
-    fetch('https://1.1.1.1/cdn-cgi/trace')
-      .then(r => r.text())
+    Promise.resolve().then(() => admission.run('retrieve', { requests: 1, transferBytes: 4096 },
+      () => fetch('https://1.1.1.1/cdn-cgi/trace')))
+      .then(r => readBoundedText(r, 4096))
       .then(txt => {
         const kv = Object.fromEntries(txt.trim().split('\n').map(l => l.split('=')));
         document.getElementById('cfTraceLabel').textContent = `${kv.colo || 'CF'} (${kv.ip || 'edge'} / ${kv.http || 'h2'})`;
@@ -420,10 +437,9 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       maxRefreshBudget: 30,
       minFloorSeconds: 5
     });
-    const nowSec = () => Date.now() / 1000;
+    const schedulerEpoch = performance.now();
+    const nowSec = () => (performance.now() - schedulerEpoch) / 1000;
     scheduler.markRefreshed(nowSec());
-    scheduler.recordFailure(nowSec() - 80);
-    scheduler.recordFailure(nowSec() - 40);
 
     // 2. Layer-5 Multi-Peer WebRTC Mesh Transport
     const hashKey = location.hash.replace(/^#/, '').trim();
@@ -432,6 +448,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     const transport = new WebRtcTransportNode({
       channelKey: document.getElementById('meshKeyInput').value.trim(),
       trialLogger,
+      admission,
       onEvent: async ev => {
         document.getElementById('peerCountLabel').textContent = String(transport.openPeers().length);
 
@@ -442,7 +459,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
           document.getElementById('stunTypeLabel').textContent = ev.candidateType;
         } else if (ev.type === 'channel_open') {
           logWire('WEBRTC', `DataChannel open with ${ev.remoteId} (ICE=${ev.iceSetupSec}s); requesting UOR shard sync`);
-          transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', from: transport.peerId });
+          transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', version: 1 });
         } else if (ev.type === 'c1_trial_complete') {
           logWire('C1-TRIAL', `Logged C1 trial for ${ev.remote_peer}: success=${ev.success}, ice=${ev.ice_setup_sec}s, hb=${ev.heartbeats_passed}`);
         } else if (ev.type === 'peer_disconnected') {
@@ -454,7 +471,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
           }
         } else if (ev.type === 'mesh_message') {
           const { from, msg } = ev;
-          if (msg.type === 'uor_shard' || msg.type === 'uor_sync_req') {
+          if (msg.type === 'uor_shard' || msg.type === 'uor_sync_req' || msg.type === 'uor_shard_ack' || msg.type === 'uor_fragment_req') {
             await liveDb.handleMeshMessage(from, msg);
           } else if (msg.type === 'compute_ckpt') {
             await computeCoord.handleMeshMessage(from, msg);
@@ -495,26 +512,25 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
+    function renderRows(tbody, rows) {
+      tbody.replaceChildren(...rows.map(values => {
+        const row = document.createElement('tr');
+        for (const value of values) {
+          const cell = document.createElement('td');
+          cell.textContent = String(value);
+          row.append(cell);
+        }
+        return row;
+      }));
+    }
+
     function renderLiveDbTable() {
-      const tbody = document.getElementById('liveDbBody');
       const items = Array.from(liveDb.objects.values());
-      if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">Local browser RAM is empty (0 objects). Click "Recover from Public Bus" to pull shards from external infrastructure.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = items.map(e => {
-        const preview = e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(reassembling shards...)';
-        return `
-          <tr>
-            <td><code>${e.addressHex.slice(0, 24)}…</code></td>
-            <td>${e.label || '—'}</td>
-            <td>${e.originalLength} B</td>
-            <td>${e.verified ? 'YES (UOR)' : 'PARTIAL'}</td>
-            <td>${e.source}</td>
-            <td><code>${preview.replace(/</g, '&lt;')}</code></td>
-          </tr>
-        `;
-      }).join('');
+      renderRows(document.getElementById('liveDbBody'), items.length ? items.map(e => [
+        e.addressHex, e.label || '—', `${e.originalLength} B`,
+        e.verified ? 'DIGEST MATCH' : 'PARTIAL', e.source,
+        e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(awaiting fragments)'
+      ]) : [['No local objects. Recovery needs enough retained, reachable fragments.']]);
     }
 
     // 5. Layer-4 Live Distributed Compute Coordinator
@@ -525,27 +541,24 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     });
 
     function renderJobsTable() {
-      const tbody = document.getElementById('liveJobsBody');
       const jobs = Array.from(computeCoord.jobs.values());
-      if (jobs.length === 0) return;
-      tbody.innerHTML = jobs.map(j => `
-        <tr>
-          <td><strong>${j.jobId}</strong></td>
-          <td>${j.stepIndex} / ${j.totalSteps}</td>
-          <td>${j.ownerPeerId} (${j.sourceTag})</td>
-          <td><code>${j.currentValueHex}</code></td>
-          <td>${j.status.toUpperCase()}</td>
-          <td>${j.verified ? 'CERTIFIED' : 'IN-FLIGHT'}</td>
-        </tr>
-      `).join('');
+      renderRows(document.getElementById('liveJobsBody'), jobs.length ? jobs.map(j => [
+        j.jobId, `${j.stepIndex} / ${j.totalSteps}`, `${j.ownerPeerId} (${j.sourceTag})`,
+        j.currentValueHex, j.status.toUpperCase(), j.verification === 'replayed' ? 'REPLAYED' : 'UNVERIFIED'
+      ]) : [['No active pure jobs. Host and VM effects are not replay-certified.']]);
     }
+
+    const publicRelayEnabled = () => document.getElementById('allowPublicRelayInput').checked;
+    document.getElementById('allowPublicRelayInput').addEventListener('change', () => {
+      computeCoord.allowPublicRelay = publicRelayEnabled();
+    });
 
     // UI Controls Wiring
     async function joinAndSync() {
       const key = document.getElementById('meshKeyInput').value.trim() || 'syntra-uor-bus-01';
       location.hash = key;
       transport.connect(key);
-      const rec = await liveDb.syncFromNetwork('30m');
+      const rec = await liveDb.syncFromNetwork('30m', { publicData: publicRelayEnabled() });
       const resumed = await computeCoord.syncAndTakeOverJobs('30m');
       logWire('SYNC', `Recovered ${rec} UOR objects from warm cache; resumed ${resumed.length} jobs.`);
     }
@@ -568,20 +581,20 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     document.getElementById('dbPutBtn').addEventListener('click', async () => {
       const label = document.getElementById('dbLabelInput').value.trim() || 'data.txt';
       const payload = document.getElementById('dbPayloadInput').value;
-      const entry = await liveDb.put(payload, { label, persistWarm: true });
+      const entry = await liveDb.put(payload, { label, persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
       renderLiveDbTable();
       updateCliProof(`# Verify object ${entry.addressHex} directly from terminal:\ncurl -s "https://ntfy.sh/${transport.warmCacheTopic()}/json?poll=1&since=30m" | grep "${entry.addressHex}"`);
-      logWire('PUT', `Stored & replicated ${entry.addressHex} (2-of-3 XOR parity shards)`);
+      logWire('PUT', `Committed ${entry.addressHex}; remote placement is conditional on verified receipts and reachability.`);
     });
 
-    document.getElementById('dbWipeLocalBtn').addEventListener('click', () => {
-      liveDb.objects.clear();
+    document.getElementById('dbWipeLocalBtn').addEventListener('click', async () => {
+      await liveDb.clearLocal();
       renderLiveDbTable();
-      logWire('WIPE-RAM', 'Cleared local browser RAM to 0 objects. Now click "Recover from Public Bus" to prove external persistence.');
+      logWire('WIPE-RAM', 'Cleared local object bytes. Recovery succeeds only if enough fragments remain elsewhere.');
     });
 
     document.getElementById('dbSyncBtn').addEventListener('click', async () => {
-      const count = await liveDb.syncFromNetwork('30m');
+      const count = await liveDb.syncFromNetwork('30m', { publicData: publicRelayEnabled() });
       renderLiveDbTable();
       logWire('WARM-SYNC', `Recovered ${count} verified UOR objects from warm relay buffer.`);
     });
@@ -589,7 +602,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     document.getElementById('startJobBtn').addEventListener('click', () => {
       const totalSteps = Number(document.getElementById('jobStepsInput').value) || 12;
       const stepDelayMs = Number(document.getElementById('jobDelayInput').value) || 800;
-      computeCoord.startOrResumeJob({ totalSteps, stepDelayMs });
+      computeCoord.startOrResumeJob({ totalSteps, stepDelayMs }).catch(e => logWire('COMPUTE-ERR', e.code || e.message));
       logWire('COMPUTE', `Started ${totalSteps}-step distributed UOR reduction job`);
     });
 
@@ -608,7 +621,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       try {
         logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
         const outBytes = await vmNode.executeShellCommand(cmd, 8000);
-        const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: true });
+        const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
         renderLiveDbTable();
         logWire('VM-DONE', `Stored VM stdout in UOR DB at ${entry.addressHex}`);
       } catch (e) {
@@ -617,7 +630,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     });
 
     // DNS DoH & DuckDNS TXT Controls
-    const doh = new DohResolver();
+    const doh = new DohResolver({ admission });
     document.getElementById('resolveSrvBtn').addEventListener('click', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
@@ -632,59 +645,88 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
         const r = await doh.resolve(q, 'TXT');
-        logWire('DOH-TXT', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms, records=${JSON.stringify(r.records)}`);
+        logWire('DOH-TXT', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms`);
+        const candidates = r.rawRecords.flatMap(raw => {
+          try {
+            const p = parsePointerDnsText(raw);
+            return p && typeof p === 'object' && Number.isSafeInteger(p.revision) ? [p] : [];
+          } catch { return []; }
+        }).sort((a, b) => a.revision - b.revision);
+        for (const candidate of candidates) {
+          try {
+            const accepted = await pointerObserver().admit(candidate);
+            logWire('POINTER-ADMIT', `revision=${accepted.revision}, root=${accepted.objectRoot}; observer-local, not consensus`);
+          } catch (error) { logWire('POINTER-REFUSED', error.code || error.message); }
+        }
       } catch (e) {
         logWire('DOH-ERR', e.message);
       }
     });
 
+    function pointerObserver() {
+      const name = document.getElementById('dnsQueryInput').value.trim();
+      const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
+      if (!trustedAuthorityKey) throw Error('Pin an independently trusted authority key first, or explicitly trust the demo session key.');
+      const key = `${name}:${trustedAuthorityKey}`;
+      if (!pointerObservers.has(key)) pointerObservers.set(key, new PointerObserver({ name, trustedAuthorityKey, admission }));
+      return pointerObservers.get(key);
+    }
+
+    document.getElementById('pinSessionAuthorityBtn').addEventListener('click', async () => {
+      document.getElementById('pointerAuthorityInput').value = (await authorityReady).publicKey;
+      logWire('POINTER-PIN', 'Explicitly trusted this demo session key. This does not establish a persistent owner identity.');
+    });
+    document.getElementById('admitPointerBtn').addEventListener('click', async () => {
+      const text = document.getElementById('pointerJsonInput').value;
+      if (text.length > 4096) throw Error('Pointer input exceeds its size limit');
+      const accepted = await pointerObserver().admit(JSON.parse(text));
+      logWire('POINTER-ADMIT', `Retained revision ${accepted.revision}: ${accepted.objectRoot}`);
+    });
+
     document.getElementById('writeSignedDnsBtn').addEventListener('click', async () => {
-      const zoneOrSub = document.getElementById('cfZoneInput').value.trim();
-      const token = document.getElementById('cfTokenInput').value.trim();
-      const latestRoot = Array.from(liveDb.objects.keys()).pop() || '0';
-      if (!peerSigningKeys) peerSigningKeys = await generatePointerKeyPair();
-
-      const signed = await signPointerTxt(
-        {
-          peerId: transport.peerId,
-          endpoint: transport.signalTopic(),
-          rootAddress: latestRoot.slice(0, 24)
-        },
-        peerSigningKeys.privateKey
-      );
-      const verified = await verifyPointerTxt(signed.txt, peerSigningKeys.publicKeyB64Url);
-      trialLogger.logTrial('C8', {
-        byte_length: signed.byteLength,
-        c10_within_255b: signed.c10_within_255b,
-        sign_latency_ms: signed.signLatencyMs,
-        verify_latency_ms: verified.verifyLatencyMs,
-        verified: verified.ok
-      });
-      logWire('C8-SIGN', `Ed25519 signed TXT (${signed.byteLength}B <= 255B, verify=${verified.verifyLatencyMs}ms): ${signed.txt}`);
-
-      if (!zoneOrSub || !token) {
-        logWire('DNS-WRITE', 'Signed pointer logged to O5 trials. Provide Cloudflare Zone ID (32-hex) or DuckDNS subdomain + token to publish.');
-        return;
-      }
+      if (pointerWriteInFlight) return;
+      pointerWriteInFlight = true;
       try {
-        if (/^[a-f0-9]{32}$/i.test(zoneOrSub)) {
-          const epochName = `e${Math.floor(Date.now() / 1000)}._stitch._udp.${ document.getElementById('dnsQueryInput').value.trim() }`;
-          const res = await doh.writeCloudflareRecord({
-            zoneId: zoneOrSub,
-            apiToken: token,
-            type: 'TXT',
-            name: epochName,
-            content: signed.txt,
-            ttl: 30
-          });
-          logWire('CF-DNS', `Published Cloudflare TXT ${epochName} (TTL=30s) -> ok=${res.ok}`);
-        } else {
-          const res = await doh.writeDuckDnsTxt({ subdomain: zoneOrSub, token, txtValue: signed.txt });
-          logWire('DUCK-DNS', `Updated ${res.fqdn} TXT -> response=${res.response}`);
+        const observer = pointerObserver();
+        const authority = await authorityReady;
+        if (observer.trustedAuthorityKey !== authority.publicKey) throw Error('This session does not hold the private key for the pinned authority.');
+        const objectRoot = Array.from(liveDb.objects.values()).filter(e => e.verified).at(-1)?.manifest.object.contentDigest;
+        if (!objectRoot) throw Error('Store or recover a verified object before creating a pointer.');
+        let candidate = unpublishedPointers.get(observer) ?? null;
+        if (candidate && candidate.pointerDigest === observer.head?.pointerDigest
+          && (candidate.objectRoot !== objectRoot || candidate.validUntilMs <= Date.now())) {
+          throw Error('An unpublished local head is pending. Publish or explicitly reconcile that head before advancing.');
         }
-      } catch (e) {
-        logWire('DNS-ERR', e.message);
-      }
+        if (!candidate || candidate.pointerDigest !== observer.head?.pointerDigest || candidate.objectRoot !== objectRoot
+          || candidate.validUntilMs <= Date.now() || candidate.name !== observer.name) {
+          const current = observer.head;
+          const nowMs = Date.now();
+          candidate = await signPointer({ version: 1, name: observer.name, authorityKey: authority.publicKey,
+            revision: current ? current.revision + 1 : 0, previousDigest: current?.pointerDigest ?? null,
+            objectRoot, validFromMs: nowMs, validUntilMs: nowMs + 600000 }, authority.privateKey);
+          // Source-derived succession, pinned authority and signature checks run
+          // before any DNS publication. A retained local head is not a publish receipt.
+          await observer.admit(candidate);
+          unpublishedPointers.set(observer, candidate);
+        }
+        document.getElementById('pointerJsonInput').value = JSON.stringify(candidate);
+        const txt = pointerDnsText(candidate);
+        trialLogger.logTrial('ST-POINTER', { revision: candidate.revision, byte_length: new TextEncoder().encode(txt).length,
+          authority: 'explicit-session-pin', admission: 'observer-local', published: false });
+        const zoneId = document.getElementById('cfZoneInput').value.trim();
+        const apiToken = document.getElementById('cfTokenInput').value.trim();
+        if (!zoneId || !apiToken) {
+          logWire('POINTER-LOCAL', `Admitted revision ${candidate.revision} locally; not published. Full signed JSON is above.`);
+          return;
+        }
+        if (!/^[a-f0-9]{32}$/i.test(zoneId)) throw Error('Full signed pointers require Cloudflare multipart TXT; this is not a 255-byte DuckDNS payload.');
+        const result = await doh.writeCloudflareRecord({ zoneId, apiToken, type: 'TXT', name: observer.name, content: txt, ttl: 60 });
+        if (!result.ok) throw Error(`DNS publication failed: ${JSON.stringify(result.errors)}`);
+        unpublishedPointers.delete(observer);
+        logWire('CF-DNS', `Published admitted revision ${candidate.revision} at ${observer.name}; local head is not global ordering.`);
+      } catch (error) {
+        logWire('POINTER-REFUSED', error.code || error.message);
+      } finally { pointerWriteInFlight = false; }
     });
 
     document.getElementById('exportJsonlBtn').addEventListener('click', () => {
@@ -700,12 +742,13 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
     setInterval(() => {
       const st = scheduler.evaluate(nowSec());
+      const budget = admission.state;
+      document.getElementById('budgetLabel').textContent = `${budget.spent.requests}/${budget.limit.requests} requests, ${budget.spent.transferBytes}/${budget.limit.transferBytes} application bytes (10-minute epoch)`;
       document.getElementById('schedLambdaLabel').textContent = `${st.lambda.toFixed(3)}/s`;
       document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
       document.getElementById('schedEntropyLabel').textContent = `${st.entropyBits.toFixed(3)} bit`;
 
-      if (st.shouldRefresh) {
-        scheduler.markRefreshed(nowSec());
+      if (st.shouldRefresh && scheduler.markRefreshed(nowSec())) {
         transport.sendSignal({ kind: 'announce' });
         logWire('SCHED', `Proactive refresh triggered [reason=${st.reason}, H=${st.entropyBits.toFixed(3)} bit]`);
       }

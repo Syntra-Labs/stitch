@@ -10,6 +10,9 @@
 
 import { mintContentAddress, Fnv1aHasher16 } from '../layer1-uor/index.js';
 import { computeSurvivalProbability } from '../layer2-schedulers/index.js';
+import { ResourceAdmission, reserveNetwork } from '../layer2-schedulers/policy.js';
+import { CustodyError, verifyManifest, verifyFragment, copyBytes, snapshotRecord, exactKeys } from '../layer1-uor/custody.js';
+import { createObject, recoverObject, createPlacement, requestPlacement, acknowledgePlacement, commitPlacement, failPlacement, placementStatus } from './custody.js';
 
 /**
  * Split a Uint8Array payload into k = 2 even-length data shards + 1 XOR parity shard (n = 3).
@@ -415,218 +418,367 @@ export function benchmarkStorageStrategies({
 }
 
 /**
- * Live Network-Backed UOR Content-Addressed Database (`LiveUorMeshDatabase`).
- * Wires Layer 1 (UOR addressing) + Layer 2 (refresh scheduler) + Layer 3 (2-of-3 XOR parity)
- * directly over Layer 5 (`WebRtcTransportNode` + warm relay ring-buffer) and syncs recovered
- * objects into the in-browser v86 Linux VM `/mnt` 9p filesystem.
+ * Live SHA-256-bound object adapter. Distinct fragment placement is explicit;
+ * retrieval is separate and only returns fragments actually assigned here.
+ * Receipts are peer assertions, not authenticated retention guarantees. Local
+ * writer/recovery caches and an opted-in public relay are additional copies.
  */
 export class LiveUorMeshDatabase {
-  /**
-   * @param {object} params
-   * @param {import('../layer5-transport/index.js').WebRtcTransportNode} params.transport
-   * @param {object} [params.scheduler] - Layer-2 scheduler instance
-   * @param {(ev: object) => void} [params.onUpdate]
-   * @param {object} [params.vmBridge] - Optional LinuxVmNode to mirror UOR blocks into `/mnt/`
-   */
-  constructor({ transport, scheduler = null, onUpdate = () => {}, vmBridge = null }) {
+  constructor({ transport, scheduler = null, onUpdate = () => {}, vmBridge = null, admission = transport?.admission ?? new ResourceAdmission() }) {
     this.transport = transport;
     this.scheduler = scheduler;
+    this.admission = admission;
     this.onUpdate = onUpdate;
     this.vmBridge = vmBridge;
-
-    /**
-     * addressHex -> {
-     *   addressHex: string,
-     *   fingerprintHex: string,
-     *   originalLength: number,
-     *   label: string,
-     *   createdAtSec: number,
-     *   shards: [Uint8Array | null, Uint8Array | null, Uint8Array | null],
-     *   bytes: Uint8Array | null,
-     *   verified: boolean,
-     *   source: string
-     * }
-     */
     this.objects = new Map();
+    this.placements = new Map();
+    this.pendingTransfers = new Map();
     this.replicationsSent = 0;
     this.replicationsReceived = 0;
     this.warmRecoveries = 0;
+    this._sequence = 0;
+    this._mailbox = Promise.resolve();
+    this._pendingWork = 0;
+    this.maxPendingWork = 256;
+    this.maxWireObjectBytes = 128 * 1024;
+    this.maxCachedBytes = 16 * 1024 * 1024;
+    this.maxObjects = 128;
+    this.demoPlacementLeaseMs = 60000; // declared host policy, not a retention guarantee
+    this.maxAcceptedLeaseMs = 120000; // bounded host policy for incoming assertions
   }
 
-  /**
-   * Handle incoming mesh messages from `WebRtcTransportNode`.
-   */
-  async handleMeshMessage(fromPeerId, msg) {
-    if (!msg) return;
-
-    if (msg.type === 'uor_shard') {
-      await this.ingestShardEnvelope(msg, `webrtc:${fromPeerId}`);
-    } else if (msg.type === 'uor_sync_req') {
-      // Newly joined peer requested all current UOR objects
-      for (const entry of this.objects.values()) {
-        if (!entry.bytes) continue;
-        const { shards } = encodeXorShards2of3(entry.bytes);
-        for (let sIdx = 0; sIdx < 3; sIdx++) {
-          this.transport.sendToPeer(fromPeerId, {
-            type: 'uor_shard',
-            addressHex: entry.addressHex,
-            fingerprintHex: entry.fingerprintHex,
-            originalLength: entry.originalLength,
-            label: entry.label,
-            shardIndex: sIdx,
-            shardBytes: Array.from(shards[sIdx])
-          });
-          this.replicationsSent++;
-        }
-      }
-    }
+  _enqueue(work) {
+    if (this._pendingWork >= this.maxPendingWork) return Promise.reject(new CustodyError('CapacityLimit', 'Ingress mailbox is full'));
+    this._pendingWork++;
+    const result = this._mailbox.then(work).finally(() => { this._pendingWork--; });
+    this._mailbox = result.catch(() => {});
+    return result;
   }
 
-  async ingestShardEnvelope(env, sourceTag = 'remote') {
-    const {
-      addressHex,
-      fingerprintHex,
-      originalLength,
-      label = '',
-      shardIndex,
-      shardBytes
-    } = env;
+  /** Useful to await all messages accepted by a fake transport in tests. */
+  async flush() { await this._mailbox; }
 
-    if (!addressHex || typeof shardIndex !== 'number' || !Array.isArray(shardBytes)) {
-      return false;
-    }
-
-    let entry = this.objects.get(addressHex);
-    if (!entry) {
-      entry = {
-        addressHex,
-        fingerprintHex,
-        originalLength,
-        label,
-        createdAtSec: Math.floor(Date.now() / 1000),
-        shards: [null, null, null],
-        bytes: null,
-        verified: false,
-        source: sourceTag
-      };
-      this.objects.set(addressHex, entry);
-    }
-
-    entry.shards[shardIndex] = new Uint8Array(shardBytes);
-    this.replicationsReceived++;
-
-    if (!entry.verified) {
-      const candidateBytes = decodeXorShards2of3(entry.originalLength, entry.shards);
-      if (candidateBytes) {
-        const { address, fingerprint } = mintContentAddress(candidateBytes, Fnv1aHasher16);
-        if (address.toHex() === addressHex && fingerprint.toHex() === fingerprintHex) {
-          entry.bytes = candidateBytes;
-          entry.verified = true;
-          entry.source = sourceTag;
-          // Regenerate all 3 parity shards now that object is verified
-          entry.shards = encodeXorShards2of3(candidateBytes).shards;
-          if (this.vmBridge) {
-            await this.vmBridge.mountUorObject(addressHex, candidateBytes, label);
-          }
-          this.onUpdate({ type: 'object_verified', entry });
-          return true;
-        }
-      }
-    }
-    this.onUpdate({ type: 'shard_ingested', addressHex, shardIndex, sourceTag });
+  _reject(reason) {
+    this.onUpdate({ type: 'custody_rejected', reason: reason?.code || String(reason) });
     return false;
   }
 
-  /**
-   * Store a byte payload or UTF-8 string into the live distributed UOR mesh database,
-   * split into 2-of-3 XOR parity shards, replicate over WebRTC, and publish to warm relay buffer.
-   */
-  async put(payload, { label = 'data', persistWarm = true } = {}) {
-    const bytes = payload instanceof Uint8Array
-      ? payload
-      : new TextEncoder().encode(String(payload));
+  _checkCapacity(key, addedBytes) {
+    if (!this.objects.has(key) && this.objects.size >= this.maxObjects) throw new CustodyError('CapacityLimit', 'Object cache is full');
+    let stored = 0;
+    for (const pending of this.pendingTransfers.values()) stored += pending.bytes.length;
+    for (const e of this.objects.values()) {
+      stored += e.bytes?.length || 0;
+      for (const shard of e.shards) stored += shard?.length || 0;
+    }
+    if (stored + addedBytes > this.maxCachedBytes) throw new CustodyError('CapacityLimit', 'Object byte cache is full');
+  }
 
-    const { address, fingerprint } = mintContentAddress(bytes, Fnv1aHasher16);
-    const addressHex = address.toHex();
-    const fingerprintHex = fingerprint.toHex();
-    const { originalLength, shards } = encodeXorShards2of3(bytes);
+  _send(holder, packet) {
+    if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'place', packet);
+    return this.transport.sendToPeer(holder, packet);
+  }
 
-    const entry = {
-      addressHex,
-      fingerprintHex,
-      originalLength,
-      label,
-      createdAtSec: Math.floor(Date.now() / 1000),
-      shards,
-      bytes: new Uint8Array(bytes),
-      verified: true,
-      source: `local:${this.transport.peerId}`
+  _broadcast(packet) {
+    if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'retrieve', packet, (this.transport.openPeers?.() || []).length);
+    return this.transport.broadcast(packet);
+  }
+
+  _publish(packet) {
+    if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'place', { ...packet, from: this.transport.peerId, tsMs: Date.now() });
+    return this.transport.publishWarmEnvelope(packet);
+  }
+
+  _fetch(sinceWindow) {
+    if (this.transport.admission !== this.admission) this.admission.reserve('retrieve', { requests: 1, transferBytes: 2 * 1024 * 1024 });
+    return this.transport.fetchWarmEnvelopes(sinceWindow);
+  }
+
+  clearLocal() {
+    return this._enqueue(() => {
+      this.objects.clear(); this.placements.clear(); this.pendingTransfers.clear();
+      // A wipe does not refund unknown remote effects or reset policy.
+    });
+  }
+
+  _label(label) {
+    if (typeof label !== 'string' || label.length > 256 || /[\u0000-\u001f\u007f/\\]/.test(label)) {
+      throw new CustodyError('InvalidSchema', 'Label must be bounded plain text without path separators');
+    }
+    return label;
+  }
+
+  _packet(entry, index, bytes, { purpose = 'recovery', requestId = null, holder = null, leaseExpiresAt = 0 } = {}) {
+    return {
+      type: 'uor_shard', version: 1, manifest: entry.manifest, label: entry.label,
+      shardIndex: index, shardBytes: Array.from(bytes), purpose, requestId, holder, leaseExpiresAt,
     };
-    this.objects.set(addressHex, entry);
+  }
 
-    if (this.vmBridge) {
-      await this.vmBridge.mountUorObject(addressHex, bytes, label);
+  _readPacket(env) {
+    if (!env || typeof env !== 'object' || Array.isArray(env)
+      || ![Object.prototype, null].includes(Object.getPrototypeOf(env))) throw new CustodyError('InvalidSchema');
+    const d = Object.getOwnPropertyDescriptors(env);
+    const keys = ['type', 'version', 'manifest', 'label', 'shardIndex', 'shardBytes', 'purpose', 'requestId', 'holder', 'leaseExpiresAt'];
+    if (Reflect.ownKeys(env).length !== keys.length || keys.some(k => !d[k]?.enumerable || !Object.hasOwn(d[k], 'value'))) {
+      throw new CustodyError('InvalidSchema', 'Legacy or malformed fragment envelope');
     }
-
-    // Replicate all 3 XOR parity shards across connected WebRTC peers
-    for (let sIdx = 0; sIdx < 3; sIdx++) {
-      const shardPacket = {
-        type: 'uor_shard',
-        addressHex,
-        fingerprintHex,
-        originalLength,
-        label,
-        shardIndex: sIdx,
-        shardBytes: Array.from(shards[sIdx])
-      };
-      const sent = this.transport.broadcast(shardPacket);
-      this.replicationsSent += sent;
-
-      // Also push shards 0 and 1 (sufficient for 2-of-3 reconstruction) to warm relay cache
-      // so state survives even if all browser tabs close simultaneously (0 live peers)
-      if (persistWarm && sIdx < 2 && bytes.length <= 2048) {
-        await this.transport.publishWarmEnvelope(shardPacket);
+    const p = snapshotRecord(Object.fromEntries(keys.filter(k => k !== 'shardBytes').map(k => [k, d[k].value])));
+    if (p.type !== 'uor_shard' || p.version !== 1 || !['placement', 'recovery', 'public-relay'].includes(p.purpose)
+      || !Number.isInteger(p.shardIndex) || p.shardIndex < 0 || p.shardIndex > 2
+      || !Number.isSafeInteger(p.leaseExpiresAt) || p.leaseExpiresAt < 0) throw new CustodyError('InvalidSchema');
+    this._label(p.label);
+    const a = d.shardBytes.value;
+    if (!Array.isArray(a) || Object.getPrototypeOf(a) !== Array.prototype || a.length > this.maxWireObjectBytes / 2
+      || Reflect.ownKeys(a).length !== a.length + 1) throw new CustodyError('SizeLimit', 'Invalid or oversized fragment bytes');
+    const bytes = new Uint8Array(a.length);
+    for (let i = 0; i < a.length; i++) {
+      const byte = Object.getOwnPropertyDescriptor(a, String(i));
+      if (!byte || !Object.hasOwn(byte, 'value') || !Number.isInteger(byte.value) || byte.value < 0 || byte.value > 255) {
+        throw new CustodyError('InvalidBytes', 'Wire bytes must be integers from zero through 255');
       }
+      bytes[i] = byte.value;
     }
-
-    if (this.scheduler) {
-      this.scheduler.markRefreshed(Date.now() / 1000);
+    if (p.purpose === 'placement') {
+      if (typeof p.requestId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(p.requestId)
+        || p.holder !== this.transport.peerId || p.leaseExpiresAt <= Date.now()
+        || p.leaseExpiresAt > Date.now() + this.maxAcceptedLeaseMs) throw new CustodyError('InvalidSchema', 'Wrong holder or invalid lease claim');
+    } else if (p.requestId !== null || p.leaseExpiresAt !== 0
+      || (p.purpose === 'public-relay' ? p.holder !== 'public-relay' : p.holder !== null)) {
+      throw new CustodyError('InvalidSchema', 'Invalid retrieval metadata');
     }
+    return { ...p, bytes };
+  }
 
-    this.onUpdate({ type: 'object_put', entry });
-    return entry;
+  _snapshotEnvelope(env, publicData = false) {
+    // ntfy transport appends these two unauthenticated delivery metadata fields.
+    // They are never part of an object's commitment or used as peer authority.
+    if (publicData && env && (Object.hasOwn(env, 'from') || Object.hasOwn(env, 'tsMs'))) {
+      const d = Object.getOwnPropertyDescriptors(env);
+      if (!d.from?.enumerable || !d.tsMs?.enumerable || !Object.hasOwn(d.from, 'value') || !Object.hasOwn(d.tsMs, 'value')
+        || typeof d.from.value !== 'string' || d.from.value.length > 128
+        || !Number.isSafeInteger(d.tsMs.value) || d.tsMs.value < 0) throw new CustodyError('InvalidSchema', 'Invalid relay metadata');
+      const keys = Reflect.ownKeys(env).filter(k => k !== 'from' && k !== 'tsMs');
+      if (keys.some(k => typeof k !== 'string' || !d[k].enumerable || !Object.hasOwn(d[k], 'value'))) throw new CustodyError('InvalidSchema');
+      env = Object.fromEntries(keys.map(k => [k, d[k].value]));
+    }
+    const p = this._readPacket(env);
+    return this._packet(p, p.shardIndex, p.bytes, p);
+  }
+
+  async _ingest(env, sourceTag, fromPeerId = null, publicData = false) {
+    const p = this._readPacket(env);
+    if (p.purpose === 'public-relay' && !publicData) throw new CustodyError('PublicDataRequired', 'Public relay access requires opt-in');
+    if (p.purpose === 'placement' && !fromPeerId) throw new CustodyError('InvalidSchema', 'Placement must arrive through a peer channel');
+    const manifest = await verifyManifest(p.manifest);
+    if (manifest.object.byteLength > this.maxWireObjectBytes) throw new CustodyError('SizeLimit', 'Object exceeds live wire limit');
+    const f = await verifyFragment(manifest, { index: p.shardIndex, bytes: p.bytes });
+    const key = manifest.object.contentDigest;
+    let entry = this.objects.get(key);
+    if (entry && entry.manifest.manifestDigest !== manifest.manifestDigest) throw new CustodyError('ManifestDigestMismatch', 'Conflicting manifest for object');
+    const added = entry?.shards[f.index] ? 0 : f.bytes.length;
+    this._checkCapacity(key, added);
+    if (!entry) {
+      entry = {
+        addressHex: key, fingerprintHex: key, manifest, originalLength: manifest.object.byteLength,
+        label: p.label, createdAtSec: Math.floor(Date.now() / 1000), shards: [null, null, null],
+        heldIndices: new Set(), bytes: null, verified: false, source: sourceTag,
+      };
+    }
+    if (!entry.shards[f.index]) {
+      this.admission.reserve('place', { storageBytes: f.bytes.length });
+      this.objects.set(key, entry);
+      entry.shards[f.index] = f.bytes;
+      this.replicationsReceived++;
+    }
+    if (p.purpose === 'placement') {
+      entry.heldIndices.add(f.index);
+      // The return channel associates the assertion with this connected peer;
+      // no application-authority or persistent-storage authentication is claimed.
+      this._send(fromPeerId, {
+        type: 'uor_shard_ack', version: 1, requestId: p.requestId, index: f.index,
+        holder: this.transport.peerId, manifestDigest: manifest.manifestDigest,
+        fragmentDigest: manifest.fragments.digests[f.index], leaseExpiresAt: p.leaseExpiresAt,
+      });
+    }
+    let newlyVerified = false;
+    if (!entry.verified && entry.shards.filter(Boolean).length >= 2) {
+      const available = entry.shards.flatMap((bytes, index) => bytes ? [{ index, bytes }] : []);
+      this.admission.reserve('retrieve', { storageBytes: manifest.object.byteLength });
+      const recovered = await recoverObject(manifest, available);
+      this._checkCapacity(key, recovered.length);
+      entry.bytes = recovered;
+      entry.verified = true;
+      entry.source = sourceTag;
+      newlyVerified = true;
+      if (this.vmBridge) await this.vmBridge.mountUorObject(key, new Uint8Array(recovered), entry.label);
+      this.onUpdate({ type: 'object_verified', entry });
+    }
+    this.onUpdate({ type: 'shard_ingested', addressHex: key, shardIndex: f.index, sourceTag });
+    return newlyVerified;
+  }
+
+  ingestShardEnvelope(env, sourceTag = 'remote', { publicData = false } = {}) {
+    try { env = this._snapshotEnvelope(env, publicData); }
+    catch (error) { return Promise.resolve(this._reject(error)); }
+    return this._enqueue(async () => {
+      try { return await this._ingest(env, sourceTag, null, publicData); }
+      catch (error) { return this._reject(error); }
+    });
+  }
+
+  handleMeshMessage(fromPeerId, msg) {
+    try {
+      const type = Object.getOwnPropertyDescriptor(msg ?? {}, 'type')?.value;
+      msg = type === 'uor_shard' ? this._snapshotEnvelope(msg) : snapshotRecord(msg);
+    } catch (error) { return Promise.resolve(this._reject(error)); }
+    return this._enqueue(async () => {
+      try {
+        if (!msg || typeof msg !== 'object') return false;
+        if (msg.type === 'uor_shard') return await this._ingest(msg, `webrtc:${fromPeerId}`, fromPeerId);
+        if (msg.type === 'uor_shard_ack') return await this._acknowledge(fromPeerId, msg);
+        if (msg.type === 'uor_sync_req') {
+          const p = snapshotRecord(msg);
+          exactKeys(p, ['type', 'version']);
+          if (p.version !== 1) throw new CustodyError('InvalidSchema');
+          for (const entry of this.objects.values()) {
+            // Retrieval returns assigned fragments only, never regenerates and
+            // broadcasts all 3 fragments from a writer's full-object cache.
+            for (const index of entry.heldIndices) {
+              if (entry.shards[index] && this._send(fromPeerId, this._packet(entry, index, entry.shards[index]))) this.replicationsSent++;
+            }
+          }
+          return true;
+        }
+        return false;
+      } catch (error) { return this._reject(error); }
+    });
+  }
+
+  async _acknowledge(fromPeerId, message) {
+    const ack = snapshotRecord(message);
+    exactKeys(ack, ['type', 'version', 'requestId', 'index', 'holder', 'manifestDigest', 'fragmentDigest', 'leaseExpiresAt']);
+    if (ack.version !== 1 || ack.holder !== fromPeerId) throw new CustodyError('ReceiptMismatch');
+    const pending = this.pendingTransfers.get(ack.requestId);
+    if (!pending || pending.holder !== fromPeerId) throw new CustodyError('ReceiptMismatch', 'Unknown or replayed acknowledgement');
+    let state = this.placements.get(pending.addressHex);
+    const { type, version, ...receipt } = ack;
+    state = await acknowledgePlacement(state, { ...receipt, bytes: pending.bytes }, Date.now());
+    this.placements.set(pending.addressHex, state);
+    state = await commitPlacement(state, ack.requestId, Date.now());
+    this.placements.set(pending.addressHex, state);
+    this.pendingTransfers.delete(ack.requestId);
+    const entry = this.objects.get(pending.addressHex);
+    entry.placementStatus = placementStatus(state, Date.now());
+    this.onUpdate({ type: 'placement_committed', entry, holder: fromPeerId, shardIndex: ack.index });
+    return true;
+  }
+
+  /** Defaults never transmit bytes to a public relay. */
+  put(payload, { label = 'data', persistWarm = false, publicData = false } = {}) {
+    // Snapshot caller-owned bytes before queueing or yielding.
+    try {
+      if (typeof payload === 'string' && payload.length > this.maxWireObjectBytes) throw new CustodyError('SizeLimit');
+      if (payload instanceof Uint8Array) payload = copyBytes(payload, this.maxWireObjectBytes);
+    }
+    catch (error) { return Promise.reject(error); }
+    return this._enqueue(async () => {
+      if (persistWarm && !publicData) throw new CustodyError('PublicDataRequired', 'Public warm relay needs explicit publicData:true');
+      this._label(label);
+      if (typeof persistWarm !== 'boolean' || typeof publicData !== 'boolean') throw new CustodyError('InvalidSchema', 'Relay options must be explicit booleans');
+      if (typeof payload === 'string' && payload.length > this.maxWireObjectBytes) throw new CustodyError('SizeLimit', 'Payload exceeds live wire limit');
+      const bytes = payload instanceof Uint8Array ? copyBytes(payload, this.maxWireObjectBytes)
+        : typeof payload === 'string' ? new TextEncoder().encode(payload) : null;
+      if (!bytes) throw new CustodyError('InvalidBytes', 'Payload must be bytes or text');
+      if (bytes.length > this.maxWireObjectBytes) throw new CustodyError('SizeLimit', 'Payload exceeds live wire limit');
+      if (persistWarm && bytes.length > 2048) throw new CustodyError('SizeLimit', 'Public warm relay demonstration supports objects up to 2048 bytes');
+      // Reserve the new local bytes and conservative fragment allocation ceiling
+      // before encoding or any placement/relay/VM effect.
+      this.admission.reserve('place', { storageBytes: bytes.length + 3 * Math.ceil(bytes.length / 2) });
+      const { manifest, fragments } = await createObject(bytes);
+      const key = manifest.object.contentDigest;
+      const existing = this.objects.get(key);
+      if (existing && existing.manifest.manifestDigest !== manifest.manifestDigest) {
+        throw new CustodyError('ManifestDigestMismatch', 'Conflicting cached manifest for object');
+      }
+      if (existing?.verified && this.placements.has(key)) {
+        if (persistWarm) {
+          for (const f of fragments.slice(0, 2)) {
+            if (await this._publish(this._packet(existing, f.index, f.bytes, { purpose: 'public-relay', holder: 'public-relay' }))) existing.warmPublished = (existing.warmPublished || 0) + 1;
+          }
+        }
+        return existing;
+      }
+      this._checkCapacity(key, existing?.bytes ? 0 : bytes.length);
+      const entry = existing || {
+        addressHex: key, fingerprintHex: key, manifest, originalLength: bytes.length, label,
+        createdAtSec: Math.floor(Date.now() / 1000), shards: [null, null, null], heldIndices: new Set(),
+        bytes, verified: true, source: `local:${this.transport.peerId}`, warmPublished: 0,
+      };
+      // A caller supplying complete bytes may promote a prior fragment/read
+      // cache. Preserve actually assigned fragments and begin explicit placement.
+      entry.bytes = bytes;
+      entry.verified = true;
+      entry.source = `local:${this.transport.peerId}`;
+      entry.warmPublished ??= 0;
+      this.objects.set(key, entry);
+      let state = await createPlacement(manifest);
+      this.placements.set(key, state);
+      const peers = [...new Set((this.transport.openPeers?.() || []).map(p => p.remoteId))]
+        .filter(id => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(id) && id !== this.transport.peerId).sort().slice(0, 3);
+      for (let index = 0; index < peers.length; index++) {
+        const holder = peers[index];
+        const requestId = `placement-${++this._sequence}`;
+        const leaseExpiresAt = Date.now() + this.demoPlacementLeaseMs;
+        state = await requestPlacement(state, { requestId, index, holder, leaseExpiresAt });
+        this.placements.set(key, state);
+        this.pendingTransfers.set(requestId, { addressHex: key, holder, bytes: fragments[index].bytes });
+        let sent = false, outcome = 'failed';
+        try { sent = this._send(holder, this._packet(entry, index, fragments[index].bytes, { purpose: 'placement', requestId, holder, leaseExpiresAt })); }
+        catch { outcome = 'uncertain'; }
+        if (sent) this.replicationsSent++;
+        else {
+          state = await failPlacement(state, requestId, outcome);
+          this.placements.set(key, state);
+          this.pendingTransfers.delete(requestId);
+        }
+      }
+      if (persistWarm) {
+        for (const f of fragments.slice(0, 2)) {
+          if (await this._publish(this._packet(entry, f.index, f.bytes, { purpose: 'public-relay', holder: 'public-relay' }))) entry.warmPublished++;
+        }
+      }
+      entry.placementStatus = placementStatus(state, Date.now());
+      if (this.vmBridge) await this.vmBridge.mountUorObject(key, new Uint8Array(bytes), label);
+      // Storage writes are not discovery refreshes and do not advance its clock.
+      this.onUpdate({ type: 'object_put', entry });
+      return entry;
+    });
   }
 
   get(addressHex) {
     const entry = this.objects.get(addressHex);
-    if (!entry || !entry.verified || !entry.bytes) {
-      return { ok: false, bytes: null, text: null, entry: null };
-    }
-    return {
-      ok: true,
-      bytes: entry.bytes,
-      text: new TextDecoder().decode(entry.bytes),
-      entry
-    };
+    if (!entry || !entry.verified || !entry.bytes) return { ok: false, bytes: null, text: null, entry: null };
+    const bytes = new Uint8Array(entry.bytes);
+    return { ok: true, bytes, text: new TextDecoder().decode(bytes), entry };
   }
 
-  /**
-   * Request full shard synchronization from currently connected WebRTC peers
-   * AND poll the warm relay ring-buffer to recover objects after a 0-peer gap.
-   */
-  async syncFromNetwork(sinceWindow = '30m') {
-    this.transport.broadcast({ type: 'uor_sync_req', from: this.transport.peerId });
-    const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow);
-    let recovered = 0;
-    for (const env of envelopes) {
-      if (env && env.type === 'uor_shard') {
-        const newlyVerified = await this.ingestShardEnvelope(env, `warm-relay:${env.from || 'cache'}`);
-        if (newlyVerified) {
-          this.warmRecoveries++;
-          recovered++;
-        }
+  /** Explicit retrieval may create read caches; placement state is separate. */
+  syncFromNetwork(sinceWindow = '30m', { publicData = false } = {}) {
+    return this._enqueue(async () => {
+      this._broadcast({ type: 'uor_sync_req', version: 1 });
+      if (!publicData) return 0;
+      const envelopes = await this._fetch(sinceWindow);
+      if (!Array.isArray(envelopes) || envelopes.length > this.maxObjects * 3) throw new CustodyError('CapacityLimit', 'Oversized relay result');
+      let recovered = 0;
+      for (const env of envelopes) {
+        try {
+          if (env?.type === 'uor_shard' && await this._ingest(this._snapshotEnvelope(env, true), 'warm-relay:public', null, true)) {
+            this.warmRecoveries++; recovered++;
+          }
+        } catch (error) { this._reject(error); }
       }
-    }
-    return recovered;
+      return recovered;
+    });
   }
 }

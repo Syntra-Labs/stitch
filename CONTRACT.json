@@ -1,5 +1,5 @@
 {
-  "contract_version": "1.0.0",
+  "contract_version": "1.1.0",
   "frozen_before_run": true,
   "definitions": {
     "staleness_event": "A connection attempt or liveness probe that resolves or targets an expired/dead endpoint while the peer is reachable at a newer state.",
@@ -7,15 +7,21 @@
   },
   "thresholds": {
     "C1_min_trials_per_class": 30,
-    "C1_min_direct_success_rate": 0.60,
+    "C1_min_direct_success_rate": 0.6,
     "C1_max_median_ice_setup_sec": 10.0,
-    "C2_ttl_range_sec": [30, 60],
+    "C2_ttl_range_sec": [
+      30,
+      60
+    ],
     "C2_max_staleness_multiplier": 2.0,
-    "C2_max_violation_fraction": 0.20,
+    "C2_max_violation_fraction": 0.2,
     "C3_min_paired_runs": 3,
     "C3_alpha": 0.05,
     "C3_equal_refresh_budget_per_600s": 30,
-    "C4_cv_bounds": [0.5, 2.0],
+    "C4_cv_bounds": [
+      0.5,
+      2.0
+    ],
     "C5_max_sustained_updates_per_hour": 12,
     "C5_kill_updates_per_hour": 24,
     "C5_min_keepalive_floor_sec": 5.0,
@@ -24,15 +30,51 @@
     "C10_max_dns_record_bytes": 1024
   },
   "claim_status": {
-    "C1": { "status": "UNTESTED", "note": "Requires N>=30 live trials across distinct physical network pairs (home<->mobile, home<->cloud) with TURN disabled." },
-    "C2": { "status": "BLOCKED", "note": "Browser fetch/DoH cannot inspect OS/ISP recursive cache state directly without authoritative DNS write credentials + epoch subdomain probes." },
-    "C3": { "status": "PARTIAL_REFUTED_ON_UNIFORM", "note": "At equal refresh budget (B=30), Poisson/Entropy schedulers lose to Fixed-Interval under uniform/stationary churn and only win when churn is regime-switching." },
-    "C4": { "status": "REFUTED_ON_PERIODIC", "note": "Periodic drops (CV=0.0) violate exponential memorylessness [0.5, 2.0]; requires Weibull/regime model for bursty network drops." },
-    "C5": { "status": "BLOCKED", "note": "Browsers cannot speak BGP (TCP 179 / WireGuard); requires external DN42 Linux daemon running BIRD/FRR." },
-    "C6": { "status": "REFUTED_WITHOUT_RELAY", "note": "WebRTC ICE exchange requires at least a transient signaling relay (e.g. ntfy.sh) or DNS TXT dynamic update; pure static pages without a relay cannot exchange SDP." },
-    "C7": { "status": "VERIFIED", "note": "Hot (5s heartbeat), Warm (30-60s DNS TTL), Route (180s BGP hold), and Cold (3600s+ manifest) separate by >5x per tier." },
-    "C8": { "status": "VERIFIED", "note": "UOR 128-bit/256-bit content fingerprint + signature verification takes <0.1ms in browser and fits in <180 bytes of TXT." },
-    "C9": { "status": "VERIFIED", "note": "Zero global BGP announcements; all routing tests confined to local/overlay namespaces." },
-    "C10": { "status": "VERIFIED", "note": "DNS TXT pointers capped at <255 bytes; bulk shards and VM execution stay strictly on peer edges." }
+    "C1": {
+      "status": "UNTESTED",
+      "note": "Requires N>=30 live trials across distinct physical network pairs (home<->mobile, home<->cloud) with TURN disabled."
+    },
+    "C2": {
+      "status": "BLOCKED",
+      "note": "Browser fetch/DoH cannot inspect OS/ISP recursive cache state directly without authoritative DNS write credentials + epoch subdomain probes."
+    },
+    "C3": {
+      "status": "PARTIAL_REFUTED_ON_UNIFORM",
+      "note": "At equal refresh budget (B=30), Poisson/Entropy schedulers lose to Fixed-Interval under uniform/stationary churn and only win when churn is regime-switching."
+    },
+    "C4": {
+      "status": "REFUTED_ON_PERIODIC",
+      "note": "Periodic drops (CV=0.0) violate exponential memorylessness [0.5, 2.0]; requires Weibull/regime model for bursty network drops."
+    },
+    "C5": {
+      "status": "BLOCKED",
+      "note": "Browsers cannot speak BGP (TCP 179 / WireGuard); requires external DN42 Linux daemon running BIRD/FRR."
+    },
+    "C6": {
+      "status": "REFUTED_WITHOUT_RELAY",
+      "note": "WebRTC ICE exchange requires at least a transient signaling relay (e.g. ntfy.sh) or DNS TXT dynamic update; pure static pages without a relay cannot exchange SDP."
+    },
+    "C7": {
+      "status": "SPECIFIED_NOT_FIELD_MEASURED",
+      "note": "Illustrative layer timescales are configuration, not a measured separation guarantee; browsers do not speak BGP."
+    },
+    "C8": {
+      "status": "IMPLEMENTATION_TESTED",
+      "note": "Signature round trips and full content digests are tested. Latency and ownership trust require separate evidence; session-key self-verification is not authority."
+    },
+    "C9": {
+      "status": "IMPLEMENTATION_SCOPE",
+      "note": "No browser BGP implementation; overlay discovery and peer/relay transfers only."
+    },
+    "C10": {
+      "status": "IMPLEMENTATION_TESTED",
+      "note": "Full object roots are never truncated. DNS serialization has explicit size bounds; bulk data remains at peers or an explicitly enabled public relay."
+    }
+  },
+  "prism_model": {
+    "source": "app/src",
+    "runtime_bindings": "src/layer1-uor/generated-model.js",
+    "scope": "Pure admission, reconstruction relations and deterministic computation. Host bytes, crypto, clocks, peer assertions and network effects have explicit boundaries.",
+    "claim_register": "docs/prism-model.md"
   }
 }
