@@ -273,6 +273,8 @@ export class LinuxVmNode {
     this.boundaryStop = null;
     this.bootPoll = null;
     this.bootDeadline = null;
+    this.keyboardTail = Promise.resolve();
+    this.bootProbe = null;
     this.shareGeneration = 0;
     this.objectSharing = false;
     this.ethernetGeneration = 0;
@@ -366,11 +368,30 @@ export class LinuxVmNode {
     } catch (error) { uncertain(error); }
   }
 
+  sendGuestText(vm, generation, text) {
+    const send = this.keyboardTail.then(async () => {
+      if (this.v86 !== vm || this.bootGeneration !== generation || this.adminBlocked)
+        throw new VmBoundaryError('vm-keyboard-instance-unavailable', 'VM changed before keyboard dispatch; input was not sent.');
+      const pending = vm.keyboard_send_text(text, 10);
+      // The shipped v86 method resolves after its last synthetic keystroke.
+      // Undefined-returning adapters do not supply this contract.
+      if (!pending || typeof pending.then !== 'function')
+        throw new VmBoundaryError('vm-keyboard-completion-unavailable', 'VM keyboard adapter did not provide typing completion; input outcome is unknown.');
+      await pending;
+      if (this.v86 !== vm || this.bootGeneration !== generation || this.adminBlocked)
+        throw new VmBoundaryError('vm-keyboard-instance-unavailable', 'VM changed during keyboard dispatch; input outcome remains unknown.');
+    });
+    this.keyboardTail = send.catch(() => {});
+    return send;
+  }
+
   boot() {
     if (this.adminBlocked || this.adminBusy || !vmCanBoot(this)) return;
     this.boundaryReason = null;
     this.boundaryStop = null;
     this.filesystemUsage = null;
+    this.keyboardTail = Promise.resolve();
+    this.bootProbe = null;
     startVm(this);
     const generation = this.bootGeneration;
     const V86Ctor = globalThis.V86 || globalThis.V86Starter;
@@ -424,21 +445,40 @@ export class LinuxVmNode {
       this.bootDeadline = setTimeout(() => {
         if (current()) this.failBoot(generation, `VM readiness was not observed within ${this.bootTimeoutMs}ms; retry Boot explicitly.`);
       }, this.bootTimeoutMs);
-      this.bootPoll = setInterval(() => {
-        if (!current() || !this.booting || !vmStarted) return;
+      let pollBusy = false;
+      this.bootPoll = setInterval(async () => {
+        if (!current() || !this.booting || !vmStarted || pollBusy) return;
+        pollBusy = true;
         try {
-          const text = Array.from(this.screenContainer.querySelectorAll('span'))
-            .map(s => s.innerText).join('').replace(/[\s\u00a0]+/g, ' ').trim();
-          if (text.includes('~%') || /#(?:\s|$)/.test(text)) {
-            // Readiness is a host observation, not a proof of guest correctness.
-            vm.keyboard_send_text(`ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up 2>/dev/null\n`, 10);
+          if (!this.bootProbe) {
+            const text = Array.from(this.screenContainer.querySelectorAll('span'))
+              .map(s => s.innerText).join('').replace(/[\s\u00a0]+/g, ' ').trim();
+            // A prompt starts initialization; it never establishes readiness.
+            if (!(text.includes('~%') || /#(?:\s|$)/.test(text))) return;
+            const suffix = `${this.instanceId}_${generation}`;
+            const nonce = globalThis.crypto.randomUUID().replaceAll('-', '');
+            const probe = this.bootProbe = { inputName: `boot_in_${suffix}`, responseName: `boot_ready_${suffix}`, nonce, typingCompleted: false };
+            await vm.create_file(probe.inputName, new TextEncoder().encode(nonce));
+            if (!current() || this.adminBlocked) return;
+            // A preexisting mount is normal for the shipped guest. If its init
+            // mount failed, retry only that setup step. The response can arrive
+            // only after the shell reads host input and writes back over 9p.
+            const setup = `mkdir -p /mnt; { grep -q '^host9p /mnt 9p ' /proc/mounts || mount -t 9p -o trans=virtio host9p /mnt; } && [ "$(cat /mnt/${probe.inputName})" = '${nonce}' ] && ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up && printf '%s' '${nonce}' > /mnt/${probe.responseName}\n`;
+            await this.sendGuestText(vm, generation, setup);
+            probe.typingCompleted = true;
+          }
+          const probe = this.bootProbe;
+          const response = await readBoundedVmFile(vm, probe.responseName, 32);
+          const expected = new TextEncoder().encode(probe.nonce);
+          const exact = !!response && response.length === expected.length && response.every((byte, i) => byte === expected[i]);
+          if (current() && probe.typingCompleted && exact) {
             this.clearBootTimers();
             readyVm(this, generation, vm, true);
             this.onStatus({ state: 'online', ip: this.ipAddress });
           }
         } catch (error) {
           this.failBoot(generation, `VM boot failed: ${error.message}`);
-        }
+        } finally { pollBusy = false; }
       }, 250);
     } catch (error) {
       this.failBoot(generation, `VM boot failed: ${error.message}`);
@@ -625,7 +665,7 @@ export class LinuxVmNode {
       }
       // Even a throwing keyboard adapter may have dispatched input: retain unknown.
       command.dispatched = true;
-      await Promise.race([vm.keyboard_send_text(`sh /mnt/${scriptName}\n`, 10), command.interruption]);
+      await Promise.race([this.sendGuestText(vm, generation, `sh /mnt/${scriptName}\n`), command.interruption]);
       const t0 = performance.now();
       while (!command.cancelled && performance.now() - t0 < timeoutMs) {
         if (!observationAllowed(this, command)) break;
@@ -638,6 +678,7 @@ export class LinuxVmNode {
         ? `Command observation ended; completion is unknown. VM termination: ${command.termination ?? 'stop-pending'}. Prior guest effects are not rolled back.`
         : `VM command observation ended after ${timeoutMs}ms; completion is unknown and the guest command was not cancelled. Reconcile handle ${id}, or Cancel and stop VM; do not replay automatically. The VM runtime allowance continues independently.`);
     } catch (error) {
+      if (error.code === 'vm-keyboard-completion-unavailable') await this.enforceBoundary(error.message);
       if (command.outcome === 'pending') command.outcome = command.dispatched ? 'unknown' : 'failed-before-dispatch';
       error.commandId = id; error.outcome = command.outcome;
       throw error;

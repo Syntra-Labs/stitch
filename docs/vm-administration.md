@@ -20,6 +20,25 @@ No control reverses commands or data already sent. Boot-failure cleanup follows 
 settle successfully before retry, and rejection retains the handle for explicit
 destroy retry. Missing assets without an emulator instance remain directly retryable.
 
+## Readiness and keyboard dispatch
+
+A visible guest prompt only starts initialization; it does not grant Ready. The
+host creates a fresh generation-scoped nonce challenge in 9p, then serializes one
+initializer through the shipped keyboard adapter. That initializer checks or
+mounts `host9p` at `/mnt`, reads the challenge, configures `eth0`, and writes the
+nonce back to a separate response file. Ready requires completed synthetic typing
+and an exact bounded host read of that fresh response from the same current VM.
+Missing or mismatched responses remain booting until the existing readiness
+failure deadline. Repeated polling never types another initializer concurrently.
+
+This is a guest-controlled operational observation of a working shell/9p path,
+not an isolation, honest-guest, correctness or exactly-once execution certificate.
+The initializer and later command dispatches share a serialized typing queue.
+The bundled `keyboard_send_text` Promise must resolve after its final synthetic
+keystroke; adapters without that completion contract fail closed. Stop, destroy
+and replacement fence all late initialization continuations. Both initializer
+and command keystroke strings end with an actual newline, not literal `\\n`.
+
 ## Runtime and filesystem controls
 
 Boot uses `autostart: false`. The current bundled v86 filesystem must expose the
@@ -98,7 +117,8 @@ selection never executes or replays a command. No automatic replay is performed.
 
 New typed boundary failures are `vm-boundary-unavailable`, `vm-filesystem-limit`,
 `vm-output-limit`, `vm-observation-busy`, `vm-runtime-limit-invalid` and
-`vm-runtime-active`. An uncertain stop is a separate termination observation, not
+`vm-runtime-active`, `vm-keyboard-instance-unavailable` and
+`vm-keyboard-completion-unavailable`. An uncertain stop is a separate termination observation, not
 proof of rollback or a resolved command.
 
 The emulator kernel command line no longer explicitly disables mitigations or
@@ -121,8 +141,11 @@ reconciliation, replacement, cancellation, stalled reads and failed cleanup.
 BIOS/kernel bytes** in Node. It checks real local-9p API compatibility, captured
 result bytes, growth-slack charges, oversized-result refusal before `Read`,
 pre-allocation refusal, and a successful stop of an actually running emulated CPU.
-This is more than a mock test, but is not a browser, guest-shell, hostile-guest
-isolation, physical-host or device-memory qualification. Chromium launch in this
+A second test boots the shipped guest through production `LinuxVmNode`, requires
+its bidirectional 9p readiness response, executes a real shell command, captures
+its unique marker and `Linux` output, and stops the CPU. This qualifies that
+Node-hosted shell/9p round-trip, not browser, hostile-guest isolation, physical-host
+or device-memory behavior. Chromium launch in this
 execution environment is blocked by its Unix-socket restriction; live graphical
 journeys have not been qualified here.
 

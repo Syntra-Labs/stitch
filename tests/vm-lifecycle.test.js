@@ -21,7 +21,11 @@ function fixture(t) {
     run() { this.started++; }
     stop() { this.stopped++; }
     add_listener(name, callback) { this.listeners.set(name, callback); if (name === 'emulator-loaded') callback(); }
-    keyboard_send_text(command) { this.commands.push(command); }
+    async keyboard_send_text(command) {
+      this.commands.push(command);
+      const probe = /printf '%s' '([0-9a-f]{32})' > \/mnt\/(boot_ready_[A-Za-z0-9_-]+)/.exec(command);
+      if (probe) this.fs9p.setResult(probe[2], new TextEncoder().encode(probe[1]));
+    }
     destroy() { this.destroyed++; this.listeners.get('net0-send')?.([99]); }
     async create_file(name) { this.files.push(name); }
     async read_file() { return null; }
@@ -31,12 +35,12 @@ function fixture(t) {
     screenContainer: { querySelectorAll: () => [{ innerText: prompt }] },
     onStatus: status => statuses.push(status), bootTimeoutMs: 1000 });
   return { node, statuses, sent, instances, intervals, deadlines, FakeVm,
-    poll: () => [...intervals.values()].forEach(fn => fn()),
+    poll: async () => { for (const fn of [...intervals.values()]) await fn(); },
     expire: () => deadlines.get(node.bootDeadline)?.(),
     ready: () => { prompt = 'root:~# '; } };
 }
 
-test('missing and throwing constructors report failure and allow explicit retry', t => {
+test('missing and throwing constructors report failure and allow explicit retry', async t => {
   const f = fixture(t);
   globalThis.V86 = undefined;
   f.node.boot();
@@ -49,13 +53,13 @@ test('missing and throwing constructors report failure and allow explicit retry'
   globalThis.V86 = f.FakeVm;
   f.node.boot(); f.node.boot();
   assert.equal(f.instances.length, 1);
-  f.ready(); f.poll();
+  f.ready(); await f.poll();
   assert.equal(f.node.booted, true); assert.equal(f.node.booting, false);
   assert.equal(f.statuses.at(-1).state, 'online');
   assert.equal(f.intervals.size, 0); assert.equal(f.deadlines.size, 1);
 });
 
-test('boot deadline cleans up and stale listeners cannot affect retry', t => {
+test('boot deadline cleans up and stale listeners cannot affect retry', async t => {
   const f = fixture(t); f.node.boot();
   const old = f.node.v86, stalePoll = [...f.intervals.values()][0], staleDeadline = f.deadlines.get(f.node.bootDeadline);
   f.expire();
@@ -67,7 +71,7 @@ test('boot deadline cleans up and stale listeners cannot affect retry', t => {
   f.ready(); stalePoll(); staleDeadline(); old.listeners.get('download-error')(); old.listeners.get('net0-send')([1]);
   assert.equal(f.node.v86, fresh); assert.equal(f.node.booting, true);
   assert.equal(f.statuses.length, count); assert.equal(f.sent.length, 0);
-  f.poll(); assert.equal(f.node.booted, true);
+  await f.poll(); assert.equal(f.node.booted, true);
   f.node.setEthernetSharing(true); fresh.listeners.get('net0-send')(new Uint8Array(14)); assert.equal(f.sent.length, 1);
 });
 
@@ -82,7 +86,7 @@ test('download cleanup failure retains instance until explicit successful destro
   f.node.boot(); assert.equal(f.node.v86, retained);
   retained.destroy = () => {}; await f.node.destroy();
   f.node.boot(); f.node.v86.keyboard_send_text = () => { throw Error('guest unavailable'); };
-  f.ready(); f.poll();
+  f.ready(); await f.poll();
   assert.equal(f.node.v86, null); assert.equal(f.node.booting, false);
   assert.match(f.statuses.at(-1).message, /guest unavailable/);
 });
@@ -99,13 +103,13 @@ test('late object mirror cannot write into a replacement VM or report success', 
 });
 
 test('command timeout reports unknown completion rather than cancellation', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   await assert.rejects(f.node.executeShellCommand('echo hello', 0), /completion is unknown.*not cancelled/);
   assert.equal(f.node.booted, true);
   assert.equal(f.node.v86.commands.length, 2);
 });
 
-test('boot timeout configuration must be finite, positive and schedulable', t => {
+test('boot timeout configuration must be finite, positive and schedulable', async t => {
   fixture(t);
   for (const bootTimeoutMs of [0, -1, Infinity, NaN, 2147483648]) {
     assert.throws(() => new LinuxVmNode({ bootTimeoutMs }), /Invalid VM boot timeout/);
@@ -136,7 +140,7 @@ test('VM mirror snapshots bytes before asynchronous canonical and label writes',
 });
 
 test('grants default off; revoked mirrors and malformed Ethernet cannot cross host boundary', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   const root = 'sha256:' + 'a'.repeat(64), vm = f.node.v86;
   assert.equal(await f.node.mountUorObject(root, Uint8Array.of(1)), false);
   let received = 0; vm.bus = { send: () => received++ };
@@ -158,7 +162,7 @@ test('grants default off; revoked mirrors and malformed Ethernet cannot cross ho
 });
 
 test('timeout retains a unique handle that can observe completion without another dispatch', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   let id; await assert.rejects(f.node.executeShellCommand('echo one', 0), error => { id = error.commandId; return error.outcome === 'unknown'; });
   assert.equal(f.node.commandEvidence(id).outcome, 'unknown');
   const before = f.node.v86.commands.length;
@@ -171,16 +175,16 @@ test('timeout retains a unique handle that can observe completion without anothe
 });
 
 test('replacement fences asynchronous command completion and double-click dispatch', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   const old = f.node.v86; let resume;
-  old.fs9p.setResult('placeholder', Uint8Array.of(1));
-  old.fs9p.SearchPath = () => ({ id: 1 });
+  const placeholderId = old.fs9p.setResult('placeholder', Uint8Array.of(1));
+  old.fs9p.SearchPath = () => ({ id: placeholderId });
   old.fs9p.Read = () => new Promise(resolve => { resume = resolve; });
   const pending = f.node.executeShellCommand('echo old', 1000);
   const rejected = assert.rejects(pending, /replaced/);
   for (let i = 0; i < 12; i++) await Promise.resolve();
   await assert.rejects(f.node.executeShellCommand('echo duplicate'), /busy/);
-  await f.node.destroy(); f.node.boot(); f.ready(); f.poll();
+  await f.node.destroy(); f.node.boot(); f.ready(); await f.poll();
   resume(Uint8Array.of(1));
   await rejected;
   assert.equal(f.node.commandEvidence(f.node.lastCommandId).outcome, 'unknown');
@@ -188,7 +192,7 @@ test('replacement fences asynchronous command completion and double-click dispat
 });
 
 test('stop and destroy failures quarantine instance; repeated administration is fenced', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   const vm = f.node.v86; f.node.setObjectSharing(true); f.node.setEthernetSharing(true);
   vm.stop = () => { throw Error('stop failed'); };
   assert.equal(await f.node.stop(), false); assert.equal(f.node.objectSharing, false); assert.equal(f.node.ethernetSharing, false);
@@ -201,7 +205,7 @@ test('stop and destroy failures quarantine instance; repeated administration is 
 });
 
 test('cancel before dispatch and command bounds preserve intentional general shell syntax', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   for (const command of ['', '\0', 'x'.repeat(16385)]) await assert.rejects(f.node.executeShellCommand(command));
   await assert.rejects(f.node.executeShellCommand('true', Infinity));
   let resume; f.node.v86.create_file = () => new Promise(resolve => { resume = resolve; });
@@ -224,7 +228,7 @@ test('pending boot-failure destroy blocks retry and success releases the instanc
 });
 
 test('explicit resolved evidence disposal releases command capacity and output; unknown is retained', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   for (let i = 0; i < 128; i++) f.node.commands.set(`resolved_${i}`, { outcome: 'completed', output: Uint8Array.of(i), vm: f.node.v86 });
   f.node.lastCommandId = 'resolved_127';
   const retained = f.node.commands.get(f.node.lastCommandId);
@@ -240,8 +244,8 @@ test('explicit resolved evidence disposal releases command capacity and output; 
 });
 
 
-test('retained command admission can be inspected by handle without mutating the latest selection', t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+test('retained command admission can be inspected by handle without mutating the latest selection', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   const command = { generation: f.node.bootGeneration, vm: f.node.v86, dispatched: true, outcome: 'unknown' };
   f.node.commands.set('prior', command); f.node.commands.set('latest', { ...command, outcome: 'completed' });
   f.node.lastCommandId = 'latest';
@@ -269,7 +273,7 @@ test('boot installs filesystem controls before run and refuses an unsupported v8
 });
 
 test('cancellation after dispatch stops the whole VM, revokes bridges and retains unknown effects', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   await assert.rejects(f.node.executeShellCommand('while true; do :; done', 0), /unknown/);
   const id = f.node.lastCommandId, vm = f.node.v86;
   f.node.setObjectSharing(true); f.node.setEthernetSharing(true);
@@ -284,7 +288,7 @@ test('cancellation after dispatch stops the whole VM, revokes bridges and retain
 });
 
 test('cancel interrupts a stalled host result read and a failed stop is explicitly unknown', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); const vm = f.node.v86;
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll(); const vm = f.node.v86;
   vm.fs9p.SearchPath = () => ({ id: vm.fs9p.setResult('done', Uint8Array.of(1)) });
   vm.fs9p.Read = () => new Promise(() => {});
   vm.stop = () => { throw Error('stop failed'); };
@@ -299,7 +303,7 @@ test('cancel interrupts a stalled host result read and a failed stop is explicit
 });
 
 test('VM runtime expiry is separate from command observation and stops background work', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   const vm = f.node.v86, expire = f.deadlines.get(f.node.runtimeDeadline);
   await assert.rejects(f.node.executeShellCommand('sleep 1000 &', 0), /not cancelled/);
   assert.equal(f.node.booted, true);
@@ -310,7 +314,7 @@ test('VM runtime expiry is separate from command observation and stops backgroun
 });
 
 test('oversized guest output is rejected before range read and fail-stops the VM', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   await assert.rejects(f.node.executeShellCommand('echo output', 0));
   const vm = f.node.v86, command = f.node.commands.get(f.node.lastCommandId);
   vm.fs9p.setResult(command.doneName, Uint8Array.of(1));
@@ -321,7 +325,7 @@ test('oversized guest output is rejected before range read and fail-stops the VM
 });
 
 test('filesystem overflow stops the running VM before allocation and host bridge continuations are fenced', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); const vm = f.node.v86;
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll(); const vm = f.node.v86;
   f.node.setEthernetSharing(true); f.node.setObjectSharing(true);
   const id = vm.fs9p.CreateFile('large', 0);
   assert.throws(() => vm.fs9p.ChangeSize(id, 16777217), error => error.code === 'vm-filesystem-limit');
@@ -344,7 +348,7 @@ test('runtime allowances validate before boot and cannot renew an existing guest
 });
 
 test('pending VM termination is reported as pending, not confirmed success', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); let finish;
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll(); let finish;
   f.node.v86.stop = () => new Promise(resolve => { finish = resolve; });
   const pending = f.node.stop();
   assert.equal(f.node.adminBusy, true); assert.equal(f.statuses.at(-1).state, 'stopping');
@@ -355,7 +359,7 @@ test('pending VM termination is reported as pending, not confirmed success', asy
 });
 
 test('aggregate retained-output ceiling is checked before oversized read and missing output does not resolve a command', async t => {
-  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const f = fixture(t); f.node.boot(); f.ready(); await f.poll();
   await assert.rejects(f.node.executeShellCommand('echo result', 0));
   const vm = f.node.v86, command = f.node.commands.get(f.node.lastCommandId);
   vm.fs9p.setResult(command.doneName, Uint8Array.of(1));
@@ -366,4 +370,57 @@ test('aggregate retained-output ceiling is checked before oversized read and mis
   await assert.rejects(f.node.reconcileCommand(command.id), error => error.code === 'vm-output-limit');
   assert.equal(vm.fs9p.reads.some(read => read.id === outputId), false);
   assert.equal(vm.stopped, 1);
+});
+
+test('prompt, completed typing and a missing or mismatched 9p response do not establish Ready', async t => {
+  const f = fixture(t); f.node.boot(); f.ready();
+  const vm = f.node.v86; vm.keyboard_send_text = async text => { vm.commands.push(text); };
+  await f.poll();
+  assert.equal(f.node.booted, false); assert.equal(f.node.booting, true);
+  await assert.rejects(f.node.executeShellCommand('echo premature'), /not ready/);
+  assert.equal(vm.commands.length, 1);
+  const probe = f.node.bootProbe;
+  vm.fs9p.setResult(probe.responseName, new TextEncoder().encode('wrong'));
+  await f.poll(); assert.equal(f.node.booted, false); assert.equal(vm.commands.length, 1);
+  vm.fs9p.setResult(probe.responseName, new TextEncoder().encode(probe.nonce));
+  await f.poll(); assert.equal(f.node.booted, true); assert.equal(vm.commands.length, 1);
+  assert.equal(vm.commands[0].at(-1), '\n'); assert.equal(vm.commands[0].endsWith('\\n'), false);
+});
+
+test('an early response cannot bypass still-pending initialization typing, and repeated polls never type concurrently', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); const vm = f.node.v86; let finish;
+  vm.keyboard_send_text = text => {
+    vm.commands.push(text);
+    vm.fs9p.setResult(f.node.bootProbe.responseName, new TextEncoder().encode(f.node.bootProbe.nonce));
+    return new Promise(resolve => { finish = resolve; });
+  };
+  const initial = f.poll();
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  await f.poll(); await f.poll();
+  assert.equal(vm.commands.length, 1); assert.equal(f.node.booted, false);
+  await assert.rejects(f.node.executeShellCommand('echo interleaved'), /not ready/);
+  finish(); await initial;
+  assert.equal(f.node.booted, true); assert.equal(vm.commands.length, 1);
+});
+
+test('a keyboard adapter without a completion contract fails closed and cannot grant Ready', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); const vm = f.node.v86;
+  vm.keyboard_send_text = text => { vm.commands.push(text); };
+  await f.poll();
+  assert.equal(f.node.booted, false); assert.equal(vm.destroyed, 1);
+  assert.match(f.statuses.at(-1).message, /did not provide typing completion/);
+});
+
+test('stopping and replacing a VM during initialization fences its late keystroke completion and response', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); const old = f.node.v86; let finish;
+  old.keyboard_send_text = text => { old.commands.push(text); return new Promise(resolve => { finish = resolve; }); };
+  const pending = f.poll();
+  for (let i = 0; i < 8; i++) await Promise.resolve();
+  const oldProbe = f.node.bootProbe;
+  await f.node.destroy(); f.node.boot(); const fresh = f.node.v86;
+  await f.poll(); assert.equal(f.node.booted, true);
+  old.fs9p.setResult(oldProbe.responseName, new TextEncoder().encode(oldProbe.nonce));
+  finish(); await pending;
+  assert.equal(f.node.v86, fresh); assert.equal(f.node.booted, true);
+  assert.equal(f.statuses.filter(status => status.state === 'online').length, 1);
 });

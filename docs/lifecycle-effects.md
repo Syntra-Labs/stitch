@@ -12,7 +12,7 @@ resource charges.
 | --- | --- | --- | --- |
 | `WebRtcTransportNode` | Session generation, closed flag, actual topic and local/remote peer IDs | Close/open generation updates, signal admission, peer capacity and callback continuation | Browser peer-entry and DataChannel object identity, RTC events and networking |
 | `PointerPublisher` | Scoped retained outcome, exact pointer digest and provider record ID | Candidate/read correlation, create/update/reconcile/wait/refuse, uncertain write completion | Complete provider listing, TXT shape, cryptographic verification and provider response |
-| `LinuxVmNode` | Boot generation and one phase: idle, booting, ready or failed | Explicit boot/retry, current-instance callbacks, failure invalidation and readiness transition | Asset loading, emulator instance identity, observed guest prompt and guest execution |
+| `LinuxVmNode` | Boot generation and one phase: idle, booting, ready or failed | Explicit boot/retry, current-instance callbacks, failure invalidation and readiness transition | Asset loading, emulator instance identity, observed prompt, completed typing, exact guest/9p response and guest execution |
 
 Identifiers are encoded as exact UTF-16 code units for equality. UTF-8 encoding
 would collapse distinct JavaScript strings containing lone surrogates. No
@@ -62,8 +62,9 @@ A boot or explicit retry increments generation. Missing assets, constructor
 failure, download failure and the configured readiness deadline move booting to
 failed and invalidate listeners before cleanup. Another boot cannot begin while
 booting or ready. Readiness and failure callbacks require the current generation;
-readiness also requires the current emulator instance and an observed guest
-prompt. Failed generations cannot resurrect readiness. Object mirrors recheck
+readiness also requires the current emulator instance, completed initialization
+typing, and an exact fresh bounded bidirectional 9p response. An observed guest
+prompt only starts that probe and cannot enable command dispatch. Failed generations cannot resurrect readiness. Object mirrors recheck
 the same instance after asynchronous writes.
 
 The deadline bounds the host's readiness wait, not guest initialization or
