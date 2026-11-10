@@ -97,6 +97,13 @@ export function applyPrimitiveOp(op, a, b = null) {
   const { bits, mask, value: x } = a;
   const y = b ? (b.value & mask) : 0n;
 
+  if (op === PrimitiveOp.CONCAT) {
+    if (!(b instanceof Datum)) throw new TypeError('CONCAT requires a second Datum');
+    // UOR pipeline TermValue bytes are big-endian. Datum.toBytes remains its
+    // legacy little-endian coordinate wire format, not CONCAT's term encoding.
+    if (bits + b.bits > 128) throw new RangeError('CONCAT result exceeds Datum capacity (128 bits)');
+    return new Datum(bits + b.bits, (x << BigInt(b.bits)) | b.value);
+  }
   switch (op) {
     case PrimitiveOp.NEG:
       return new Datum(bits, (-x) & mask);
@@ -130,6 +137,15 @@ export function applyPrimitiveOp(op, a, b = null) {
       return new Datum(bits, y === 0n ? 0n : (x / y) & mask);
     case PrimitiveOp.MOD:
       return new Datum(bits, y === 0n ? 0n : (x % y) & mask);
+    case PrimitiveOp.POW: {
+      let result = 1n, base = x, exponent = y;
+      while (exponent > 0n) {
+        if (exponent & 1n) result = (result * base) & mask;
+        base = (base * base) & mask;
+        exponent >>= 1n;
+      }
+      return new Datum(bits, result);
+    }
     default:
       throw new Error(`Unsupported PrimitiveOp discriminant: ${op}`);
   }

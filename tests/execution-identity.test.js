@@ -30,11 +30,9 @@ test('execution closure identifies actual ring and checkpoint roots, interpreter
   const { inventory } = build(t);
   assert.match(inventory.executionDigest, /^sha256:[a-f0-9]{64}$/);
   assert.notEqual(inventory.executionDigest, inventory.sourceDigest);
-  assert.deepEqual(inventory.executionIdentity.roots, ['Stitch.Compute.checkpointLinkAllowed', 'Stitch.Compute.ringStep']);
-  assert.deepEqual(Object.keys(inventory.executionIdentity.definitions), [
-    'Stitch.Compute.checkpointLinkAllowed', 'Stitch.Compute.natBitwise', 'Stitch.Compute.normalize', 'Stitch.Compute.ringStep'
-  ]);
-  assert.deepEqual(Object.keys(inventory.executionIdentity.types), ['Stitch.Compute.Instruction']);
+  assert.deepEqual(inventory.executionIdentity.roots, ["Stitch.Compute.checkpointLinkAllowed", "Stitch.Compute.instructionWork", "Stitch.Compute.ringStep", "Stitch.Compute.typedInstructionAllowed", "Stitch.Compute.typedInstructionWork", "Stitch.Compute.typedResultBits", "Stitch.Compute.typedStep"]);
+  assert.deepEqual(Object.keys(inventory.executionIdentity.definitions), ["Stitch.Compute.arithmeticWidth", "Stitch.Compute.binaryLength", "Stitch.Compute.binaryLengthAcc", "Stitch.Compute.bitwiseAcc", "Stitch.Compute.byteWidth", "Stitch.Compute.checkpointLinkAllowed", "Stitch.Compute.concatWords", "Stitch.Compute.instructionAllowed", "Stitch.Compute.instructionWork", "Stitch.Compute.natBitwise", "Stitch.Compute.naturalPower", "Stitch.Compute.normalize", "Stitch.Compute.operandWidth", "Stitch.Compute.powerWork", "Stitch.Compute.powerWorkAcc", "Stitch.Compute.ringModulus", "Stitch.Compute.ringPow", "Stitch.Compute.ringStep", "Stitch.Compute.typedInstructionAdmission", "Stitch.Compute.typedInstructionAllowed", "Stitch.Compute.typedInstructionWork", "Stitch.Compute.typedResultBits", "Stitch.Compute.typedStep"]);
+  assert.deepEqual(Object.keys(inventory.executionIdentity.types), ["Stitch.Compute.Instruction", "Stitch.Compute.TypedInstruction", "Stitch.Compute.Word"]);
   assert.deepEqual(inventory.executionIdentity.adapterSources.map(s => s.path), [
     'src/layer1-uor/contracts.js', 'src/layer1-uor/custody.js', 'src/layer1-uor/index.js', 'src/layer4-compute/replay.js'
   ]);
@@ -62,6 +60,10 @@ test('reachable operation, normalization, interpreter primitive and adapter chan
   for (const mutate of [
     edit => edit('app/src/Stitch/Compute.lex.tex', s => s.replace('then (x + 1)', 'then (x + 2)')),
     edit => edit('app/src/Stitch/Compute.lex.tex', s => s.replace('body: (prim remainder value modulus 0 : Nat)', 'body: (prim quotient value modulus 0 : Nat)')),
+    edit => edit('app/src/Stitch/Compute.lex.tex', s => s.replace('(ringPow (binaryLength modulus y) x y modulus 1)', '(ringPow (binaryLength modulus y) x y modulus 0)')),
+    edit => edit('app/src/Stitch/Compute.lex.tex', s => s.replace('value := ((prim multiply (project left value) (ringModulus (project right bits)) : Nat) + (project right value))', 'value := ((prim multiply (project right value) (ringModulus (project left bits)) : Nat) + (project left value))')),
+    edit => edit('app/src/Stitch/Compute.lex.tex', s => s.replace('body: (if ((project instruction opcode) =? 17) then (1 + (powerWork bits (project instruction argument))) else 1)', 'body: (if ((project instruction opcode) =? 17) then (2 + (powerWork bits (project instruction argument))) else 1)')),
+
     edit => edit('scripts/check-model.mjs', s => s.replace("case 'subtract':return a[0]>=a[1]?a[0]-a[1]:0n", "case 'subtract':return a[0]>=a[1]?a[0]+a[1]:0n")),
     edit => edit('src/layer1-uor/contracts.js', s => s.replace('value.length > 34', 'value.length > 35')),
     edit => edit('src/layer1-uor/index.js', s => s.replace('SUCC: 2,', 'SUCC: 20,'))

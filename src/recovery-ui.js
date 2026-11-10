@@ -1,6 +1,6 @@
 /** Explicit local recovery journey. Never invokes a mesh, VM or DNS adapter. */
 import { RecoveryVault, RECOVERY_LIMITS, recoveryObject, exportRecoveryBundle } from './recovery.js';
-import { resumeProgram } from './layer4-compute/replay.js';
+import { resumeProgram, programWork } from './layer4-compute/replay.js';
 export function installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, bindModelAction, onChange = () => {} }) {
   const get = id => document.getElementById(id);
   const vault = new RecoveryVault();
@@ -11,36 +11,50 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     const link = document.createElement('a'); link.href = url; link.download = name; link.click();
     setTimeout(() => URL.revokeObjectURL(url), 0);
   };
+  function replaceChoices(id, choices, empty) {
+    const control = get(id), previous = control.value;
+    if (!choices.length) {
+      const option = document.createElement('option'); option.value = ''; option.textContent = empty; option.disabled = true;
+      choices = [option];
+    }
+    control.replaceChildren(...choices);
+    if (choices.some(option => option.value === previous)) control.value = previous;
+  }
   function render() {
     const snapshot = vault.snapshot();
-    get('recoveryObjects').replaceChildren(...snapshot.bundle.objects.map(o => {
+    replaceChoices('recoveryObjects', snapshot.bundle.objects.map(o => {
       const option = document.createElement('option'); option.value = o.manifest.object.contentDigest;
       option.textContent = `${o.manifest.object.byteLength} bytes · ${option.value}`; return option;
-    }));
-    get('recoveryJobs').replaceChildren(...snapshot.bundle.jobs.map(j => {
+    }), 'No objects imported');
+    replaceChoices('recoveryJobs', snapshot.bundle.jobs.map(j => {
       const option = document.createElement('option'); option.value = j.checkpoint.jobId;
       option.textContent = `${j.checkpoint.stepIndex}/${j.program.instructions.length} steps · ${option.value}`; return option;
-    }));
-    get('recoveryAnchors').replaceChildren(...snapshot.bundle.anchors.map(a => {
+    }), 'No jobs imported');
+    replaceChoices('recoveryAnchors', snapshot.bundle.anchors.map(a => {
       const option = document.createElement('option'); option.value = a.name;
       option.textContent = `${a.name} · revision ${a.revision} · ${snapshot.acceptedAnchors.some(x => x.pointerDigest === a.pointerDigest) ? 'operator-accepted' : 'untrusted supplied evidence'}`;
       return option;
-    }));
+    }), 'No anchors imported');
   }
   function bind(id, action) {
     bindModelAction(id, async () => {
       if (busy) return;
-      busy = true; onChange();
+      busy = true;
+      get('recoveryControls').setAttribute('aria-busy', 'true');
+      status('Recovery operation in progress. No mesh, VM or DNS effects are started by these controls.');
+      onChange();
       const controls = [...get('recoveryControls').querySelectorAll('button')]; controls.forEach(c => { c.disabled = true; });
       try { await action(); render(); }
       catch (error) { status(`Refused; retained recovery evidence unchanged: ${error.code || error.message}`); }
-      finally { busy = false; onChange(); }
+      finally { busy = false; get('recoveryControls').setAttribute('aria-busy', 'false'); onChange(); }
     });
   }
   const options = () => ({ wireBytes: Number(get('recoveryByteLimit').value), replaySteps: Number(get('recoveryStepLimit').value) });
   get('recoveryByteLimit').value = RECOVERY_LIMITS.wireBytes;
   get('recoveryStepLimit').value = RECOVERY_LIMITS.replaySteps;
+  let exportSelectionInitialized = false;
   function refreshExportSelection() {
+    const previous = new Map([...get('recoveryExportSelection').selectedOptions].map(option => [option.value, true]));
     const rows = [
       ...[...liveDb.objects.entries()].filter(([, e]) => e.verified && e.bytes).map(([key, e]) => ({ key: `object:${key}`, label: `Object ${e.label || key} (${e.bytes.length} bytes)` })),
       ...[...computeCoord.jobs.entries()].map(([key, j]) => ({ key: `job:${key}`, label: `Job ${key} (${j.stepIndex}/${j.totalSteps})` })),
@@ -48,8 +62,9 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     ];
     get('recoveryExportSelection').replaceChildren(...rows.map(row => {
       const option = document.createElement('option'); option.value = row.key; option.textContent = row.label;
-      option.selected = rows.length <= RECOVERY_LIMITS.entries; return option;
+      option.selected = exportSelectionInitialized ? previous.has(row.key) : rows.length <= RECOVERY_LIMITS.entries; return option;
     }));
+    exportSelectionInitialized = true;
   }
   get('recoveryControls').addEventListener('toggle', () => {
     if (get('recoveryControls').open && !busy) refreshExportSelection();
@@ -79,6 +94,7 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     if (!Number.isSafeInteger(bounds.wireBytes) || file.size > bounds.wireBytes || file.size > RECOVERY_LIMITS.wireBytes) throw Error('File exceeds chosen wire allowance.');
     const bytes = new Uint8Array(await file.arrayBuffer());
     await vault.import(bytes, bounds);
+    get('recoveryAnchorConsent').checked = false;
     status('Object integrity and pure checkpoints checked. Evidence restored to this session-only recovery vault; supplied anchors remain untrusted. No mesh, VM or DNS effects ran.');
   });
   bind('exportRecoveredBtn', async () => {
@@ -94,7 +110,7 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     const job = vault.snapshot().bundle.jobs.find(j => j.checkpoint.jobId === get('recoveryJobs').value);
     if (!job) throw Error('Choose an imported job.');
     const limit = options().replaySteps;
-    if (!Number.isSafeInteger(limit) || limit < job.program.instructions.length || limit > RECOVERY_LIMITS.replaySteps) throw Error('Replay allowance is too small or invalid.');
+    if (!Number.isSafeInteger(limit) || limit < programWork(job.program) || limit > RECOVERY_LIMITS.replaySteps) throw Error('Replay work allowance is too small or invalid.');
     const result = await resumeProgram(job.program, job.checkpoint);
     status(`Pure local replay finished at step ${result.stepIndex}: ${result.stateHex}. No external effects ran; result remains volatile.`);
   });
@@ -114,5 +130,11 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
   };
   get('recoveryFile').addEventListener('change', onChange);
   get('recoveryAnchorConsent').addEventListener('change', onChange);
+  for (const id of ['recoveryAnchors', 'recoveryAuthority', 'recoveryDigest']) {
+    get(id).addEventListener(id === 'recoveryAnchors' ? 'change' : 'input', () => {
+      // An acceptance belongs to the exact supplied anchor/key/digest, not later edits.
+      get('recoveryAnchorConsent').checked = false; onChange();
+    });
+  }
   return { facts };
 }

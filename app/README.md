@@ -34,8 +34,10 @@ policy optimality.
 - `Compute`: a concrete deterministic ring-instruction evaluator, all supported
   opcodes and widths, checkpoint program/input/model/predecessor/replay bindings,
   strict step advancement and uninterrupted/continued execution equivalence.
-  Unsupported CONCAT/POW opcodes are refused; DIV/MOD by zero retain Stitch's
-  defined legacy zero result.
+  POW uses bounded modular square-and-multiply. Version 2 typed programs add
+  capacity-bound byte-sequence CONCAT and explicit result widths, including
+  non-power-of-two widths and empty sequences. Version 1 DIV/MOD by zero retain
+  Stitch's defined legacy zero result. See [primitive semantics](../docs/uor-primitives.md).
 - `Effects`: correlated mesh/VM generations, DNS unknown-write reconciliation and honest C1 measurement transitions, bound to actual host callbacks.
 - `Relay`: frame admission, assembly counters, deadlines, delivery and disclosure guards. Hash/UTF8 observations and the indexed-buffer representation remain explicit host adapter responsibilities.
 - `Product.Experience`: actual browser journeys, evidence views, action guards and context-sensitive disclosure/navigation policy.

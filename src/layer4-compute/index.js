@@ -286,9 +286,18 @@ export class LinuxVmNode {
   get booting() { return vmIsBooting(this); }
   get lifecycle() {
     return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: !this.adminBlocked && !this.adminBusy && vmCanBoot(this), canExecute: vmCanExecute(this), instancePresent: !!this.v86, adminBusy: this.adminBusy, adminBlocked: this.adminBlocked, commandBusy: this.commandBusy, commandCapacity: this.commands.size < 128,
-      canAdminister: administrationAllowed(this), canCancelObservation: !!this.lastCommandId && !['completed', 'failed-before-dispatch', 'cancelled-before-dispatch'].includes(this.commands.get(this.lastCommandId)?.outcome),
-      canForgetCommand: forgetAllowed(this, this.commands.get(this.lastCommandId)),
-      canReconcileCommand: !!this.lastCommandId && (this.commands.get(this.lastCommandId)?.outcome === 'completed' || observationAllowed(this, this.commands.get(this.lastCommandId))) };
+      canAdminister: administrationAllowed(this), ...this.commandLifecycle(this.lastCommandId) };
+  }
+
+  // The UI can inspect any retained handle without changing the latest command
+  // or inventing a second set of admission rules.
+  commandLifecycle(id) {
+    const command = this.commands.get(id);
+    return {
+      canCancelObservation: !!command && !['completed', 'failed-before-dispatch', 'cancelled-before-dispatch'].includes(command.outcome),
+      canForgetCommand: forgetAllowed(this, command),
+      canReconcileCommand: !!command && (command.outcome === 'completed' || observationAllowed(this, command))
+    };
   }
 
   clearBootTimers() {

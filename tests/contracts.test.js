@@ -39,7 +39,7 @@ test('checkpoint tampering, semantic forgery, wrong program and broken links fai
   await assert.rejects(verifyCheckpoint(demoProgram(9, 1n), first), code('program-mismatch'));
   await assert.rejects(verifyCheckpoint(program, next, await createCheckpoint(program, 2)), code('checkpoint-predecessor'));
   await assert.rejects(verifyCheckpoint(program, { ...first, trusted: true }), code('invalid-record'));
-  await assert.rejects(identifyProgram({ ...program, instructions: [{ op: 17, argHex: '0x2' }] }), code('unsupported-operation'));
+  await assert.rejects(identifyProgram({ ...program, instructions: [{ op: 18, argHex: '0x2' }] }), code('unsupported-operation'));
   await assert.rejects(identifyProgram({ ...program, initialValueHex: '0x00' }), code('invalid-ring-value'));
   await assert.rejects(identifyProgram({ ...program, instructions: new Array(4097).fill({ op: 2 }) }), code('program-limit'));
   assert.equal((await createCheckpoint(demoProgram(0), 0)).stateHex, '0x19919');

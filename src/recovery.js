@@ -4,7 +4,7 @@
  */
 import { canonicalBytes, parseCanonicalJson, exactKeys, deepFreeze, sha256Bytes } from './layer1-uor/custody.js';
 import { createObject, recoverObject } from './layer3-storage/custody.js';
-import { verifyCheckpoint, validateProgram } from './layer4-compute/replay.js';
+import { verifyCheckpoint, programWork } from './layer4-compute/replay.js';
 import { verifyPointer } from './layer1-uor/pointer.js';
 import { model } from './layer1-uor/generated-model.js';
 const project = (name, ...args) => model[`Stitch.Recovery.${name}`](...args);
@@ -46,9 +46,8 @@ export async function verifyRecoveryBundle(wire, options = {}) {
   // Preflight aggregate replay before hashing or executing any program.
   for (const job of bundle.jobs) {
     exactKeys(job, ['program', 'checkpoint'], 'recovery job');
-    validateProgram(job.program);
     if (!Number.isSafeInteger(job.checkpoint?.stepIndex) || job.checkpoint.stepIndex < 0) reject('step');
-    replaySteps += job.checkpoint.stepIndex;
+    replaySteps += programWork(job.program, 0, job.checkpoint.stepIndex);
     if (replaySteps > bounds.replaySteps) reject('replay-limit');
   }
   const objects = [];
@@ -128,7 +127,7 @@ export class RecoveryVault {
     // Prior immutable entries were already checked. Do not replay all history.
     const encoded = encode(merged, bounds);
     const cost = { wireBytes: encoded.length, entries: merged.objects.length + merged.jobs.length + merged.anchors.length,
-      replaySteps: merged.jobs.reduce((n, j) => n + j.checkpoint.stepIndex, 0) };
+      replaySteps: merged.jobs.reduce((n, j) => n + programWork(j.program, 0, j.checkpoint.stepIndex), 0) };
     const candidate = { ...cost, generation, root: new TextEncoder().encode(await sha256Bytes(encoded, 'recovery')) };
     const next = project('commit', bounds, this.#state, candidate, true);
     if (Number(next.generation) === this.#state.generation) reject('stale-or-capacity');

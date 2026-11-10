@@ -48,11 +48,14 @@
       margin-bottom: 12px;
     }
 
+    .grid:has(> section[id$="Panel"]) { grid-template-columns: minmax(0, 1fr); }
+
     @media (max-width: 1024px) {
       .grid { grid-template-columns: 1fr; }
     }
 
     .stratum {
+      min-width: 0;
       border: 1px solid var(--border);
       background: var(--panel);
       padding: 12px;
@@ -78,7 +81,7 @@
       align-items: center;
     }
 
-    input {
+    input, textarea, select {
       background: #000;
       color: var(--fg);
       border: 1px solid var(--border);
@@ -145,7 +148,11 @@
     .experience-evidence { padding: 8px 12px; border-inline-start: 3px solid; line-height: 1.5; }
     #operatorJourneyNav { display: flex; gap: 8px; flex-wrap: wrap; }
     #operatorJourneyNav [aria-current="location"] { border-color: #e6e6e6; }
-    [tabindex="-1"]:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #9bc4ff; outline-offset: 3px; }
+    :focus-visible { outline: 2px solid #9bc4ff; outline-offset: 3px; }
+    input, textarea, select { max-width: 100%; }
+    .controls > label { display: flex; flex-direction: column; gap: 4px; }
+    .controls > label:has(input[type="checkbox"]) { display: inline; }
+    .mono-out { overflow-wrap: anywhere; }
     [hidden] { display: none !important; }
   </style>
 </head>
@@ -175,11 +182,12 @@
       <h2 id="meshTitle">Join a mesh</h2>
       <label class="muted" for="meshKeyInput">Mesh Key:</label>
       <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
-      <label><input type="checkbox" id="allowMeshSignalingInput" /><span id="meshDisclosureText">Allow public mesh signaling</span></label>
+      <label for="allowMeshSignalingInput">Public signaling consent <input type="checkbox" id="allowMeshSignalingInput" /><span id="meshDisclosureText">Allow public mesh signaling</span></label>
       <button id="reconnectBtn">Join Mesh & Sync</button>
 
     </div>
     <p id="meshEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="meshActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="meshExplanationPanel"><summary id="meshExplanationLabel">What this evidence means</summary><p id="meshExplanation"></p></details>
     <details id="networkInspectionPanel"><summary>Inspect external network observations</summary>
       <p class="muted">Scheduler estimates, not availability evidence: Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
@@ -203,18 +211,19 @@
   <section class="stratum" id="resourcesPanel" tabindex="-1" style="margin-bottom: 12px;">
     <h2 id="resourcesTitle">Inspect and renew allowances</h2>
     <p id="resourcesEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="resourcesActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="resourcesExplanationPanel"><summary id="resourcesExplanationLabel">What this evidence means</summary><p id="resourcesExplanation"></p></details>
     <details id="budgetPolicyPanel">
       <summary><strong>Application resource policy</strong> (operational demo configuration)</summary>
       <p class="muted">These are configurable operating allowances, not semantic limits. An expired epoch or exhausted allowance refuses further effects. Choose a new epoch to continue; previous charges are retained, including failed or uncertain effects. Existing objects, jobs and pointer heads stay in this tab.</p>
       <div class="controls">
-        <label>Epoch minutes <input type="number" id="budgetMinutesInput" min="0.001" step="any" style="width: 80px;" /></label>
-        <label>Requests <input type="number" id="budgetRequestsInput" min="0" step="1" style="width: 100px;" /></label>
-        <label>Application transfer bytes <input type="number" id="budgetTransferInput" min="0" step="1" style="width: 130px;" /></label>
-        <label>New cache allocation bytes <input type="number" id="budgetStorageInput" min="0" step="1" style="width: 130px;" /></label>
-        <label>Replayed ring steps <input type="number" id="budgetComputeInput" min="0" step="1" style="width: 120px;" /></label>
-        <label>Reservation log entries <input type="number" id="budgetActionsInput" min="1" max="65536" step="1" style="width: 100px;" /></label>
-        <label>Discovery refreshes <input type="number" id="budgetRefreshInput" min="0" step="1" style="width: 80px;" /></label>
+        <label for="budgetMinutesInput">Epoch minutes <input type="number" id="budgetMinutesInput" min="0.001" step="any" style="width: 80px;" /></label>
+        <label for="budgetRequestsInput">Requests <input type="number" id="budgetRequestsInput" min="0" step="1" style="width: 100px;" /></label>
+        <label for="budgetTransferInput">Application transfer bytes <input type="number" id="budgetTransferInput" min="0" step="1" style="width: 130px;" /></label>
+        <label for="budgetStorageInput">New cache allocation bytes <input type="number" id="budgetStorageInput" min="0" step="1" style="width: 130px;" /></label>
+        <label for="budgetComputeInput">Replay work units <input type="number" id="budgetComputeInput" min="0" step="1" style="width: 120px;" /></label>
+        <label for="budgetActionsInput">Reservation log entries <input type="number" id="budgetActionsInput" min="1" max="65536" step="1" style="width: 100px;" /></label>
+        <label for="budgetRefreshInput">Discovery refreshes <input type="number" id="budgetRefreshInput" min="0" step="1" style="width: 80px;" /></label>
         <button id="renewBudgetBtn">Start New Epoch with These Limits</button>
         <button id="exportBudgetHistoryBtn" class="secondary">Export Policy History</button>
       </div>
@@ -238,26 +247,30 @@
         <span class="muted">Recovery requires enough reachable fragments; relay storage is optional</span>
       </div>
       <p id="objectsEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="objectsActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="objectsExplanationPanel"><summary id="objectsExplanationLabel">What this evidence means</summary><p id="objectsExplanation"></p></details>
 
       <div class="controls">
-        <input type="text" id="dbLabelInput" value="state.txt" placeholder="Filename in /mnt" style="width: 100px;" />
-        <input type="text" id="dbPayloadInput" value="Hello from live UOR mesh storage" style="flex: 1;" />
+        <label for="dbLabelInput">Object label (/mnt alias)</label>
+        <input type="text" id="dbLabelInput" aria-describedby="objectInputHelp" value="state.txt" placeholder="Filename in /mnt" style="width: 100px;" />
+        <label for="dbPayloadInput">Object text (UTF-8)</label>
+        <input type="text" id="dbPayloadInput" aria-describedby="objectInputHelp" value="Hello from live UOR mesh storage" style="flex: 1;" />
         <button id="dbPutBtn">Put & Replicate</button>
         <button id="dbWipeLocalBtn" class="secondary" title="Clears this browser tab's memory to 0 objects to prove recovery comes from external infrastructure">Wipe Local RAM</button>
         <button id="dbSyncBtn" class="secondary">Fetch Reachable Fragments</button>
-        <label><input type="checkbox" id="allowPublicRelayInput" /><span id="relayDisclosureText">Public relay: share object/job bytes on ntfy.sh (not private)</span></label>
+        <label for="allowPublicRelayInput">Public relay consent <input type="checkbox" id="allowPublicRelayInput" /><span id="relayDisclosureText">Public relay: share object/job bytes on ntfy.sh (not private)</span></label>
       </div>
 
+      <p id="objectInputHelp" class="muted">Text is encoded as UTF-8, at most 128 KiB. The label is a convenience alias, not identity. New objects are shared with the guest only when guest object sharing is enabled.</p>
       <table>
         <thead>
           <tr>
-            <th>Object commitment (SHA-256)</th>
-            <th>Label (/mnt)</th>
-            <th>Size</th>
-            <th>Verified</th>
-            <th>Source</th>
-            <th>Payload Preview</th>
+            <th scope="col">Object commitment (SHA-256)</th>
+            <th scope="col">Label (/mnt)</th>
+            <th scope="col">Size</th>
+            <th scope="col">Verified</th>
+            <th scope="col">Source</th>
+            <th scope="col">Payload Preview</th>
           </tr>
         </thead>
         <tbody id="liveDbBody">
@@ -268,27 +281,28 @@
         <summary>Export and restore recovery evidence</summary>
         <p>Keep a separate backup before clearing RAM. Import checks objects and pure jobs in a local recovery vault, without sending packets, mounting files or retrying writes. Closing this tab loses the vault. Signing keys and pending-write journals are not included.</p>
         <div class="controls">
-          <label>Wire byte allowance <input id="recoveryByteLimit" type="number" min="0" step="1" /></label>
-          <label>Replay step allowance <input id="recoveryStepLimit" type="number" min="0" step="1" /></label>
-          <label>Live evidence to export (up to 32 entries) <select id="recoveryExportSelection" multiple size="5"></select></label>
+          <label for="recoveryByteLimit">Wire byte allowance <input id="recoveryByteLimit" type="number" min="0" step="1" /></label>
+          <label for="recoveryStepLimit">Replay work allowance <input id="recoveryStepLimit" type="number" min="0" step="1" /></label>
+          <label for="recoveryExportSelection">Live evidence to export (up to 32 entries) <select id="recoveryExportSelection" aria-describedby="recoverySelectionHelp" multiple size="5"></select></label>
           <button id="exportRecoveryBtn" class="secondary">Export Live Evidence</button>
-          <label>Recovery file <input id="recoveryFile" type="file" accept="application/json,.json" /></label>
+          <label for="recoveryFile">Recovery file <input id="recoveryFile" type="file" accept="application/json,.json" /></label>
           <button id="importRecoveryBtn" class="secondary">Verify and Import Locally</button>
           <button id="exportRecoveredBtn" class="secondary">Export Recovery Vault</button>
         </div>
+      <p id="recoverySelectionHelp" class="muted">Select 1–32 live entries. Use Ctrl/Command to toggle individual choices or Shift for a range. Reopening refreshes available evidence and retains still-available selections. Imported evidence stays in the separate recovery vault and is not added to live objects or jobs.</p>
         <p class="muted">At most 32 entries, each object up to the live 128 KiB limit. Default wire allowance includes hex fragments and job overhead. Limits bound this operation, not total browser memory; replay is pure computation, not VM execution.</p>
         <div class="controls">
-          <label>Recovered object <select id="recoveryObjects"></select></label>
+          <label for="recoveryObjects">Recovered object <select id="recoveryObjects"></select></label>
           <button id="downloadRecoveredObjectBtn" class="secondary">Download Verified Object</button>
-          <label>Recovered job <select id="recoveryJobs"></select></label>
+          <label for="recoveryJobs">Recovered job <select id="recoveryJobs"></select></label>
           <button id="resumeRecoveredJobBtn" class="secondary">Finish Pure Job Locally</button>
         </div>
         <details><summary>Review supplied pointer anchors</summary>
           <p>Signatures inside a file do not establish trust or freshness. Independently obtain the exact recent pointer digest and writer key. Accepting here records a local decision only; it does not change the running DNS observer.</p>
-          <label>Supplied anchor <select id="recoveryAnchors"></select></label>
-          <label>Independently trusted writer key <input id="recoveryAuthority" type="text" autocomplete="off" /></label>
-          <label>Independently trusted recent digest <input id="recoveryDigest" type="text" autocomplete="off" /></label>
-          <label><input id="recoveryAnchorConsent" type="checkbox" />I independently verified this exact anchor is recent and trust its writer.</label>
+          <label for="recoveryAnchors">Supplied anchor <select id="recoveryAnchors"></select></label>
+          <label for="recoveryAuthority">Independently trusted writer key <input id="recoveryAuthority" type="text" autocomplete="off" /></label>
+          <label for="recoveryDigest">Independently trusted recent digest <input id="recoveryDigest" type="text" autocomplete="off" /></label>
+          <label for="recoveryAnchorConsent">Accept this exact anchor <input id="recoveryAnchorConsent" type="checkbox" />I independently verified this exact anchor is recent and trust its writer.</label>
           <button id="acceptRecoveryAnchorBtn" class="secondary">Accept Exact Recent Anchor</button>
         </details>
         <p id="recoveryEvidence" role="status" aria-live="polite"></p>
@@ -303,26 +317,28 @@
         <span class="muted">Pure jobs replay before resume; VM effects are outside this contract</span>
       </div>
       <p id="computeEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="computeActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="computeExplanationPanel"><summary id="computeExplanationLabel">What this evidence means</summary><p id="computeExplanation"></p></details>
 
       <div class="controls">
-        <label class="muted">Steps:</label>
-        <input type="number" id="jobStepsInput" value="12" min="3" max="60" style="width: 60px;" />
-        <label class="muted">Step Delay (ms):</label>
-        <input type="number" id="jobDelayInput" value="800" min="100" max="3000" style="width: 75px;" />
+        <label class="muted" for="jobStepsInput">Steps:</label>
+        <input type="number" id="jobStepsInput" aria-describedby="jobInputHelp" value="12" min="3" max="60" style="width: 60px;" />
+        <label class="muted" for="jobDelayInput">Step delay (ms):</label>
+        <input type="number" id="jobDelayInput" aria-describedby="jobInputHelp" value="800" min="100" max="3000" style="width: 75px;" />
         <button id="startJobBtn">Start Distributed UOR Job</button>
         <button id="takeoverJobsBtn" class="secondary">Scan & Resume Unfinished Jobs</button>
       </div>
 
+      <p id="jobInputHelp" class="muted">This demonstration constructs a deterministic W64 ring program. Choose 3–60 steps and a 100–3000 ms delay. Pure replay is separate from guest shell execution.</p>
       <table>
         <thead>
           <tr>
-            <th>Job ID</th>
-            <th>Progress</th>
-            <th>Owner Node</th>
-            <th>Current W64 Ring Value</th>
-            <th>Status</th>
-            <th>Execution evidence</th>
+            <th scope="col">Job ID</th>
+            <th scope="col">Progress</th>
+            <th scope="col">Owner Node</th>
+            <th scope="col">Current W64 Ring Value</th>
+            <th scope="col">Status</th>
+            <th scope="col">Execution evidence</th>
           </tr>
         </thead>
         <tbody id="liveJobsBody">
@@ -338,28 +354,37 @@
         <span class="muted" id="vmStatusLabel">VM Standby</span>
       </div>
       <p id="vmEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="vmActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="vmExplanationPanel"><summary id="vmExplanationLabel">What this evidence means</summary><p id="vmExplanation"></p></details>
 
       <div class="controls">
         <button id="bootVmBtn">Boot Linux 5.6 VM</button>
         <button id="stopVmBtn" class="secondary">Stop VM</button>
         <button id="destroyVmBtn" class="secondary">Destroy VM</button>
-        <label><input type="checkbox" id="vmShareObjects" /> Share new database objects with this guest</label>
-        <label><input type="checkbox" id="vmShareEthernet" /> Bridge guest Ethernet to mesh peers</label>
+        <label for="vmShareObjects">Guest object sharing <input type="checkbox" id="vmShareObjects" /> Share new database objects with this guest</label>
+        <label for="vmShareEthernet">Guest network sharing <input type="checkbox" id="vmShareEthernet" /> Bridge guest Ethernet to mesh peers</label>
         <div id="vmCommandControls" class="controls" hidden>
-        <input type="text" id="vmCmdInput" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
+        <label for="vmCmdInput">Guest shell command</label>
+        <input type="text" id="vmCmdInput" aria-describedby="vmCommandHelp" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
         <button id="runVmCmdBtn" class="secondary">Run in VM & Store Output in UOR DB</button>
         </div>
       </div>
 
+      <p id="vmCommandHelp" class="muted">Commands run in the guest, not on this host. Stdout and stderr are captured as bytes and shown as text below, including when storing the object fails. Cancellation ends observation only. Public relay consent also applies to stored command output.</p>
       <p id="vmCommandOutcome" role="status" aria-live="polite">No guest command submitted.</p>
-      <div class="controls">
+      <div id="vmRetainedCommandControls" class="controls" hidden>
+        <label for="vmCommandSelection">Retained command handle</label>
+        <select id="vmCommandSelection" aria-describedby="vmCommandOutcome"></select>
         <button id="cancelVmObservationBtn" class="secondary">Cancel command wait</button>
         <button id="forgetVmCommandBtn" class="secondary">Forget Resolved Command Evidence</button>
         <button id="reconcileVmCommandBtn" class="secondary">Observe last command result</button>
       </div>
       <p class="muted">Observation cancellation does not stop guest effects. Unknown commands are never automatically replayed. Stop and destroy revoke grants; failures retain the instance for destroy retry. These controls do not certify guest isolation.</p>
-      <div id="vmScreenContainer">
+      <h3 id="vmStdoutTitle">Observed guest command output (text)</h3>
+      <p id="vmStdoutSummary" role="status" aria-live="polite" aria-atomic="true">No guest output observed.</p>
+      <pre id="vmStdoutText" class="mono-out" tabindex="0" role="region" aria-labelledby="vmStdoutTitle" aria-describedby="vmStdoutSummary">No guest output observed.</pre>
+      <p class="muted">The console below is the emulator display. Shell commands and their captured text above do not require interacting with its canvas. Graphics-only guest applications may have no text equivalent.</p>
+      <div id="vmScreenContainer" role="region" aria-label="Guest emulator display">
         <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux 5.6 VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
 Object sharing and Ethernet bridging start off. Grants expose data to the guest or mesh peers. Revocation blocks future transfers; it does not erase guest copies or undo effects.</div>
         <canvas style="display: none;"></canvas>
@@ -372,26 +397,33 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         <h2 id="pointersTitle">Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
       </div>
       <p id="pointersEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="pointersActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="pointersExplanationPanel"><summary id="pointersExplanationLabel">What this evidence means</summary><p id="pointersExplanation"></p></details>
 
       <div class="controls">
-        <input type="text" id="dnsQueryInput" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
+        <label for="dnsQueryInput">DNS name (discovery and pointer scope)</label>
+        <input type="text" id="dnsQueryInput" aria-describedby="pointerScopeHelp" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
         <button id="resolveSrvBtn" class="secondary">Resolve SRV (DoH)</button>
         <button id="resolveTxtBtn" class="secondary">Resolve TXT (DoH)</button>
       </div>
 
+      <p id="pointerScopeHelp" class="muted">The DNS name, writer key and Zone ID select an exact publication scope. Changing any of them selects another scope; it does not resolve earlier unknown writes. After reload, pin the original writer, enter its exact name and zone, then load saved publication before reconciling. Reconciliation also needs a scoped token.</p>
       <details id="pointerPublicationSetup"><summary>Provider publication setup and reconciliation</summary>
       <div class="controls">
-        <input type="text" id="cfZoneInput" placeholder="Cloudflare Zone ID" style="width: 150px;" />
-        <input type="password" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
+        <label for="cfZoneInput">Cloudflare Zone ID</label>
+        <input type="text" id="cfZoneInput" aria-describedby="pointerScopeHelp" placeholder="Cloudflare Zone ID" style="width: 150px;" />
+        <label for="cfTokenInput">Scoped Cloudflare API token</label>
+        <input type="password" id="cfTokenInput" aria-describedby="providerTokenHelp" placeholder="Scoped API Token" style="width: 130px;" />
         <button id="writeSignedDnsBtn" class="secondary">Admit Next Pointer & Publish TXT</button>
         <button id="loadPublicationBtn" class="secondary">Load Saved Publication</button>
         <button id="reconcilePointerBtn" class="secondary" hidden>Reconcile Unknown Publication</button>
       </div>
+      <p id="providerTokenHelp" class="muted">Use a token with DNS Edit restricted to this exact zone. It is sent only to the Cloudflare API when you publish or reconcile; it is not saved or exported. Replace it here when expired or revoked. A provider acknowledgement is not DNS propagation.</p>
       </details>
 
       <div class="controls">
-        <input type="text" id="pointerAuthorityInput" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
+        <label for="pointerAuthorityInput">Independently trusted Ed25519 writer key</label>
+        <input type="text" id="pointerAuthorityInput" aria-describedby="pointerScopeHelp" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
         <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
       </div>
       <details><summary>Signing authority and browser storage</summary>
@@ -401,8 +433,10 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         <p>Browser storage is not a backup: quota, eviction, clearing and private browsing can lose keys and journals. DNS publication requires IndexedDB, Web Locks and a committed write-ahead journal; storage failures block writes. Interrupted unknown writes permit exact-candidate reads only, with no timed retry or automatic takeover. API tokens are never saved.</p>
       </details>
       <div class="muted">Observer heads and session-only keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <p id="pointerAdmissionHelp" class="muted">Paste complete signed JSON, at most 4096 UTF-8 bytes. Admission checks this exact name, independently pinned key and retained head. Restoring an anchor in the recovery vault does not change this observer.</p>
       <div id="pointerAdmissionControls">
-      <textarea id="pointerJsonInput" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
+      <label for="pointerJsonInput">Signed pointer JSON</label>
+        <textarea id="pointerJsonInput" aria-describedby="pointerAdmissionHelp" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
       <button id="admitPointerBtn" class="secondary">Admit Pasted Pointer</button>
       </div>
       <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
@@ -426,7 +460,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       </div>
       <table>
         <thead>
-          <tr><th>Hasher</th><th>Width (B)</th><th>Collisions</th><th>Time (ms)</th><th>Ops/sec</th><th>MB/s</th></tr>
+          <tr><th scope="col">Hasher</th><th scope="col">Width (B)</th><th scope="col">Collisions</th><th scope="col">Time (ms)</th><th scope="col">Ops/sec</th><th scope="col">MB/s</th></tr>
         </thead>
         <tbody id="l1BenchBody"></tbody>
       </table>
@@ -439,7 +473,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       </div>
       <table>
         <thead>
-          <tr><th>Policy</th><th>Refreshes</th><th>Unavailable (s)</th><th>Availability</th><th>Mean Lag (s)</th></tr>
+          <tr><th scope="col">Policy</th><th scope="col">Refreshes</th><th scope="col">Unavailable (s)</th><th scope="col">Availability</th><th scope="col">Mean Lag (s)</th></tr>
         </thead>
         <tbody id="l2BenchBody"></tbody>
       </table>
@@ -452,7 +486,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       </div>
       <table>
         <thead>
-          <tr><th>Strategy</th><th>Gen-0 Left</th><th>Recovered</th><th>Retention</th><th>Amp</th><th>Repair Bytes</th></tr>
+          <tr><th scope="col">Strategy</th><th scope="col">Gen-0 Left</th><th scope="col">Recovered</th><th scope="col">Retention</th><th scope="col">Amp</th><th scope="col">Repair Bytes</th></tr>
         </thead>
         <tbody id="l3BenchBody"></tbody>
       </table>
@@ -465,7 +499,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       </div>
       <table>
         <thead>
-          <tr><th>Strategy</th><th>Done</th><th>Latency (ticks)</th><th>Total Ops</th><th>Wasted Ops</th><th>Execution evidence</th></tr>
+          <tr><th scope="col">Strategy</th><th scope="col">Done</th><th scope="col">Latency (ticks)</th><th scope="col">Total Ops</th><th scope="col">Wasted Ops</th><th scope="col">Execution evidence</th></tr>
         </thead>
         <tbody id="l4BenchBody"></tbody>
       </table>
@@ -512,6 +546,11 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       document.getElementById(id).addEventListener('click', async (...args) => {
         if (!operatorExperience?.allow(id)) return;
         try { return await handler(...args); }
+        catch (error) {
+          operatorExperience.report(id, `Action refused or interrupted: ${error.code || error.message}. Inspect retained evidence before retrying.`);
+          if (id === 'saveAuthorityBtn') document.getElementById('authorityStorageStatus').textContent = `Saved authority setup failed: ${error.message}. No replacement key was selected. Restore or storage errors do not establish that a key is absent.`;
+          throw error;
+        }
         finally { renderExperience(); }
       });
     }
@@ -556,6 +595,10 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     function logWire(tag, text) {
       const ts = new Date().toISOString().slice(11, 19);
       logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
+      const journey = /^(VM)/.test(tag) ? 'vm' : /^(POINTER|DNS|DOH|CF-DNS|AUTHORITY)/.test(tag) ? 'pointers'
+        : /^(PUT|WIPE|WARM|UOR)/.test(tag) ? 'objects' : /^(COMPUTE|RESUME)/.test(tag) ? 'compute'
+        : /^POLICY/.test(tag) ? 'resources' : /^(SYNC|MESH)/.test(tag) ? 'mesh' : null;
+      if (journey) document.getElementById(`${journey}ActionStatus`).textContent = `${tag}: ${text}`;
       renderExperience();
     }
 
@@ -653,8 +696,12 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
             ? `ONLINE (eth0=${st.ip})`
             : st.state === 'booting'
             ? `BOOTING LINUX 5.6 (${st.ip})...`
-            : `ERROR: ${st.message}`;
-        logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}`);
+            : st.state === 'offline'
+            ? st.message
+            : `ERROR: ${st.message || 'Unknown VM lifecycle observation'}`;
+        document.getElementById('vmShareObjects').checked = Boolean(vmNode.objectSharing);
+        document.getElementById('vmShareEthernet').checked = Boolean(vmNode.ethernetSharing);
+        logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}${st.message ? `: ${st.message}` : ''}`);
       }
     });
 
@@ -666,7 +713,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       onUpdate: ev => {
         renderLiveDbTable();
         if (ev.type === 'object_verified') {
-          logWire('UOR-DB', `Verified & mounted ${ev.entry.addressHex.slice(0, 22)}... (${ev.entry.originalLength}B) from ${ev.entry.source}`);
+          logWire('UOR-DB', `Verified local object ${ev.entry.addressHex.slice(0, 22)}... (${ev.entry.originalLength}B) from ${ev.entry.source}`);
         }
       }
     });
@@ -737,9 +784,12 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       btn.textContent = hidden ? 'Hide Metrics & Falsification Lab' : 'Show Metrics & Falsification Lab (C1–C10)';
     });
 
-    document.getElementById('copyCliProofBtn').addEventListener('click', () => {
-      navigator.clipboard?.writeText(cliProofBox.textContent);
-      logWire('CLI-PROOF', 'Copied external terminal verification commands to clipboard.');
+    document.getElementById('copyCliProofBtn').addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard?.writeText) throw Error('Clipboard unavailable; select the commands below and copy them manually.');
+        await navigator.clipboard.writeText(cliProofBox.textContent);
+        document.getElementById('meshActionStatus').textContent = 'Inspection commands copied. Inspection alone is not verification.';
+      } catch (error) { document.getElementById('meshActionStatus').textContent = error.message; }
     });
 
     bindModelAction('dbPutBtn', async () => {
@@ -764,8 +814,9 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     });
 
     bindModelAction('startJobBtn', () => {
-      const totalSteps = Number(document.getElementById('jobStepsInput').value) || 12;
-      const stepDelayMs = Number(document.getElementById('jobDelayInput').value) || 800;
+      const totalSteps = Number(document.getElementById('jobStepsInput').value);
+      const stepDelayMs = Number(document.getElementById('jobDelayInput').value);
+      if (!Number.isSafeInteger(totalSteps) || totalSteps < 3 || totalSteps > 60 || !Number.isSafeInteger(stepDelayMs) || stepDelayMs < 100 || stepDelayMs > 3000) throw Error('Choose 3–60 whole steps and a 100–3000 ms whole-number delay.');
       computeCoord.startOrResumeJob({ totalSteps, stepDelayMs }).catch(e => logWire('COMPUTE-ERR', e.code || e.message));
       logWire('COMPUTE', `Started ${totalSteps}-step distributed UOR reduction job`);
     });
@@ -791,19 +842,50 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     }
     bindModelAction('stopVmBtn', () => administerVm('stop'));
     bindModelAction('destroyVmBtn', () => administerVm('destroy'));
-    function showVmCommand() {
-      const evidence = vmNode.commandEvidence(vmNode.lastCommandId);
+    let vmStdoutCommandId;
+    function showVmStdout(bytes, commandId) {
+      vmStdoutCommandId = commandId;
+      const limit = 16384;
+      document.getElementById('vmStdoutText').textContent = bytes.length
+        ? new TextDecoder().decode(bytes.slice(0, limit)) : '(Empty output)';
+      document.getElementById('vmStdoutSummary').textContent = `Command ${commandId || 'unavailable'}: ${bytes.length} observed bytes. ${bytes.length > limit ? `Showing first ${limit} bytes. ` : ''}UTF-8 text preview; binary or cut characters may display replacements. This does not certify guest execution or object storage.`;
+    }
+    function selectedVmCommandId() {
+      return document.getElementById('vmCommandSelection').value || vmNode.lastCommandId;
+    }
+    function showVmCommand(selectLatest = false) {
+      const control = document.getElementById('vmCommandSelection');
+      const previous = selectLatest ? vmNode.lastCommandId : selectedVmCommandId();
+      const entries = vmNode.commands instanceof Map ? [...vmNode.commands.keys()] : [];
+      document.getElementById('vmRetainedCommandControls').hidden = entries.length === 0;
+      control.replaceChildren(...entries.map(id => {
+        const option = document.createElement('option'); option.value = id;
+        option.textContent = `${id}: ${vmNode.commandEvidence(id)?.outcome}`; return option;
+      }));
+      if (entries.includes(previous)) control.value = previous;
+      const evidence = vmNode.commandEvidence(selectedVmCommandId());
       document.getElementById('vmCommandOutcome').textContent = evidence
         ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}). Retained evidence: ${vmNode.commands.size}/128. Unknown effects stay retained; destroying the VM does not resolve them.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
     }
+    document.getElementById('vmCommandSelection').addEventListener('change', () => { showVmCommand(); renderExperience(); });
     bindModelAction('cancelVmObservationBtn', () => {
-      vmNode.cancelCommandObservation(vmNode.lastCommandId); showVmCommand();
+      vmNode.cancelCommandObservation(selectedVmCommandId()); showVmCommand();
     });
-    bindModelAction('forgetVmCommandBtn', () => { vmNode.forgetCommand(vmNode.lastCommandId); showVmCommand(); });
+    bindModelAction('forgetVmCommandBtn', () => {
+      const commandId = selectedVmCommandId();
+      if (vmNode.forgetCommand(commandId) && commandId === vmStdoutCommandId) {
+        vmStdoutCommandId = undefined;
+        document.getElementById('vmStdoutText').textContent = 'Output preview forgotten.';
+        document.getElementById('vmStdoutSummary').textContent = 'Resolved command evidence and its preview forgotten. Guest files and separately stored objects are unchanged.';
+      }
+      showVmCommand();
+    });
     bindModelAction('reconcileVmCommandBtn', async () => {
       try {
-        const bytes = await vmNode.reconcileCommand(vmNode.lastCommandId);
+        const commandId = selectedVmCommandId();
+        const bytes = await vmNode.reconcileCommand(commandId);
         if (bytes !== null) {
+          showVmStdout(bytes, commandId);
           const entry = await liveDb.put(bytes, { label: 'vm_stdout.txt', persistWarm: false, publicData: false });
           renderLiveDbTable(); logWire('VM-OBSERVED', `Stored observed output locally at ${entry.addressHex}`);
         }
@@ -821,8 +903,11 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       try {
         logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
         const pending = vmNode.executeShellCommand(cmd, 8000);
-        showVmCommand();
+        const commandId = vmNode.lastCommandId;
+        showVmCommand(true);
+        renderExperience();
         const outBytes = await pending;
+        showVmStdout(outBytes, commandId);
         const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
         renderLiveDbTable();
         logWire('VM-DONE', `Stored VM stdout in UOR DB at ${entry.addressHex}`);
@@ -974,7 +1059,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         trustedAuthorityKey: document.getElementById('pointerAuthorityInput').value.trim() };
       const pending = await pointerPublisher.restore(destination);
       if (pending) document.getElementById('pointerJsonInput').value = JSON.stringify(pending);
-      logWire('DNS-JOURNAL', pending ? 'Retained exact candidate loaded. Reconcile reads only; absence never authorizes repeating this write.' : 'No unknown write retained for this exact scope. Storage loss is not evidence that a write never happened.');
+      logWire('DNS-JOURNAL', `${destination.name} / zone ${destination.zoneId} / writer ${destination.trustedAuthorityKey}: ${pending ? 'Retained exact candidate loaded. Reconcile reads only; absence never authorizes repeating this write.' : 'No unknown write retained for this exact scope. Storage loss is not evidence that a write never happened.'}`);
     });
     bindModelAction('admitPointerBtn', async () => {
       const text = document.getElementById('pointerJsonInput').value;
@@ -1097,7 +1182,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         const objects = Array.from(liveDb.objects.values());
         const jobs = Array.from(computeCoord.jobs.values());
         const mesh = transport.lifecycle;
-        const vm = vmNode.lifecycle;
+        const vm = { ...vmNode.lifecycle, ...vmNode.commandLifecycle?.(selectedVmCommandId()) };
         const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
         const name = document.getElementById('dnsQueryInput').value.trim();
         const zoneId = document.getElementById('cfZoneInput').value.trim();

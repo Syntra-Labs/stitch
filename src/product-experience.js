@@ -42,6 +42,14 @@ export function createOperatorExperience({ document, snapshot, onRefused = () =>
   const nav = get('operatorJourneyNav');
   nav.setAttribute('aria-label', project('navigationLabel'));
   const buttons = new Map();
+  const descriptions = new Map(operatorActions.map(action => {
+    const control = get(action.control);
+    return [action.control, control.getAttribute?.('aria-describedby') || control.attributes?.['aria-describedby'] || ''];
+  }));
+  function report(control, message) {
+    const action = operatorActions.find(a => a.control === control);
+    if (action) get(`${action.journey}ActionStatus`).textContent = message;
+  }
   function navigate(journey) {
     selected = journey.id;
     render();
@@ -114,7 +122,7 @@ export function createOperatorExperience({ document, snapshot, onRefused = () =>
       const control = get(action.control);
       control.textContent = action.label;
       control.title = action.help;
-      control.setAttribute('aria-describedby', `${action.journey}Evidence`);
+      control.setAttribute('aria-describedby', [...new Set(`${descriptions.get(action.control)} ${action.journey}Evidence ${action.journey}ActionStatus`.trim().split(/\s+/))].join(' '));
       control.disabled = !project('actionAllowed', action.code, observation);
       // A separate control makes reconciliation explicit, not a renamed write.
       if (action.id === 'publish') control.hidden = observation.publicationUnknown;
@@ -126,11 +134,13 @@ export function createOperatorExperience({ document, snapshot, onRefused = () =>
     const observation = render();
     if (experienceActionAllowed(control, observation)) return true;
     const action = operatorActions.find(a => a.control === control);
-    onRefused(action ? `${action.label}: ${action.help}` : 'Unknown operator action refused.');
+    const message = action ? `${action.label}: ${action.help}` : 'Unknown operator action refused.';
+    report(control, message);
+    onRefused(message);
     return false;
   }
   render();
-  return Object.freeze({ facts, render, allow, navigate: id => {
+  return Object.freeze({ facts, render, allow, report, navigate: id => {
     const journey = operatorJourneys.find(j => j.id === id);
     if (!journey) throw new TypeError('Unknown operator journey');
     navigate(journey);

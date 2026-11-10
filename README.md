@@ -8,13 +8,15 @@ Stitch retains its five layers: object/ring operations, scheduling, storage, com
 
 - **Objects have full cryptographic commitments.** Canonical manifests bind raw encoding, byte lengths, indexed XOR fragments and every required dependency. Legacy FNV addresses remain in regression/conformance simulations.
 - **Placement is explicit.** Requested transfers are not stored copies. Acknowledgments bind checked fragment bytes to a request and holder. Committed placement, superseded copies and expiry are accounted separately. Different peer IDs do not prove independent failure domains.
-- **Jobs carry their program and input.** Every checkpoint is digest-checked and semantically replayed through model-derived ring operations. A well-formed but impossible state is refused. This does not certify arbitrary Linux VM effects.
+- **Jobs carry their program and input.** Every checkpoint is digest-checked and semantically replayed through model-derived ring operations. A well-formed but impossible state is refused. Versioned programs include full-width modular POW and width-tracked byte CONCAT with explicit capacity/work admission. This does not certify arbitrary Linux VM effects.
 - **Pointers have a single-writer contract.** A separately pinned Ed25519 authority, full object root, exact revision/predecessor and validity interval are required. Observer-local admission is not consensus.
 - **Policies propose; admission enforces limits.** Multidimensional budgets reserve before effects. Ambiguous effects remain charged. The live refresh scheduler uses elapsed monotonic time and enforces its own cap.
 - **Host failures have explicit recovery paths.** Mesh generations reject stale callbacks, DNS publication reconciles unknown writes before another mutation, and failed VM startup can be explicitly retried.
-- **The operator interface follows modeled journeys.** Only relevant controls and evidence appear for the current journey; uncertain publication has a distinct reconciliation action.
+- **The operator interface follows modeled journeys.** Relevant controls, persistent labels and local results appear for the current journey. Restarted publication and every retained VM command have explicit reconciliation paths; shell output has a text view.
 - **Internet formats are implemented at the byte boundary.** JCS input/encoding, DNS-message DoH and bounded ntfy framing replace the earlier partial formats. Concrete interoperability tests remain distinct from browser/provider qualification.
 - **The public relay is opt-in.** Publishing sufficient fragments or a checkpoint discloses its content. A channel name is not a privacy control.
+
+Origin-local signing authority and publication intent can be restored after reload. This is not a private-key backup, cross-device authority or protection against origin storage loss.
 
 See the [operator journeys](docs/operator-experience.md), [lifecycle bindings](docs/lifecycle-effects.md), [JCS codec](docs/canonical-json.md), [DNS client](docs/dns-client.md), and [relay framing](docs/relay-framing.md).
 
@@ -51,7 +53,7 @@ node scripts/check-model.mjs
 sh scripts/check-model-sdk.sh
 ```
 
-The second command requires the pinned SDK environment. It must run real LexLean/Lean and PrismPM gates; extraction or runtime tests alone do not establish that theorems compiled. No externally hosted verifier is required. Formal acceptance is reported only from an actual successful SDK run.
+The second command requires the pinned SDK environment. It must run real LexLean/Lean and PrismPM gates; extraction or runtime tests alone do not establish that theorems compiled. No externally hosted verifier is required. Formal acceptance is reported only from an actual successful SDK run. See the [native build diagnosis and passing-project comparison](docs/native-build-diagnosis.md) for the reproduced compiler issue; no native gate was replaced or weakened.
 
 ## Nonclaims
 

@@ -177,17 +177,18 @@ function coerce(value,type,module) {
   if(!constructor||!Array.isArray(value.fields)||value.fields.length!==constructor.fields.length)throw new TypeError('model constructor required for '+id);
   return {tag:value.tag,fields:value.fields.map((v,i)=>coerce(v,constructor.fields[i],id.slice(0,id.lastIndexOf('.'))))};
 }
-function evaluate(ast,env,module) {
+const tailCall = Symbol("source-tail-call");
+function evaluate(ast,env,module,tail=false) {
   switch(ast.k) {
     case 'nat':return BigInt(ast.value);
     case 'bool':case 'string':return ast.value;
     case 'var':if(!Object.hasOwn(env,ast.name))throw Error('unbound model variable');return env[ast.name];
-    case 'if':return evaluate(evaluate(ast.cond,env,module)?ast.yes:ast.no,env,module);
+    case 'if':return evaluate(evaluate(ast.cond,env,module)?ast.yes:ast.no,env,module,tail);
     case 'not':return !evaluate(ast.value,env,module);
     case 'project':return evaluate(ast.value,env,module)[ast.field];
-    case 'let':return evaluate(ast.body,{...env,[ast.name]:evaluate(ast.value,env,module)},module);
+    case 'let':return evaluate(ast.body,{...env,[ast.name]:evaluate(ast.value,env,module)},module,tail);
     case 'record':return Object.fromEntries(Object.entries(ast.values).map(([k,v])=>[k,evaluate(v,env,module)]));
-    case 'call':return invoke(qualify(module,ast.name),ast.args.map(x=>evaluate(x,env,module)));
+    case 'call': {const id=qualify(module,ast.name),args=ast.args.map(x=>evaluate(x,env,module));return tail?{[tailCall]:true,id,args}:invoke(id,args);}
     case 'nil':return [];
     case 'cons':return [evaluate(ast.head,env,module),...evaluate(ast.tail,env,module)];
     case 'ctor':return {tag:ast.name.split('.').at(-1),fields:ast.args.map(x=>evaluate(x,env,module))};
@@ -195,7 +196,7 @@ function evaluate(ast,env,module) {
       const value=evaluate(ast.value,env,module);let tag,fields;
       if(Array.isArray(value)){tag=value.length?'cons':'nil';fields=value.length?[value[0],value.slice(1)]:[];}else if(typeof value==='bigint'){tag=value===0n?'zero':'succ';fields=value===0n?[]:[value-1n];}else if(typeof value==='boolean'){tag=value?'true':'false';fields=[];}else {tag=value.tag;fields=value.fields;}
       const b=ast.branches.find(x=>x.constructor.split('.').at(-1)===tag);
-      if(!b||b.binders.length!==fields.length)throw Error('nonexhaustive model match');return evaluate(b.body,{...env,...Object.fromEntries(b.binders.map((n,i)=>[n,fields[i]]))},module);
+      if(!b||b.binders.length!==fields.length)throw Error('nonexhaustive model match');return evaluate(b.body,{...env,...Object.fromEntries(b.binders.map((n,i)=>[n,fields[i]]))},module,tail);
     }
     case 'binary': {
       const left=evaluate(ast.left,env,module);
@@ -211,7 +212,7 @@ function evaluate(ast,env,module) {
     default:throw Error('unsupported model node '+ast.k);
   }
 }
-function invoke(id,args) {const d=definitions[id];if(!d||d.params.length!==args.length)throw Error('unknown model function/arity '+id);return evaluate(d.body,Object.fromEntries(d.params.map((p,i)=>[p.name,args[i]])),d.module);}
+function invoke(id,args) {for(;;){const d=definitions[id];if(!d||d.params.length!==args.length)throw Error('unknown model function/arity '+id);const result=evaluate(d.body,Object.fromEntries(d.params.map((p,i)=>[p.name,args[i]])),d.module,true);if(!result?.[tailCall])return result;id=result.id;args=result.args;}}
 export const model=Object.freeze(Object.fromEntries(Object.entries(definitions).map(([id,d])=>[id,(...args)=>{if(args.length!==d.params.length)throw new TypeError('model arity '+id);return invoke(id,args.map((v,i)=>coerce(v,d.params[i].type,d.module)));}])));
 `;
 function canonical(value) {

@@ -2,14 +2,14 @@
   "format": "Stitch exact-source verification summary",
   "version": 1,
   "assurance": "Summary of actual pinned LexLean/Lean/leanchecker/axiom verification; not a native Prism artifact certificate or whole-host guarantee",
-  "attestation_id": "31782b3e717029e21ba5aba09cb8dd6267677e8161c8b6575f8a8f6fa299db6b",
-  "attestation_sha256": "a891b94745cdf27fbf2a684a2b49880196ebe286b67e0542775e1f8271e706ce",
-  "source_id": "0b1e2dbe193e3f7e1da18b5c55ddd8d9ea411b323e11e360868cf83bc77ef4df",
-  "semantic_id": "2f4e282f85190088bc06454c5e06f5e396358eac8238c6f87579f8615efb393f",
-  "build_id": "275491f4d6effacf747b1436c7064dd74bfab6e91b6bb6f8febca6d0be751c66",
+  "attestation_id": "c90d738b3bff24bb5c05111e3e6a9f6e542b004708eeac42f3fcaab0ddd70706",
+  "attestation_sha256": "cea4cf8af6bc077ee85d7fbca5e82147d5cadb2137c652aa615d4ab160c10569",
+  "source_id": "3fb3df1a8ac8576c18c39c41f9479491612e761d0e760e258c4331f2f731c96f",
+  "semantic_id": "759fb40df03a9ac51bdd9201f13bde0f0d5be988f84899fdd78d2d1f30155ade",
+  "build_id": "edb3bbc658f466faa24e49b8e33b51ed9f0cf5b16a35fe4ad1096320e54d1c6e",
   "status": "verified",
   "module_count": 23,
-  "declaration_audits": 1232,
+  "declaration_audits": 1266,
   "successful_processes": 79,
   "processes_by_tool": {
     "lean": 53,
@@ -190,7 +190,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
+      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -210,7 +210,7 @@
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
-      "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",

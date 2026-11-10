@@ -490,7 +490,7 @@ definition{
   name: actionVmReconcile,
   parameters: [],
   result: Action,
-  body: (record Action {code := 25, id := "VmReconcile", control := "reconcileVmCommandBtn", journey := "vm", label := "Observe Last Command Result", help := "Observe the same command result without executing the command again."})
+  body: (record Action {code := 25, id := "VmReconcile", control := "reconcileVmCommandBtn", journey := "vm", label := "Observe Selected Command Result", help := "Observe the same command result without executing the command again."})
 }
 
 definition{
@@ -813,7 +813,7 @@ definition{
   name: publicationSetupVisible,
   parameters: [facts : Facts],
   result: Bool,
-  body: ((project facts authorityPinned) && ((project facts hasObject) || ((project facts headRetained) || (project facts publicationUnknown))))
+  body: (project facts authorityPinned)
 }
 
 definition{name: explanationLabel, parameters: [], result: String, body: "What this evidence means"}

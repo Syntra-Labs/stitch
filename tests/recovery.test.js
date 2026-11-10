@@ -116,3 +116,25 @@ test('explicit codec budgets preserve bytes and reject invalid bounds', () => {
   }
   assert.throws(() => canonicalBytes({ value: 'é' }, { maxBytes: 13 }));
 });
+
+test('typed CONCAT and POW survive recovery with exact widths and priced work admission', async () => {
+  const { programWork, resumeProgram, replayProgram } = await import('../src/layer4-compute/replay.js');
+  const program = { version: 2, bits: 8, capacityBits: 24, initialValueHex: '0x1', instructions: [
+    { op: 14, argBits: 16, argHex: '0x2' }, { op: 17, argBits: 24, argHex: '0x3' }
+  ] };
+  const checkpoint = await createCheckpoint(program, 1);
+  const bundle = { ...empty(), jobs: [{ program, checkpoint }] };
+  const encoded = await exportRecoveryBundle(bundle);
+  const cost = programWork(program, 0, 1);
+  assert.equal((await verifyRecoveryBundle(encoded)).cost.replaySteps, cost);
+  assert.ok(cost > checkpoint.stepIndex);
+  await assert.rejects(new RecoveryVault({ replaySteps: cost - 1 }).import(encoded), /replay-limit/);
+  const vault = new RecoveryVault({ replaySteps: cost }); await vault.import(encoded);
+  const restored = vault.snapshot().bundle.jobs[0];
+  assert.equal(restored.checkpoint.stateBits, 24);
+  const resumed = await resumeProgram(restored.program, restored.checkpoint);
+  const expected = replayProgram(program);
+  assert.equal(resumed.stateBits, expected.stateBits); assert.equal(resumed.stateHex, expected.stateHex);
+  assert.deepEqual(resumed.effects, []);
+  assert.equal(await vault.export(), encoded);
+});

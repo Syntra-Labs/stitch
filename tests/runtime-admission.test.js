@@ -10,7 +10,7 @@ import { parseCanonicalJson } from '../src/layer1-uor/custody.js';
 import { ResourceAdmission, wireBytes, reserveNetwork } from '../src/layer2-schedulers/policy.js';
 import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from '../src/layer1-uor/pointer.js';
 import { LiveUorMeshDatabase } from '../src/layer3-storage/index.js';
-import { LiveDistributedComputeCoordinator } from '../src/layer4-compute/index.js';
+import { LinuxVmNode, LiveDistributedComputeCoordinator } from '../src/layer4-compute/index.js';
 import { createCheckpoint, demoProgram, replayProgram } from '../src/layer4-compute/replay.js';
 import { DohResolver, WebRtcTransportNode, readBoundedText } from '../src/layer5-transport/index.js';
 import { BudgetPacedSurvivalScheduler } from '../src/layer2-schedulers/index.js';
@@ -162,7 +162,7 @@ test('retained pointer heads serialize forks, reject foreign pins, and preserve 
   assert.equal(noCache.head, null);
 });
 
-async function browserHarness({ AdmissionClass = ResourceAdmission, publicationMode = 'success' } = {}) {
+async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityClass = SyntheticAuthorityStore, VmClass = null, publicationMode = 'success' } = {}) {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1]
     .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
@@ -215,11 +215,11 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
     fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
     URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
     installRecoveryControls, createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
-    BrowserAuthorityStore: SyntheticAuthorityStore, ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
+    BrowserAuthorityStore: AuthorityClass, ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
     BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,
-    LinuxVmNode: class {
+    LinuxVmNode: VmClass ? class extends VmClass { constructor(options) { super(options); vm = this; } } : class {
       constructor(options) { vm = this; this.options = options; this.phase = 'idle'; this.boots = 0; this.commands = 0; }
       get lifecycle() { return { phase: this.phase, canBoot: !['ready', 'booting'].includes(this.phase), canExecute: this.phase === 'ready' }; }
       commandEvidence() { return null; }
@@ -531,4 +531,86 @@ test('actual browser recovery controls admit bounded files locally and model the
   await h.click('importRecoveryBtn'); assert.equal(reads, 1);
   assert.match(field('recoveryStatus').textContent, /Refused/);
   assert.equal(field('recoveryObjects').children.length, 1);
+});
+
+
+test('browser exposes precise local errors, checks input ranges and reports clipboard failure honestly', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  await h.click('copyCliProofBtn');
+  assert.match(field('meshActionStatus').textContent, /Clipboard unavailable/);
+  field('jobStepsInput').value = '1.5'; field('jobDelayInput').value = '800';
+  await assert.rejects(h.click('startJobBtn'), /whole steps/);
+  assert.match(field('computeActionStatus').textContent, /Action refused/);
+  assert.equal(h.coordinator.jobs.size, 0);
+  field('pointerAuthorityInput').value = 'a'.repeat(64); field('pointerAuthorityInput').listeners.input();
+  assert.equal(field('pointerPublicationSetup').hidden, false, 'restart recovery must not require volatile object RAM');
+  assert.equal(field('loadPublicationBtn').disabled, false);
+  assert.equal(field('writeSignedDnsBtn').disabled, true);
+});
+
+test('browser keeps authority/storage failures beside the authority controls without inventing replacement success', async () => {
+  class BrokenStore extends SyntheticAuthorityStore { transaction() { return Promise.reject(Error('synthetic storage unavailable')); } }
+  const h = await browserHarness({ AuthorityClass: BrokenStore });
+  await assert.rejects(h.click('saveAuthorityBtn'), /synthetic storage unavailable/);
+  assert.match(h.document.getElementById('authorityStorageStatus').textContent, /setup failed/);
+  assert.match(h.document.getElementById('pointersActionStatus').textContent, /synthetic storage unavailable/);
+  assert.equal(h.document.getElementById('pointerAuthorityInput').value, '');
+  assert.equal(h.published.length, 0);
+});
+
+test('browser stdout text remains accessible when output object storage refuses and stop is not labeled error', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  h.vm.setPhase('ready'); field('vmCmdInput').value = 'echo output';
+  h.db.put = async () => { throw Error('synthetic storage refusal'); };
+  await h.click('runVmCmdBtn');
+  assert.equal(field('vmStdoutText').textContent, 'observed guest stdout');
+  assert.match(field('vmStdoutSummary').textContent, /21 observed bytes/);
+  assert.match(field('vmActionStatus').textContent, /synthetic storage refusal/);
+  h.vm.options.onStatus({ state: 'offline', message: 'VM stopped. Destroy before booting a fresh VM.' });
+  assert.match(field('vmStatusLabel').textContent, /^VM stopped/);
+  assert.doesNotMatch(field('vmStatusLabel').textContent, /ERROR/);
+});
+
+
+test('browser can reconcile an earlier retained command without selecting or replaying the latest command', async () => {
+  let dispatches = 0;
+  class RetainedVm extends LinuxVmNode {
+    constructor(options) {
+      super(options); this.vmPhase = 'Ready'; this.bootGeneration = 4;
+      this.v86 = { read_file: async name => name.startsWith('done') ? Uint8Array.of(1) : new TextEncoder().encode('earlier result'),
+        keyboard_send_text() { dispatches++; } };
+      for (const [id, outcome] of [['earlier', 'unknown'], ['latest', 'completed']]) {
+        this.commands.set(id, { id, outcome, generation: 4, vm: this.v86, dispatched: true, outName: `out_${id}`, doneName: `done_${id}`, output: Uint8Array.of(9) });
+      }
+      this.lastCommandId = 'latest';
+    }
+  }
+  const h = await browserHarness({ VmClass: RetainedVm }); const field = id => h.document.getElementById(id);
+  field('vmCommandSelection').value = 'earlier'; field('vmCommandSelection').listeners.change();
+  assert.equal(field('vmCommandSelection').children.length, 2);
+  assert.equal(field('forgetVmCommandBtn').disabled, true, 'unknown effects must stay retained');
+  assert.equal(field('reconcileVmCommandBtn').disabled, false);
+  await h.click('reconcileVmCommandBtn');
+  assert.equal(h.vm.lastCommandId, 'latest'); assert.equal(dispatches, 0);
+  assert.equal(h.vm.commandEvidence('earlier').outcome, 'completed');
+  assert.equal(field('vmStdoutText').textContent, 'earlier result');
+  assert.match(field('vmStdoutSummary').textContent, /^Command earlier:/);
+  assert.equal(field('forgetVmCommandBtn').disabled, false);
+  await h.click('forgetVmCommandBtn');
+  assert.equal(h.vm.commands.has('earlier'), false); assert.equal(h.vm.commands.has('latest'), true);
+  assert.equal(field('vmStdoutText').textContent, 'Output preview forgotten.');
+});
+
+
+test('browser bounds text output without hiding its full byte length and distinguishes empty output', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  h.vm.setPhase('ready'); field('vmCmdInput').value = 'large output';
+  h.vm.executeShellCommand = async () => new Uint8Array(17000).fill(65);
+  await h.click('runVmCmdBtn');
+  assert.equal(field('vmStdoutText').textContent.length, 16384);
+  assert.match(field('vmStdoutSummary').textContent, /17000 observed bytes. Showing first 16384 bytes/);
+  h.vm.executeShellCommand = async () => new Uint8Array();
+  await h.click('runVmCmdBtn');
+  assert.equal(field('vmStdoutText').textContent, '(Empty output)');
+  assert.match(field('vmStdoutSummary').textContent, /0 observed bytes/);
 });

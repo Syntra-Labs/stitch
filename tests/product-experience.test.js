@@ -173,3 +173,24 @@ test('recovery and guest administration context is source-owned and refuses inap
   assert.equal(experienceActionAllowed('bootVmBtn', { ...base, vmAdminBlocked: true }), false);
   assert.equal(experienceActionAllowed('reconcileVmCommandBtn', { ...base, vmCanReconcileCommand: true }), true);
 });
+
+test('pinned authority can reach provider scope and saved-write loading after a fresh reload without object RAM', () => {
+  const facts = experienceFacts({ authorityPinned: true });
+  assert.equal(call('publicationSetupVisible', facts), true);
+  assert.equal(experienceActionAllowed('loadPublicationBtn', facts), true);
+  assert.equal(experienceActionAllowed('writeSignedDnsBtn', facts), false);
+});
+
+
+test('action explanations preserve authored descriptions and local refusal feedback without stealing focus', () => {
+  const document = dom(); const get = id => document.getElementById(id);
+  get('writeSignedDnsBtn').attributes['aria-describedby'] = 'customExplanation';
+  const experience = createOperatorExperience({ document, snapshot: () => ({}) });
+  experience.allow('writeSignedDnsBtn');
+  assert.match(get('pointersActionStatus').textContent, /Without provider credentials/);
+  assert.match(get('writeSignedDnsBtn').attributes['aria-describedby'], /^customExplanation /);
+  assert.match(get('writeSignedDnsBtn').attributes['aria-describedby'], /pointersActionStatus/);
+  assert.equal(get('pointersPanel').focused, undefined);
+  experience.report('dbPutBtn', 'Exact local storage refusal');
+  assert.equal(get('objectsActionStatus').textContent, 'Exact local storage refusal');
+});

@@ -230,3 +230,18 @@ test('explicit resolved evidence disposal releases command capacity and output; 
   assert.equal(f.node.forgetCommand(unknown), false); assert.equal(f.node.commands.has(unknown), true);
   assert.equal(f.node.forgetCommand('resolved_1'), true);
 });
+
+
+test('retained command admission can be inspected by handle without mutating the latest selection', t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const command = { generation: f.node.bootGeneration, vm: f.node.v86, dispatched: true, outcome: 'unknown' };
+  f.node.commands.set('prior', command); f.node.commands.set('latest', { ...command, outcome: 'completed' });
+  f.node.lastCommandId = 'latest';
+  assert.equal(f.node.commandLifecycle('prior').canForgetCommand, false);
+  assert.equal(f.node.commandLifecycle('prior').canReconcileCommand, true);
+  assert.equal(f.node.commandLifecycle('latest').canForgetCommand, true);
+  assert.equal(f.node.commandLifecycle('missing').canReconcileCommand, false);
+  assert.equal(f.node.lastCommandId, 'latest');
+  f.node.bootGeneration++;
+  assert.equal(f.node.commandLifecycle('prior').canReconcileCommand, false);
+});

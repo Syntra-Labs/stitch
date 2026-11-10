@@ -57,15 +57,24 @@ definition{
   name: instructionAllowed,
   parameters: [opcode : Nat],
   result: Bool,
-  body: ((opcode <=? 13) || ((opcode =? 15) || (opcode =? 16)))
+  body: ((opcode <=? 13) || ((opcode =? 15) || ((opcode =? 16) || (opcode =? 17))))
+}
+
+definition{
+  name: naturalPower,
+  parameters: [fuel : Nat, base : Nat, exponent : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match fuel
+    | Nat.zero => accumulated
+    | Nat.succ rest => (if (exponent =? 0) then accumulated else (naturalPower rest (prim multiply base base : Nat) (prim quotient exponent 2 0 : Nat) (if ((prim remainder exponent 2 0 : Nat) =? 1) then (prim multiply accumulated base : Nat) else accumulated)))),
+  recursive_argument: fuel
 }
 
 definition{
   name: ringModulus,
   parameters: [bits : Nat],
   result: Nat,
-  body: (match bits | Nat.zero => 1 | Nat.succ rest => (prim multiply 2 (ringModulus rest) : Nat)),
-  recursive_argument: bits
+  body: (naturalPower bits 2 bits 1)
 }
 
 definition{
@@ -76,20 +85,125 @@ definition{
 }
 
 definition{
+  name: bitwiseAcc,
+  parameters: [fuel : Nat, opcode : Nat, left : Nat, right : Nat, place : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match fuel
+    | Nat.zero => accumulated
+    | Nat.succ rest => (if ((left =? 0) && (right =? 0)) then accumulated else (let lowLeft : Nat := (prim remainder left 2 0 : Nat); (let lowRight : Nat := (prim remainder right 2 0 : Nat); (let low : Nat := (if (opcode =? 7) then (if (lowLeft =? lowRight) then 0 else 1) else (if (opcode =? 8) then (prim multiply lowLeft lowRight : Nat) else (if ((lowLeft + lowRight) =? 0) then 0 else 1))); (bitwiseAcc rest opcode (prim quotient left 2 0 : Nat) (prim quotient right 2 0 : Nat) (prim multiply place 2 : Nat) (accumulated + (prim multiply low place : Nat)))))))),
+  recursive_argument: fuel
+}
+
+definition{
   name: natBitwise,
   parameters: [fuel : Nat, opcode : Nat, left : Nat, right : Nat],
   result: Nat,
+  body: (bitwiseAcc fuel opcode left right 1 0)
+}
+
+definition{
+  name: binaryLengthAcc,
+  parameters: [fuel : Nat, value : Nat, accumulated : Nat],
+  result: Nat,
   body: (match fuel
-    | Nat.zero => 0
-    | Nat.succ rest => (if ((left =? 0) && (right =? 0)) then 0 else (let lowLeft : Nat := (prim remainder left 2 0 : Nat); (let lowRight : Nat := (prim remainder right 2 0 : Nat); (let low : Nat := (if (opcode =? 7) then (if (lowLeft =? lowRight) then 0 else 1) else (if (opcode =? 8) then (prim multiply lowLeft lowRight : Nat) else (if ((lowLeft + lowRight) =? 0) then 0 else 1))); (low + (prim multiply 2 (natBitwise rest opcode (prim quotient left 2 0 : Nat) (prim quotient right 2 0 : Nat)) : Nat))))))),
+    | Nat.zero => accumulated
+    | Nat.succ rest => (if (value =? 0) then accumulated else (binaryLengthAcc rest (prim quotient value 2 0 : Nat) (accumulated + 1)))),
   recursive_argument: fuel
+}
+
+definition{
+  name: binaryLength,
+  parameters: [fuel : Nat, value : Nat],
+  result: Nat,
+  body: (binaryLengthAcc fuel value 0)
+}
+
+definition{
+  name: ringPow,
+  parameters: [fuel : Nat, base : Nat, exponent : Nat, modulus : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match fuel
+    | Nat.zero => (normalize accumulated modulus)
+    | Nat.succ rest => (if (exponent =? 0) then (normalize accumulated modulus) else (ringPow rest (normalize (prim multiply base base : Nat) modulus) (prim quotient exponent 2 0 : Nat) modulus (if ((prim remainder exponent 2 0 : Nat) =? 1) then (normalize (prim multiply accumulated base : Nat) modulus) else accumulated)))),
+  recursive_argument: fuel
+}
+
+definition{
+  name: powerWorkAcc,
+  parameters: [fuel : Nat, exponent : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match fuel
+    | Nat.zero => accumulated
+    | Nat.succ rest => (if (exponent =? 0) then accumulated else (powerWorkAcc rest (prim quotient exponent 2 0 : Nat) (accumulated + (1 + (prim remainder exponent 2 0 : Nat)))))),
+  recursive_argument: fuel
+}
+
+definition{
+  name: powerWork,
+  parameters: [fuel : Nat, exponent : Nat],
+  result: Nat,
+  body: (powerWorkAcc fuel exponent 0)
+}
+
+definition{
+  name: instructionWork,
+  parameters: [instruction : Instruction, bits : Nat],
+  result: Nat,
+  body: (if ((project instruction opcode) =? 17) then (1 + (powerWork bits (project instruction argument))) else 1)
+}
+
+theorem{
+  name: zeroExponentIsRingUnit,
+  parameters: [fuel : Nat, base : Nat, modulus : Nat],
+  statement: ((ringPow fuel base 0 modulus 1) = (normalize 1 modulus)),
+  proof: induction{
+    branches: [
+      {proof: linear_arithmetic{definitions: [ringPow]}, binders: [], constructor: zero},
+      {
+        proof: linear_arithmetic{definitions: [ringPow]},
+        binders: [rest, hypothesis],
+        constructor: succ
+      }
+    ],
+    scrutinee: fuel
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: zeroExponentCostsNoMultiplications,
+  parameters: [fuel : Nat],
+  statement: ((powerWork fuel 0) = 0),
+  proof: induction{
+    branches: [
+      {
+        proof: linear_arithmetic{definitions: [powerWork, powerWorkAcc]},
+        binders: [],
+        constructor: zero
+      },
+      {
+        proof: linear_arithmetic{definitions: [powerWork, powerWorkAcc]},
+        binders: [rest, hypothesis],
+        constructor: succ
+      }
+    ],
+    scrutinee: fuel
+  },
+  axioms: [propext]
 }
 
 definition{
   name: ringStep,
   parameters: [instruction : Instruction, value : Nat, modulus : Nat],
   result: Nat,
-  body: (let x : Nat := (normalize value modulus); (let y : Nat := (normalize (project instruction argument) modulus); (let op : Nat := (project instruction opcode); (normalize (if (op =? 0) then (prim subtract modulus x : Nat) else (if (op =? 1) then (prim subtract (prim subtract modulus 1 : Nat) x : Nat) else (if (op =? 2) then (x + 1) else (if (op =? 3) then (prim subtract (x + modulus) 1 : Nat) else (if (op =? 4) then (x + y) else (if (op =? 5) then (prim subtract (x + modulus) y : Nat) else (if (op =? 6) then (prim multiply x y : Nat) else (if (op =? 7) then (natBitwise modulus 7 x y) else (if (op =? 8) then (natBitwise modulus 8 x y) else (if (op =? 9) then (natBitwise modulus 9 x y) else (if (op =? 10) then (if (x <=? y) then 1 else 0) else (if (op =? 11) then (if (x <? y) then 1 else 0) else (if (op =? 12) then (if (y <=? x) then 1 else 0) else (if (op =? 13) then (if (y <? x) then 1 else 0) else (if (op =? 15) then (prim quotient x y 0 : Nat) else (if (op =? 16) then (prim remainder x y 0 : Nat) else x)))))))))))))))) modulus))))
+  body: (let x : Nat := (normalize value modulus); (let y : Nat := (normalize (project instruction argument) modulus); (let op : Nat := (project instruction opcode); (normalize (if (op =? 0) then (prim subtract modulus x : Nat) else (if (op =? 1) then (prim subtract (prim subtract modulus 1 : Nat) x : Nat) else (if (op =? 2) then (x + 1) else (if (op =? 3) then (prim subtract (x + modulus) 1 : Nat) else (if (op =? 4) then (x + y) else (if (op =? 5) then (prim subtract (x + modulus) y : Nat) else (if (op =? 6) then (prim multiply x y : Nat) else (if (op =? 7) then (natBitwise modulus 7 x y) else (if (op =? 8) then (natBitwise modulus 8 x y) else (if (op =? 9) then (natBitwise modulus 9 x y) else (if (op =? 10) then (if (x <=? y) then 1 else 0) else (if (op =? 11) then (if (x <? y) then 1 else 0) else (if (op =? 12) then (if (y <=? x) then 1 else 0) else (if (op =? 13) then (if (y <? x) then 1 else 0) else (if (op =? 15) then (prim quotient x y 0 : Nat) else (if (op =? 16) then (prim remainder x y 0 : Nat) else (if (op =? 17) then (ringPow (binaryLength modulus y) x y modulus 1) else x))))))))))))))))) modulus))))
+}
+
+theorem{
+  name: powerRetainsExponentBitsAboveU64,
+  parameters: [],
+  statement: ((ringStep (record Instruction {opcode := 17, argument := 1267650600228229401496703205376}) 3 340282366920938463463374607431768211456) = 54740098937849875961756722746384973825),
+  proof: reflexivity{}
 }
 
 definition{
@@ -571,6 +685,203 @@ theorem{
   statement: ((project current step) <= (project (advanceCheckpoint job current candidate jobCommitments currentCommitments candidateCommitments maximumSteps expectedModelRoot) step)),
   proof: linear_arithmetic{
     definitions: [advanceCheckpoint, checkpointSuccessor, committedCheckpointSuccessor]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+structure{
+  name: Word,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: bits, type: Nat}, {name: value, type: Nat}]
+}
+
+structure{
+  name: TypedInstruction,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: opcode, type: Nat}, {name: argument, type: Nat}, {name: argumentBits, type: Nat}]
+}
+
+definition{
+  name: byteWidth,
+  parameters: [bits : Nat],
+  result: Bool,
+  body: ((prim remainder bits 8 0 : Nat) =? 0)
+}
+
+definition{
+  name: wordAllowed,
+  parameters: [word : Word],
+  result: Bool,
+  body: ((byteWidth (project word bits)) && ((project word value) <? (ringModulus (project word bits))))
+}
+
+definition{
+  name: operandWidth,
+  parameters: [left : Nat, right : Nat],
+  result: Nat,
+  body: (if (left <=? right) then right else left)
+}
+
+definition{
+  name: arithmeticWidth,
+  parameters: [left : Nat, right : Nat],
+  result: Nat,
+  body: (operandWidth 8 (operandWidth left right))
+}
+
+definition{
+  name: typedResultBits,
+  parameters: [instruction : TypedInstruction, bits : Nat],
+  result: Nat,
+  body: (if ((project instruction opcode) =? 14) then (bits + (project instruction argumentBits)) else (if ((10 <=? (project instruction opcode)) && ((project instruction opcode) <=? 13)) then 8 else (arithmeticWidth bits (project instruction argumentBits))))
+}
+
+definition{
+  name: typedInstructionAdmission,
+  parameters: [instruction : TypedInstruction, bits : Nat, capacityBits : Nat, resultBits : Nat],
+  result: Bool,
+  body: ((resultBits <=? capacityBits) && ((byteWidth bits) && ((bits <=? capacityBits) && (if ((project instruction opcode) <=? 3) then (((project instruction argumentBits) =? 0) && ((project instruction argument) =? 0)) else ((byteWidth (project instruction argumentBits)) && (((project instruction argument) <? (ringModulus (project instruction argumentBits))) && (if ((project instruction opcode) =? 14) then ((bits + (project instruction argumentBits)) <=? capacityBits) else ((instructionAllowed (project instruction opcode)) && (((arithmeticWidth bits (project instruction argumentBits)) <=? capacityBits) && (if (((project instruction opcode) =? 15) || ((project instruction opcode) =? 16)) then (0 <? (project instruction argument)) else true))))))))))
+}
+
+definition{
+  name: typedInstructionAllowed,
+  parameters: [instruction : TypedInstruction, bits : Nat, capacityBits : Nat],
+  result: Bool,
+  body: (typedInstructionAdmission instruction bits capacityBits (typedResultBits instruction bits))
+}
+
+definition{
+  name: typedProgramAllowed,
+  parameters: [instructions : (List TypedInstruction), bits : Nat, capacityBits : Nat],
+  result: Bool,
+  body: (match instructions
+    | List.nil => ((byteWidth bits) && (bits <=? capacityBits))
+    | List.cons head tail => ((typedInstructionAllowed head bits capacityBits) && (typedProgramAllowed tail (typedResultBits head bits) capacityBits))),
+  recursive_argument: instructions
+}
+
+definition{
+  name: concatWords,
+  parameters: [left : Word, right : Word],
+  result: Word,
+  body: (record Word {bits := ((project left bits) + (project right bits)), value := ((prim multiply (project left value) (ringModulus (project right bits)) : Nat) + (project right value))})
+}
+
+definition{
+  name: typedStep,
+  parameters: [instruction : TypedInstruction, word : Word],
+  result: Word,
+  body: (if ((project instruction opcode) =? 14) then (concatWords word (record Word {bits := (project instruction argumentBits), value := (project instruction argument)})) else (record Word {bits := (typedResultBits instruction (project word bits)), value := (ringStep (record Instruction {opcode := (project instruction opcode), argument := (project instruction argument)}) (project word value) (ringModulus (arithmeticWidth (project word bits) (project instruction argumentBits))))}))
+}
+
+definition{
+  name: typedInstructionWork,
+  parameters: [instruction : TypedInstruction, bits : Nat],
+  result: Nat,
+  body: (let width : Nat := (arithmeticWidth bits (project instruction argumentBits)); (let limbs : Nat := (prim quotient (width + 63) 64 0 : Nat); (let productWork : Nat := (prim multiply limbs limbs : Nat); (if ((project instruction opcode) =? 14) then (1 + (prim quotient (bits + (project instruction argumentBits)) 8 0 : Nat)) else (if ((project instruction opcode) =? 17) then (1 + (prim multiply productWork (powerWork width (project instruction argument)) : Nat)) else (if (((project instruction opcode) =? 6) || ((15 <=? (project instruction opcode)) && ((project instruction opcode) <=? 16))) then (1 + productWork) else (if ((7 <=? (project instruction opcode)) && ((project instruction opcode) <=? 9)) then (1 + width) else (1 + limbs))))))))
+}
+
+definition{
+  name: typedProgramWorkAcc,
+  parameters: [instructions : (List TypedInstruction), bits : Nat, accumulated : Nat],
+  result: Nat,
+  body: (match instructions
+    | List.nil => accumulated
+    | List.cons head tail => (typedProgramWorkAcc tail (typedResultBits head bits) (accumulated + (typedInstructionWork head bits)))),
+  recursive_argument: instructions
+}
+
+definition{
+  name: typedProgramWork,
+  parameters: [instructions : (List TypedInstruction), bits : Nat],
+  result: Nat,
+  body: (typedProgramWorkAcc instructions bits 0)
+}
+
+definition{
+  name: typedExecute,
+  parameters: [instructions : (List TypedInstruction), word : Word],
+  result: Word,
+  body: (match instructions
+    | List.nil => word
+    | List.cons head tail => (typedExecute tail (typedStep head word))),
+  recursive_argument: instructions
+}
+
+definition{
+  name: appendTypedProgram,
+  parameters: [prefix : (List TypedInstruction), suffix : (List TypedInstruction)],
+  result: (List TypedInstruction),
+  body: (match prefix
+    | List.nil => suffix
+    | List.cons head tail => (cons head (appendTypedProgram tail suffix))),
+  recursive_argument: prefix
+}
+
+theorem{
+  name: concatPreservesDeclaredWidth,
+  parameters: [left : Word, right : Word],
+  statement: ((project (concatWords left right) bits) = ((project left bits) + (project right bits))),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: concatIsBigEndianAppend,
+  parameters: [left : Word, right : Word],
+  statement: ((project (concatWords left right) value) = ((prim multiply (project left value) (ringModulus (project right bits)) : Nat) + (project right value))),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: typedResumeEqualsUninterrupted,
+  parameters: [prefix : (List TypedInstruction), suffix : (List TypedInstruction), word : Word],
+  statement: ((typedExecute (appendTypedProgram prefix suffix) word) = (typedExecute suffix (typedExecute prefix word))),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [appendTypedProgram, typedExecute]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{definitions: [appendTypedProgram, hypothesis, typedExecute]},
+        binders: [head, tail, hypothesis],
+        constructor: cons
+      }
+    ],
+    generalizing: [word],
+    scrutinee: prefix
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: concatCapacityCannotTruncate,
+  parameters: [argument : Nat, argumentBits : Nat, bits : Nat, capacityBits : Nat],
+  statement: ((capacityBits < (bits + argumentBits)) -> ((typedInstructionAllowed (record TypedInstruction {opcode := 14, argument := argument, argumentBits := argumentBits}) bits capacityBits) = false)),
+  proof: linear_arithmetic{
+    definitions: [typedInstructionAdmission, typedInstructionAllowed, typedResultBits]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: typedAdmissionBoundsDeclaredWidth,
+  parameters: [instruction : TypedInstruction, bits : Nat, capacityBits : Nat, resultBits : Nat],
+  statement: (((typedInstructionAdmission instruction bits capacityBits resultBits) = true) -> (resultBits <= capacityBits)),
+  proof: linear_arithmetic{definitions: [typedInstructionAdmission]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: typedAdmissionBoundsResultWidth,
+  parameters: [instruction : TypedInstruction, bits : Nat, capacityBits : Nat],
+  statement: (((typedInstructionAllowed instruction bits capacityBits) = true) -> ((typedResultBits instruction bits) <= capacityBits)),
+  proof: apply{
+    arguments: [instruction, bits, capacityBits, (typedResultBits instruction bits)],
+    theorem: typedAdmissionBoundsDeclaredWidth
   },
   axioms: [Quot.sound, propext]
 }

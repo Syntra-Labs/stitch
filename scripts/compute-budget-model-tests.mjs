@@ -13,14 +13,14 @@ const observed = (input, expected) => ({ input: structuredClone(input), digest: 
 const resources = (transferBytes = 0n, storageBytes = 0n, computeWork = 0n, refreshRequests = 0n) => ({ transferBytes: BigInt(transferBytes), storageBytes: BigInt(storageBytes), computeWork: BigInt(computeWork), refreshRequests: BigInt(refreshRequests) });
 const zero = resources();
 const clone = x => structuredClone(x);
-const supported = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16];
+const supported = [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17];
 function independentStep(op, x, y, bits) {
   const m = 1n << BigInt(bits), mask = m - 1n;
   const value = [() => -x, () => ~x, () => x + 1n, () => x - 1n,
     () => x + y, () => x - y, () => x * y, () => x ^ y,
     () => x & y, () => x | y, () => BigInt(x <= y), () => BigInt(x < y),
     () => BigInt(x >= y), () => BigInt(x > y), null,
-    () => y === 0n ? 0n : x / y, () => y === 0n ? 0n : x % y][op]();
+    () => y === 0n ? 0n : x / y, () => y === 0n ? 0n : x % y, () => { let result = 1n; for (const bit of y.toString(2)) { result = result * result & mask; if (bit === '1') result = result * x & mask; } return result; }][op]();
   return value & mask;
 }
 function replay(job, step) {
@@ -57,7 +57,7 @@ test('full semantic admission rejects noncanonical operands, unsupported program
   assert.equal(call('Compute.jobAllowed', job, 2), false);
   assert.equal(call('Compute.jobAllowed', { ...job, initialValue: 256n }, 3), false);
   for (const bits of [0, 7, 24, 256]) assert.equal(call('Compute.jobAllowed', { ...job, program: { ...job.program, bits } }, 3), false);
-  for (const opcode of [14, 17, 99]) assert.equal(call('Compute.programAllowed', { ...job.program, instructions: [{ opcode, argument: 0 }] }, 3), false);
+  for (const opcode of [14, 18, 99]) assert.equal(call('Compute.programAllowed', { ...job.program, instructions: [{ opcode, argument: 0 }] }, 3), false);
   for (const opcode of supported) {
     const good = { opcode, argument: opcode < 4 ? 0 : 255 };
     assert.equal(call('Compute.programAllowed', { ...job.program, instructions: [good] }, 1), true);

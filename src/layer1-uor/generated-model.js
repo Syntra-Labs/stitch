@@ -5458,17 +5458,209 @@ const definitions = {
         },
         "right": {
           "k": "binary",
-          "op": "=?",
+          "op": "||",
           "left": {
-            "k": "var",
-            "name": "opcode"
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "opcode"
+            },
+            "right": {
+              "k": "nat",
+              "value": "16"
+            }
           },
           "right": {
-            "k": "nat",
-            "value": "16"
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "opcode"
+            },
+            "right": {
+              "k": "nat",
+              "value": "17"
+            }
           }
         }
       }
+    }
+  },
+  "Stitch.Compute.naturalPower": {
+    "module": "Stitch.Compute",
+    "name": "naturalPower",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "base",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "exponent",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "fuel"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "accumulated"
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "exponent"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "yes": {
+              "k": "var",
+              "name": "accumulated"
+            },
+            "no": {
+              "k": "call",
+              "name": "naturalPower",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "rest"
+                },
+                {
+                  "k": "prim",
+                  "operation": "multiply",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "base"
+                    },
+                    {
+                      "k": "var",
+                      "name": "base"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                {
+                  "k": "prim",
+                  "operation": "quotient",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "exponent"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "2"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "prim",
+                      "operation": "remainder",
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "1"
+                    }
+                  },
+                  "yes": {
+                    "k": "prim",
+                    "operation": "multiply",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "accumulated"
+                      },
+                      {
+                        "k": "var",
+                        "name": "base"
+                      }
+                    ],
+                    "type": {
+                      "kind": "Nat"
+                    }
+                  },
+                  "no": {
+                    "k": "var",
+                    "name": "accumulated"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   },
   "Stitch.Compute.ringModulus": {
@@ -5486,48 +5678,24 @@ const definitions = {
       "kind": "Nat"
     },
     "body": {
-      "k": "match",
-      "value": {
-        "k": "var",
-        "name": "bits"
-      },
-      "branches": [
+      "k": "call",
+      "name": "naturalPower",
+      "args": [
         {
-          "constructor": "Nat.zero",
-          "binders": [],
-          "body": {
-            "k": "nat",
-            "value": "1"
-          }
+          "k": "var",
+          "name": "bits"
         },
         {
-          "constructor": "Nat.succ",
-          "binders": [
-            "rest"
-          ],
-          "body": {
-            "k": "prim",
-            "operation": "multiply",
-            "args": [
-              {
-                "k": "nat",
-                "value": "2"
-              },
-              {
-                "k": "call",
-                "name": "ringModulus",
-                "args": [
-                  {
-                    "k": "var",
-                    "name": "rest"
-                  }
-                ]
-              }
-            ],
-            "type": {
-              "kind": "Nat"
-            }
-          }
+          "k": "nat",
+          "value": "2"
+        },
+        {
+          "k": "var",
+          "name": "bits"
+        },
+        {
+          "k": "nat",
+          "value": "1"
         }
       ]
     }
@@ -5574,9 +5742,9 @@ const definitions = {
       }
     }
   },
-  "Stitch.Compute.natBitwise": {
+  "Stitch.Compute.bitwiseAcc": {
     "module": "Stitch.Compute",
-    "name": "natBitwise",
+    "name": "bitwiseAcc",
     "params": [
       {
         "name": "fuel",
@@ -5601,6 +5769,18 @@ const definitions = {
         "type": {
           "kind": "Nat"
         }
+      },
+      {
+        "name": "place",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
       }
     ],
     "result": {
@@ -5617,8 +5797,8 @@ const definitions = {
           "constructor": "Nat.zero",
           "binders": [],
           "body": {
-            "k": "nat",
-            "value": "0"
+            "k": "var",
+            "name": "accumulated"
           }
         },
         {
@@ -5657,8 +5837,8 @@ const definitions = {
               }
             },
             "yes": {
-              "k": "nat",
-              "value": "0"
+              "k": "var",
+              "name": "accumulated"
             },
             "no": {
               "k": "let",
@@ -5822,75 +6002,673 @@ const definitions = {
                     }
                   },
                   "body": {
-                    "k": "binary",
-                    "op": "+",
-                    "left": {
+                    "k": "call",
+                    "name": "bitwiseAcc",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "rest"
+                      },
+                      {
+                        "k": "var",
+                        "name": "opcode"
+                      },
+                      {
+                        "k": "prim",
+                        "operation": "quotient",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "left"
+                          },
+                          {
+                            "k": "nat",
+                            "value": "2"
+                          },
+                          {
+                            "k": "nat",
+                            "value": "0"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      },
+                      {
+                        "k": "prim",
+                        "operation": "quotient",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "right"
+                          },
+                          {
+                            "k": "nat",
+                            "value": "2"
+                          },
+                          {
+                            "k": "nat",
+                            "value": "0"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      },
+                      {
+                        "k": "prim",
+                        "operation": "multiply",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "place"
+                          },
+                          {
+                            "k": "nat",
+                            "value": "2"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      },
+                      {
+                        "k": "binary",
+                        "op": "+",
+                        "left": {
+                          "k": "var",
+                          "name": "accumulated"
+                        },
+                        "right": {
+                          "k": "prim",
+                          "operation": "multiply",
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "low"
+                            },
+                            {
+                              "k": "var",
+                              "name": "place"
+                            }
+                          ],
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        }
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.natBitwise": {
+    "module": "Stitch.Compute",
+    "name": "natBitwise",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "opcode",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "left",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "bitwiseAcc",
+      "args": [
+        {
+          "k": "var",
+          "name": "fuel"
+        },
+        {
+          "k": "var",
+          "name": "opcode"
+        },
+        {
+          "k": "var",
+          "name": "left"
+        },
+        {
+          "k": "var",
+          "name": "right"
+        },
+        {
+          "k": "nat",
+          "value": "1"
+        },
+        {
+          "k": "nat",
+          "value": "0"
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.binaryLengthAcc": {
+    "module": "Stitch.Compute",
+    "name": "binaryLengthAcc",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "fuel"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "accumulated"
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "value"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "yes": {
+              "k": "var",
+              "name": "accumulated"
+            },
+            "no": {
+              "k": "call",
+              "name": "binaryLengthAcc",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "rest"
+                },
+                {
+                  "k": "prim",
+                  "operation": "quotient",
+                  "args": [
+                    {
                       "k": "var",
-                      "name": "low"
+                      "name": "value"
                     },
-                    "right": {
+                    {
+                      "k": "nat",
+                      "value": "2"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                {
+                  "k": "binary",
+                  "op": "+",
+                  "left": {
+                    "k": "var",
+                    "name": "accumulated"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "1"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.binaryLength": {
+    "module": "Stitch.Compute",
+    "name": "binaryLength",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "binaryLengthAcc",
+      "args": [
+        {
+          "k": "var",
+          "name": "fuel"
+        },
+        {
+          "k": "var",
+          "name": "value"
+        },
+        {
+          "k": "nat",
+          "value": "0"
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.ringPow": {
+    "module": "Stitch.Compute",
+    "name": "ringPow",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "base",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "exponent",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "modulus",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "fuel"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "call",
+            "name": "normalize",
+            "args": [
+              {
+                "k": "var",
+                "name": "accumulated"
+              },
+              {
+                "k": "var",
+                "name": "modulus"
+              }
+            ]
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "exponent"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "yes": {
+              "k": "call",
+              "name": "normalize",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "accumulated"
+                },
+                {
+                  "k": "var",
+                  "name": "modulus"
+                }
+              ]
+            },
+            "no": {
+              "k": "call",
+              "name": "ringPow",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "rest"
+                },
+                {
+                  "k": "call",
+                  "name": "normalize",
+                  "args": [
+                    {
                       "k": "prim",
                       "operation": "multiply",
                       "args": [
+                        {
+                          "k": "var",
+                          "name": "base"
+                        },
+                        {
+                          "k": "var",
+                          "name": "base"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "k": "var",
+                      "name": "modulus"
+                    }
+                  ]
+                },
+                {
+                  "k": "prim",
+                  "operation": "quotient",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "exponent"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "2"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                {
+                  "k": "var",
+                  "name": "modulus"
+                },
+                {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "prim",
+                      "operation": "remainder",
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
                         {
                           "k": "nat",
                           "value": "2"
                         },
                         {
-                          "k": "call",
-                          "name": "natBitwise",
-                          "args": [
-                            {
-                              "k": "var",
-                              "name": "rest"
-                            },
-                            {
-                              "k": "var",
-                              "name": "opcode"
-                            },
-                            {
-                              "k": "prim",
-                              "operation": "quotient",
-                              "args": [
-                                {
-                                  "k": "var",
-                                  "name": "left"
-                                },
-                                {
-                                  "k": "nat",
-                                  "value": "2"
-                                },
-                                {
-                                  "k": "nat",
-                                  "value": "0"
-                                }
-                              ],
-                              "type": {
-                                "kind": "Nat"
-                              }
-                            },
-                            {
-                              "k": "prim",
-                              "operation": "quotient",
-                              "args": [
-                                {
-                                  "k": "var",
-                                  "name": "right"
-                                },
-                                {
-                                  "k": "nat",
-                                  "value": "2"
-                                },
-                                {
-                                  "k": "nat",
-                                  "value": "0"
-                                }
-                              ],
-                              "type": {
-                                "kind": "Nat"
-                              }
-                            }
-                          ]
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "1"
+                    }
+                  },
+                  "yes": {
+                    "k": "call",
+                    "name": "normalize",
+                    "args": [
+                      {
+                        "k": "prim",
+                        "operation": "multiply",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "accumulated"
+                          },
+                          {
+                            "k": "var",
+                            "name": "base"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      },
+                      {
+                        "k": "var",
+                        "name": "modulus"
+                      }
+                    ]
+                  },
+                  "no": {
+                    "k": "var",
+                    "name": "accumulated"
+                  }
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.powerWorkAcc": {
+    "module": "Stitch.Compute",
+    "name": "powerWorkAcc",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "exponent",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "fuel"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "accumulated"
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "exponent"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "yes": {
+              "k": "var",
+              "name": "accumulated"
+            },
+            "no": {
+              "k": "call",
+              "name": "powerWorkAcc",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "rest"
+                },
+                {
+                  "k": "prim",
+                  "operation": "quotient",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "exponent"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "2"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                {
+                  "k": "binary",
+                  "op": "+",
+                  "left": {
+                    "k": "var",
+                    "name": "accumulated"
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "+",
+                    "left": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "right": {
+                      "k": "prim",
+                      "operation": "remainder",
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
                         }
                       ],
                       "type": {
@@ -5899,11 +6677,120 @@ const definitions = {
                     }
                   }
                 }
-              }
+              ]
             }
           }
         }
       ]
+    }
+  },
+  "Stitch.Compute.powerWork": {
+    "module": "Stitch.Compute",
+    "name": "powerWork",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "exponent",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "powerWorkAcc",
+      "args": [
+        {
+          "k": "var",
+          "name": "fuel"
+        },
+        {
+          "k": "var",
+          "name": "exponent"
+        },
+        {
+          "k": "nat",
+          "value": "0"
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.instructionWork": {
+    "module": "Stitch.Compute",
+    "name": "instructionWork",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "Instruction"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "instruction"
+          },
+          "field": "opcode"
+        },
+        "right": {
+          "k": "nat",
+          "value": "17"
+        }
+      },
+      "yes": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "nat",
+          "value": "1"
+        },
+        "right": {
+          "k": "call",
+          "name": "powerWork",
+          "args": [
+            {
+              "k": "var",
+              "name": "bits"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              },
+              "field": "argument"
+            }
+          ]
+        }
+      },
+      "no": {
+        "k": "nat",
+        "value": "1"
+      }
     }
   },
   "Stitch.Compute.ringStep": {
@@ -6557,8 +7444,59 @@ const definitions = {
                                                 }
                                               },
                                               "no": {
-                                                "k": "var",
-                                                "name": "x"
+                                                "k": "if",
+                                                "cond": {
+                                                  "k": "binary",
+                                                  "op": "=?",
+                                                  "left": {
+                                                    "k": "var",
+                                                    "name": "op"
+                                                  },
+                                                  "right": {
+                                                    "k": "nat",
+                                                    "value": "17"
+                                                  }
+                                                },
+                                                "yes": {
+                                                  "k": "call",
+                                                  "name": "ringPow",
+                                                  "args": [
+                                                    {
+                                                      "k": "call",
+                                                      "name": "binaryLength",
+                                                      "args": [
+                                                        {
+                                                          "k": "var",
+                                                          "name": "modulus"
+                                                        },
+                                                        {
+                                                          "k": "var",
+                                                          "name": "y"
+                                                        }
+                                                      ]
+                                                    },
+                                                    {
+                                                      "k": "var",
+                                                      "name": "x"
+                                                    },
+                                                    {
+                                                      "k": "var",
+                                                      "name": "y"
+                                                    },
+                                                    {
+                                                      "k": "var",
+                                                      "name": "modulus"
+                                                    },
+                                                    {
+                                                      "k": "nat",
+                                                      "value": "1"
+                                                    }
+                                                  ]
+                                                },
+                                                "no": {
+                                                  "k": "var",
+                                                  "name": "x"
+                                                }
                                               }
                                             }
                                           }
@@ -10072,6 +11010,1729 @@ const definitions = {
         "k": "var",
         "name": "current"
       }
+    }
+  },
+  "Stitch.Compute.byteWidth": {
+    "module": "Stitch.Compute",
+    "name": "byteWidth",
+    "params": [
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "=?",
+      "left": {
+        "k": "prim",
+        "operation": "remainder",
+        "args": [
+          {
+            "k": "var",
+            "name": "bits"
+          },
+          {
+            "k": "nat",
+            "value": "8"
+          },
+          {
+            "k": "nat",
+            "value": "0"
+          }
+        ],
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      "right": {
+        "k": "nat",
+        "value": "0"
+      }
+    }
+  },
+  "Stitch.Compute.wordAllowed": {
+    "module": "Stitch.Compute",
+    "name": "wordAllowed",
+    "params": [
+      {
+        "name": "word",
+        "type": {
+          "kind": "Word"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "byteWidth",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "word"
+            },
+            "field": "bits"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "word"
+          },
+          "field": "value"
+        },
+        "right": {
+          "k": "call",
+          "name": "ringModulus",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "word"
+              },
+              "field": "bits"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Compute.operandWidth": {
+    "module": "Stitch.Compute",
+    "name": "operandWidth",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "var",
+          "name": "left"
+        },
+        "right": {
+          "k": "var",
+          "name": "right"
+        }
+      },
+      "yes": {
+        "k": "var",
+        "name": "right"
+      },
+      "no": {
+        "k": "var",
+        "name": "left"
+      }
+    }
+  },
+  "Stitch.Compute.arithmeticWidth": {
+    "module": "Stitch.Compute",
+    "name": "arithmeticWidth",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "operandWidth",
+      "args": [
+        {
+          "k": "nat",
+          "value": "8"
+        },
+        {
+          "k": "call",
+          "name": "operandWidth",
+          "args": [
+            {
+              "k": "var",
+              "name": "left"
+            },
+            {
+              "k": "var",
+              "name": "right"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.typedResultBits": {
+    "module": "Stitch.Compute",
+    "name": "typedResultBits",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "TypedInstruction"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "instruction"
+          },
+          "field": "opcode"
+        },
+        "right": {
+          "k": "nat",
+          "value": "14"
+        }
+      },
+      "yes": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "var",
+          "name": "bits"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "instruction"
+          },
+          "field": "argumentBits"
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "nat",
+              "value": "10"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              },
+              "field": "opcode"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              },
+              "field": "opcode"
+            },
+            "right": {
+              "k": "nat",
+              "value": "13"
+            }
+          }
+        },
+        "yes": {
+          "k": "nat",
+          "value": "8"
+        },
+        "no": {
+          "k": "call",
+          "name": "arithmeticWidth",
+          "args": [
+            {
+              "k": "var",
+              "name": "bits"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              },
+              "field": "argumentBits"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Compute.typedInstructionAdmission": {
+    "module": "Stitch.Compute",
+    "name": "typedInstructionAdmission",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "TypedInstruction"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "capacityBits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "resultBits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "var",
+          "name": "resultBits"
+        },
+        "right": {
+          "k": "var",
+          "name": "capacityBits"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "byteWidth",
+          "args": [
+            {
+              "k": "var",
+              "name": "bits"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "bits"
+            },
+            "right": {
+              "k": "var",
+              "name": "capacityBits"
+            }
+          },
+          "right": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                },
+                "field": "opcode"
+              },
+              "right": {
+                "k": "nat",
+                "value": "3"
+              }
+            },
+            "yes": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  },
+                  "field": "argumentBits"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  },
+                  "field": "argument"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              }
+            },
+            "no": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "byteWidth",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    },
+                    "field": "argumentBits"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "<?",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    },
+                    "field": "argument"
+                  },
+                  "right": {
+                    "k": "call",
+                    "name": "ringModulus",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "argumentBits"
+                      }
+                    ]
+                  }
+                },
+                "right": {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      },
+                      "field": "opcode"
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "14"
+                    }
+                  },
+                  "yes": {
+                    "k": "binary",
+                    "op": "<=?",
+                    "left": {
+                      "k": "binary",
+                      "op": "+",
+                      "left": {
+                        "k": "var",
+                        "name": "bits"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "argumentBits"
+                      }
+                    },
+                    "right": {
+                      "k": "var",
+                      "name": "capacityBits"
+                    }
+                  },
+                  "no": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "call",
+                      "name": "instructionAllowed",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "instruction"
+                          },
+                          "field": "opcode"
+                        }
+                      ]
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "binary",
+                        "op": "<=?",
+                        "left": {
+                          "k": "call",
+                          "name": "arithmeticWidth",
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "bits"
+                            },
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "instruction"
+                              },
+                              "field": "argumentBits"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "k": "var",
+                          "name": "capacityBits"
+                        }
+                      },
+                      "right": {
+                        "k": "if",
+                        "cond": {
+                          "k": "binary",
+                          "op": "||",
+                          "left": {
+                            "k": "binary",
+                            "op": "=?",
+                            "left": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "instruction"
+                              },
+                              "field": "opcode"
+                            },
+                            "right": {
+                              "k": "nat",
+                              "value": "15"
+                            }
+                          },
+                          "right": {
+                            "k": "binary",
+                            "op": "=?",
+                            "left": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "instruction"
+                              },
+                              "field": "opcode"
+                            },
+                            "right": {
+                              "k": "nat",
+                              "value": "16"
+                            }
+                          }
+                        },
+                        "yes": {
+                          "k": "binary",
+                          "op": "<?",
+                          "left": {
+                            "k": "nat",
+                            "value": "0"
+                          },
+                          "right": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            },
+                            "field": "argument"
+                          }
+                        },
+                        "no": {
+                          "k": "bool",
+                          "value": true
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.typedInstructionAllowed": {
+    "module": "Stitch.Compute",
+    "name": "typedInstructionAllowed",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "TypedInstruction"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "capacityBits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "call",
+      "name": "typedInstructionAdmission",
+      "args": [
+        {
+          "k": "var",
+          "name": "instruction"
+        },
+        {
+          "k": "var",
+          "name": "bits"
+        },
+        {
+          "k": "var",
+          "name": "capacityBits"
+        },
+        {
+          "k": "call",
+          "name": "typedResultBits",
+          "args": [
+            {
+              "k": "var",
+              "name": "instruction"
+            },
+            {
+              "k": "var",
+              "name": "bits"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.typedProgramAllowed": {
+    "module": "Stitch.Compute",
+    "name": "typedProgramAllowed",
+    "params": [
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "capacityBits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "instructions"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "byteWidth",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "bits"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "var",
+                "name": "bits"
+              },
+              "right": {
+                "k": "var",
+                "name": "capacityBits"
+              }
+            }
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "typedInstructionAllowed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "head"
+                },
+                {
+                  "k": "var",
+                  "name": "bits"
+                },
+                {
+                  "k": "var",
+                  "name": "capacityBits"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "typedProgramAllowed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "call",
+                  "name": "typedResultBits",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "head"
+                    },
+                    {
+                      "k": "var",
+                      "name": "bits"
+                    }
+                  ]
+                },
+                {
+                  "k": "var",
+                  "name": "capacityBits"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.concatWords": {
+    "module": "Stitch.Compute",
+    "name": "concatWords",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Word"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Word"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Word"
+    },
+    "body": {
+      "k": "record",
+      "name": "Word",
+      "values": {
+        "bits": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "bits"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "bits"
+          }
+        },
+        "value": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "prim",
+            "operation": "multiply",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "field": "value"
+              },
+              {
+                "k": "call",
+                "name": "ringModulus",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "field": "bits"
+                  }
+                ]
+              }
+            ],
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "value"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.typedStep": {
+    "module": "Stitch.Compute",
+    "name": "typedStep",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "TypedInstruction"
+        }
+      },
+      {
+        "name": "word",
+        "type": {
+          "kind": "Word"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Word"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "instruction"
+          },
+          "field": "opcode"
+        },
+        "right": {
+          "k": "nat",
+          "value": "14"
+        }
+      },
+      "yes": {
+        "k": "call",
+        "name": "concatWords",
+        "args": [
+          {
+            "k": "var",
+            "name": "word"
+          },
+          {
+            "k": "record",
+            "name": "Word",
+            "values": {
+              "bits": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                },
+                "field": "argumentBits"
+              },
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                },
+                "field": "argument"
+              }
+            }
+          }
+        ]
+      },
+      "no": {
+        "k": "record",
+        "name": "Word",
+        "values": {
+          "bits": {
+            "k": "call",
+            "name": "typedResultBits",
+            "args": [
+              {
+                "k": "var",
+                "name": "instruction"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "word"
+                },
+                "field": "bits"
+              }
+            ]
+          },
+          "value": {
+            "k": "call",
+            "name": "ringStep",
+            "args": [
+              {
+                "k": "record",
+                "name": "Instruction",
+                "values": {
+                  "opcode": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    },
+                    "field": "opcode"
+                  },
+                  "argument": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    },
+                    "field": "argument"
+                  }
+                }
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "word"
+                },
+                "field": "value"
+              },
+              {
+                "k": "call",
+                "name": "ringModulus",
+                "args": [
+                  {
+                    "k": "call",
+                    "name": "arithmeticWidth",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "word"
+                        },
+                        "field": "bits"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "argumentBits"
+                      }
+                    ]
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.typedInstructionWork": {
+    "module": "Stitch.Compute",
+    "name": "typedInstructionWork",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "TypedInstruction"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "let",
+      "name": "width",
+      "type": {
+        "kind": "Nat"
+      },
+      "value": {
+        "k": "call",
+        "name": "arithmeticWidth",
+        "args": [
+          {
+            "k": "var",
+            "name": "bits"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "instruction"
+            },
+            "field": "argumentBits"
+          }
+        ]
+      },
+      "body": {
+        "k": "let",
+        "name": "limbs",
+        "type": {
+          "kind": "Nat"
+        },
+        "value": {
+          "k": "prim",
+          "operation": "quotient",
+          "args": [
+            {
+              "k": "binary",
+              "op": "+",
+              "left": {
+                "k": "var",
+                "name": "width"
+              },
+              "right": {
+                "k": "nat",
+                "value": "63"
+              }
+            },
+            {
+              "k": "nat",
+              "value": "64"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ],
+          "type": {
+            "kind": "Nat"
+          }
+        },
+        "body": {
+          "k": "let",
+          "name": "productWork",
+          "type": {
+            "kind": "Nat"
+          },
+          "value": {
+            "k": "prim",
+            "operation": "multiply",
+            "args": [
+              {
+                "k": "var",
+                "name": "limbs"
+              },
+              {
+                "k": "var",
+                "name": "limbs"
+              }
+            ],
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                },
+                "field": "opcode"
+              },
+              "right": {
+                "k": "nat",
+                "value": "14"
+              }
+            },
+            "yes": {
+              "k": "binary",
+              "op": "+",
+              "left": {
+                "k": "nat",
+                "value": "1"
+              },
+              "right": {
+                "k": "prim",
+                "operation": "quotient",
+                "args": [
+                  {
+                    "k": "binary",
+                    "op": "+",
+                    "left": {
+                      "k": "var",
+                      "name": "bits"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      },
+                      "field": "argumentBits"
+                    }
+                  },
+                  {
+                    "k": "nat",
+                    "value": "8"
+                  },
+                  {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                ],
+                "type": {
+                  "kind": "Nat"
+                }
+              }
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  },
+                  "field": "opcode"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "17"
+                }
+              },
+              "yes": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "nat",
+                  "value": "1"
+                },
+                "right": {
+                  "k": "prim",
+                  "operation": "multiply",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "productWork"
+                    },
+                    {
+                      "k": "call",
+                      "name": "powerWork",
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "width"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "instruction"
+                          },
+                          "field": "argument"
+                        }
+                      ]
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                }
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "binary",
+                  "op": "||",
+                  "left": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      },
+                      "field": "opcode"
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "6"
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "binary",
+                      "op": "<=?",
+                      "left": {
+                        "k": "nat",
+                        "value": "15"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "opcode"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "<=?",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "opcode"
+                      },
+                      "right": {
+                        "k": "nat",
+                        "value": "16"
+                      }
+                    }
+                  }
+                },
+                "yes": {
+                  "k": "binary",
+                  "op": "+",
+                  "left": {
+                    "k": "nat",
+                    "value": "1"
+                  },
+                  "right": {
+                    "k": "var",
+                    "name": "productWork"
+                  }
+                },
+                "no": {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "binary",
+                      "op": "<=?",
+                      "left": {
+                        "k": "nat",
+                        "value": "7"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "opcode"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "<=?",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        },
+                        "field": "opcode"
+                      },
+                      "right": {
+                        "k": "nat",
+                        "value": "9"
+                      }
+                    }
+                  },
+                  "yes": {
+                    "k": "binary",
+                    "op": "+",
+                    "left": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "right": {
+                      "k": "var",
+                      "name": "width"
+                    }
+                  },
+                  "no": {
+                    "k": "binary",
+                    "op": "+",
+                    "left": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "right": {
+                      "k": "var",
+                      "name": "limbs"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.typedProgramWorkAcc": {
+    "module": "Stitch.Compute",
+    "name": "typedProgramWorkAcc",
+    "params": [
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "accumulated",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "instructions"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "accumulated"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "call",
+            "name": "typedProgramWorkAcc",
+            "args": [
+              {
+                "k": "var",
+                "name": "tail"
+              },
+              {
+                "k": "call",
+                "name": "typedResultBits",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  {
+                    "k": "var",
+                    "name": "bits"
+                  }
+                ]
+              },
+              {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "var",
+                  "name": "accumulated"
+                },
+                "right": {
+                  "k": "call",
+                  "name": "typedInstructionWork",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "head"
+                    },
+                    {
+                      "k": "var",
+                      "name": "bits"
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.typedProgramWork": {
+    "module": "Stitch.Compute",
+    "name": "typedProgramWork",
+    "params": [
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "typedProgramWorkAcc",
+      "args": [
+        {
+          "k": "var",
+          "name": "instructions"
+        },
+        {
+          "k": "var",
+          "name": "bits"
+        },
+        {
+          "k": "nat",
+          "value": "0"
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.typedExecute": {
+    "module": "Stitch.Compute",
+    "name": "typedExecute",
+    "params": [
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      },
+      {
+        "name": "word",
+        "type": {
+          "kind": "Word"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Word"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "instructions"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "word"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "call",
+            "name": "typedExecute",
+            "args": [
+              {
+                "k": "var",
+                "name": "tail"
+              },
+              {
+                "k": "call",
+                "name": "typedStep",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  {
+                    "k": "var",
+                    "name": "word"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.appendTypedProgram": {
+    "module": "Stitch.Compute",
+    "name": "appendTypedProgram",
+    "params": [
+      {
+        "name": "prefix",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      },
+      {
+        "name": "suffix",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "TypedInstruction"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "TypedInstruction"
+      }
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "prefix"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "suffix"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "cons",
+            "head": {
+              "k": "var",
+              "name": "head"
+            },
+            "tail": {
+              "k": "call",
+              "name": "appendTypedProgram",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "suffix"
+                }
+              ]
+            }
+          }
+        }
+      ]
     }
   },
   "Stitch.Custody.distinctHolders": {
@@ -31773,7 +34434,7 @@ const definitions = {
         },
         "label": {
           "k": "string",
-          "value": "Observe Last Command Result"
+          "value": "Observe Selected Command Result"
         },
         "help": {
           "k": "string",
@@ -34917,48 +37578,12 @@ const definitions = {
       "kind": "Bool"
     },
     "body": {
-      "k": "binary",
-      "op": "&&",
-      "left": {
-        "k": "project",
-        "value": {
-          "k": "var",
-          "name": "facts"
-        },
-        "field": "authorityPinned"
+      "k": "project",
+      "value": {
+        "k": "var",
+        "name": "facts"
       },
-      "right": {
-        "k": "binary",
-        "op": "||",
-        "left": {
-          "k": "project",
-          "value": {
-            "k": "var",
-            "name": "facts"
-          },
-          "field": "hasObject"
-        },
-        "right": {
-          "k": "binary",
-          "op": "||",
-          "left": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "facts"
-            },
-            "field": "headRetained"
-          },
-          "right": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "facts"
-            },
-            "field": "publicationUnknown"
-          }
-        }
-      }
+      "field": "authorityPinned"
     }
   },
   "Product.Experience.explanationLabel": {
@@ -35737,6 +38362,46 @@ const types = {
         "name": "checkpoint",
         "type": {
           "kind": "CheckpointDigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.Word": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.TypedInstruction": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "opcode",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "argument",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "argumentBits",
+        "type": {
+          "kind": "Nat"
         }
       }
     ]
@@ -38100,13 +40765,13 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:8041e88ee3a9d9e516296511902098b8cc01d448e6b6d15c85b6d2afc84a1e0e";
-export const modelExecutionDigest = "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc";
+export const modelSourceDigest = "sha256:18b774cca5601850418d07425a413e1898762183dd33c3981206115d14407092";
+export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:8041e88ee3a9d9e516296511902098b8cc01d448e6b6d15c85b6d2afc84a1e0e",
-  "executionDigest": "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc",
+  "sourceDigest": "sha256:18b774cca5601850418d07425a413e1898762183dd33c3981206115d14407092",
+  "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
       {
@@ -38119,161 +40784,218 @@ export const MODEL_SOURCE = Object.freeze({
       },
       {
         "path": "src/layer1-uor/index.js",
-        "sha256": "7a5a9bfc8f9c8623be3d8983423ba62cff7b5e33340012dc1e0ffd19d710a0ab"
+        "sha256": "55f246f29cdd0bfa934c079d3f3afffca9e1e26c0800777dc4e2351351bca1cf"
       },
       {
         "path": "src/layer4-compute/replay.js",
-        "sha256": "9abda982b5a9fa0ede365212c7398e7d98ad4c380c561ed22b93b5384bf5ed5a"
+        "sha256": "112653100e2ea57c6b732e64dbc2086fd5237eb2129fe255cb5627498494f1d3"
       }
     ],
     "definitions": {
-      "Stitch.Compute.checkpointLinkAllowed": {
+      "Stitch.Compute.arithmeticWidth": {
         "body": {
-          "k": "binary",
-          "left": {
-            "k": "var",
-            "name": "replayMatches"
-          },
-          "op": "&&",
-          "right": {
-            "k": "binary",
-            "left": {
-              "k": "var",
-              "name": "jobMatches"
+          "args": [
+            {
+              "k": "nat",
+              "value": "8"
             },
-            "op": "&&",
-            "right": {
-              "k": "binary",
-              "left": {
-                "k": "var",
-                "name": "programMatches"
-              },
-              "op": "&&",
-              "right": {
-                "k": "binary",
-                "left": {
+            {
+              "args": [
+                {
                   "k": "var",
-                  "name": "inputMatches"
+                  "name": "left"
                 },
-                "op": "&&",
-                "right": {
-                  "k": "binary",
-                  "left": {
-                    "k": "var",
-                    "name": "modelMatches"
-                  },
-                  "op": "&&",
-                  "right": {
-                    "k": "binary",
-                    "left": {
-                      "k": "var",
-                      "name": "predecessorMatches"
-                    },
-                    "op": "&&",
-                    "right": {
-                      "k": "binary",
-                      "left": {
-                        "k": "binary",
-                        "left": {
-                          "k": "var",
-                          "name": "currentStep"
-                        },
-                        "op": "<?",
-                        "right": {
-                          "k": "var",
-                          "name": "nextStep"
-                        }
-                      },
-                      "op": "&&",
-                      "right": {
-                        "k": "binary",
-                        "left": {
-                          "k": "var",
-                          "name": "nextStep"
-                        },
-                        "op": "<=?",
-                        "right": {
-                          "k": "var",
-                          "name": "programLength"
-                        }
-                      }
-                    }
-                  }
+                {
+                  "k": "var",
+                  "name": "right"
                 }
-              }
+              ],
+              "k": "call",
+              "name": "operandWidth"
             }
-          }
+          ],
+          "k": "call",
+          "name": "operandWidth"
         },
         "module": "Stitch.Compute",
-        "name": "checkpointLinkAllowed",
+        "name": "arithmeticWidth",
         "params": [
           {
-            "name": "jobMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "programMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "inputMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "modelMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "predecessorMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "replayMatches",
-            "type": {
-              "kind": "Bool"
-            }
-          },
-          {
-            "name": "currentStep",
+            "name": "left",
             "type": {
               "kind": "Nat"
             }
           },
           {
-            "name": "nextStep",
-            "type": {
-              "kind": "Nat"
-            }
-          },
-          {
-            "name": "programLength",
+            "name": "right",
             "type": {
               "kind": "Nat"
             }
           }
         ],
         "result": {
-          "kind": "Bool"
+          "kind": "Nat"
         }
       },
-      "Stitch.Compute.natBitwise": {
+      "Stitch.Compute.binaryLength": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "fuel"
+            },
+            {
+              "k": "var",
+              "name": "value"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ],
+          "k": "call",
+          "name": "binaryLengthAcc"
+        },
+        "module": "Stitch.Compute",
+        "name": "binaryLength",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "value",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.binaryLengthAcc": {
         "body": {
           "branches": [
             {
               "binders": [],
               "body": {
-                "k": "nat",
-                "value": "0"
+                "k": "var",
+                "name": "accumulated"
+              },
+              "constructor": "Nat.zero"
+            },
+            {
+              "binders": [
+                "rest"
+              ],
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "value"
+                  },
+                  "op": "=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "rest"
+                    },
+                    {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "value"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "quotient",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "k": "binary",
+                      "left": {
+                        "k": "var",
+                        "name": "accumulated"
+                      },
+                      "op": "+",
+                      "right": {
+                        "k": "nat",
+                        "value": "1"
+                      }
+                    }
+                  ],
+                  "k": "call",
+                  "name": "binaryLengthAcc"
+                },
+                "yes": {
+                  "k": "var",
+                  "name": "accumulated"
+                }
+              },
+              "constructor": "Nat.succ"
+            }
+          ],
+          "k": "match",
+          "value": {
+            "k": "var",
+            "name": "fuel"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "binaryLengthAcc",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "value",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "accumulated",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.bitwiseAcc": {
+        "body": {
+          "branches": [
+            {
+              "binders": [],
+              "body": {
+                "k": "var",
+                "name": "accumulated"
               },
               "constructor": "Nat.zero"
             },
@@ -38315,81 +41037,102 @@ export const MODEL_SOURCE = Object.freeze({
                   "body": {
                     "body": {
                       "body": {
-                        "k": "binary",
-                        "left": {
-                          "k": "var",
-                          "name": "low"
-                        },
-                        "op": "+",
-                        "right": {
-                          "args": [
-                            {
-                              "k": "nat",
-                              "value": "2"
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "rest"
+                          },
+                          {
+                            "k": "var",
+                            "name": "opcode"
+                          },
+                          {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "left"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "2"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "0"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "quotient",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "right"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "2"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "0"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "quotient",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "place"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "2"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "multiply",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          {
+                            "k": "binary",
+                            "left": {
+                              "k": "var",
+                              "name": "accumulated"
                             },
-                            {
+                            "op": "+",
+                            "right": {
                               "args": [
                                 {
                                   "k": "var",
-                                  "name": "rest"
+                                  "name": "low"
                                 },
                                 {
                                   "k": "var",
-                                  "name": "opcode"
-                                },
-                                {
-                                  "args": [
-                                    {
-                                      "k": "var",
-                                      "name": "left"
-                                    },
-                                    {
-                                      "k": "nat",
-                                      "value": "2"
-                                    },
-                                    {
-                                      "k": "nat",
-                                      "value": "0"
-                                    }
-                                  ],
-                                  "k": "prim",
-                                  "operation": "quotient",
-                                  "type": {
-                                    "kind": "Nat"
-                                  }
-                                },
-                                {
-                                  "args": [
-                                    {
-                                      "k": "var",
-                                      "name": "right"
-                                    },
-                                    {
-                                      "k": "nat",
-                                      "value": "2"
-                                    },
-                                    {
-                                      "k": "nat",
-                                      "value": "0"
-                                    }
-                                  ],
-                                  "k": "prim",
-                                  "operation": "quotient",
-                                  "type": {
-                                    "kind": "Nat"
-                                  }
+                                  "name": "place"
                                 }
                               ],
-                              "k": "call",
-                              "name": "natBitwise"
+                              "k": "prim",
+                              "operation": "multiply",
+                              "type": {
+                                "kind": "Nat"
+                              }
                             }
-                          ],
-                          "k": "prim",
-                          "operation": "multiply",
-                          "type": {
-                            "kind": "Nat"
                           }
-                        }
+                        ],
+                        "k": "call",
+                        "name": "bitwiseAcc"
                       },
                       "k": "let",
                       "name": "low",
@@ -38553,8 +41296,8 @@ export const MODEL_SOURCE = Object.freeze({
                   }
                 },
                 "yes": {
-                  "k": "nat",
-                  "value": "0"
+                  "k": "var",
+                  "name": "accumulated"
                 }
               },
               "constructor": "Nat.succ"
@@ -38565,6 +41308,499 @@ export const MODEL_SOURCE = Object.freeze({
             "k": "var",
             "name": "fuel"
           }
+        },
+        "module": "Stitch.Compute",
+        "name": "bitwiseAcc",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "opcode",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "left",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "right",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "place",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "accumulated",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.byteWidth": {
+        "body": {
+          "k": "binary",
+          "left": {
+            "args": [
+              {
+                "k": "var",
+                "name": "bits"
+              },
+              {
+                "k": "nat",
+                "value": "8"
+              },
+              {
+                "k": "nat",
+                "value": "0"
+              }
+            ],
+            "k": "prim",
+            "operation": "remainder",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          "op": "=?",
+          "right": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "byteWidth",
+        "params": [
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.checkpointLinkAllowed": {
+        "body": {
+          "k": "binary",
+          "left": {
+            "k": "var",
+            "name": "replayMatches"
+          },
+          "op": "&&",
+          "right": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "jobMatches"
+            },
+            "op": "&&",
+            "right": {
+              "k": "binary",
+              "left": {
+                "k": "var",
+                "name": "programMatches"
+              },
+              "op": "&&",
+              "right": {
+                "k": "binary",
+                "left": {
+                  "k": "var",
+                  "name": "inputMatches"
+                },
+                "op": "&&",
+                "right": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "modelMatches"
+                  },
+                  "op": "&&",
+                  "right": {
+                    "k": "binary",
+                    "left": {
+                      "k": "var",
+                      "name": "predecessorMatches"
+                    },
+                    "op": "&&",
+                    "right": {
+                      "k": "binary",
+                      "left": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "currentStep"
+                        },
+                        "op": "<?",
+                        "right": {
+                          "k": "var",
+                          "name": "nextStep"
+                        }
+                      },
+                      "op": "&&",
+                      "right": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "nextStep"
+                        },
+                        "op": "<=?",
+                        "right": {
+                          "k": "var",
+                          "name": "programLength"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "checkpointLinkAllowed",
+        "params": [
+          {
+            "name": "jobMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "programMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "inputMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "modelMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "predecessorMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "replayMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "currentStep",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "nextStep",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "programLength",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.concatWords": {
+        "body": {
+          "k": "record",
+          "name": "Word",
+          "values": {
+            "bits": {
+              "k": "binary",
+              "left": {
+                "field": "bits",
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                }
+              },
+              "op": "+",
+              "right": {
+                "field": "bits",
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "right"
+                }
+              }
+            },
+            "value": {
+              "k": "binary",
+              "left": {
+                "args": [
+                  {
+                    "field": "value",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "left"
+                    }
+                  },
+                  {
+                    "args": [
+                      {
+                        "field": "bits",
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "right"
+                        }
+                      }
+                    ],
+                    "k": "call",
+                    "name": "ringModulus"
+                  }
+                ],
+                "k": "prim",
+                "operation": "multiply",
+                "type": {
+                  "kind": "Nat"
+                }
+              },
+              "op": "+",
+              "right": {
+                "field": "value",
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "right"
+                }
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "concatWords",
+        "params": [
+          {
+            "name": "left",
+            "type": {
+              "kind": "Word"
+            }
+          },
+          {
+            "name": "right",
+            "type": {
+              "kind": "Word"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Word"
+        }
+      },
+      "Stitch.Compute.instructionAllowed": {
+        "body": {
+          "k": "binary",
+          "left": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "opcode"
+            },
+            "op": "<=?",
+            "right": {
+              "k": "nat",
+              "value": "13"
+            }
+          },
+          "op": "||",
+          "right": {
+            "k": "binary",
+            "left": {
+              "k": "binary",
+              "left": {
+                "k": "var",
+                "name": "opcode"
+              },
+              "op": "=?",
+              "right": {
+                "k": "nat",
+                "value": "15"
+              }
+            },
+            "op": "||",
+            "right": {
+              "k": "binary",
+              "left": {
+                "k": "binary",
+                "left": {
+                  "k": "var",
+                  "name": "opcode"
+                },
+                "op": "=?",
+                "right": {
+                  "k": "nat",
+                  "value": "16"
+                }
+              },
+              "op": "||",
+              "right": {
+                "k": "binary",
+                "left": {
+                  "k": "var",
+                  "name": "opcode"
+                },
+                "op": "=?",
+                "right": {
+                  "k": "nat",
+                  "value": "17"
+                }
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "instructionAllowed",
+        "params": [
+          {
+            "name": "opcode",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.instructionWork": {
+        "body": {
+          "cond": {
+            "k": "binary",
+            "left": {
+              "field": "opcode",
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              }
+            },
+            "op": "=?",
+            "right": {
+              "k": "nat",
+              "value": "17"
+            }
+          },
+          "k": "if",
+          "no": {
+            "k": "nat",
+            "value": "1"
+          },
+          "yes": {
+            "k": "binary",
+            "left": {
+              "k": "nat",
+              "value": "1"
+            },
+            "op": "+",
+            "right": {
+              "args": [
+                {
+                  "k": "var",
+                  "name": "bits"
+                },
+                {
+                  "field": "argument",
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  }
+                }
+              ],
+              "k": "call",
+              "name": "powerWork"
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "instructionWork",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "Instruction"
+            }
+          },
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.natBitwise": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "fuel"
+            },
+            {
+              "k": "var",
+              "name": "opcode"
+            },
+            {
+              "k": "var",
+              "name": "left"
+            },
+            {
+              "k": "var",
+              "name": "right"
+            },
+            {
+              "k": "nat",
+              "value": "1"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ],
+          "k": "call",
+          "name": "bitwiseAcc"
         },
         "module": "Stitch.Compute",
         "name": "natBitwise",
@@ -38589,6 +41825,182 @@ export const MODEL_SOURCE = Object.freeze({
           },
           {
             "name": "right",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.naturalPower": {
+        "body": {
+          "branches": [
+            {
+              "binders": [],
+              "body": {
+                "k": "var",
+                "name": "accumulated"
+              },
+              "constructor": "Nat.zero"
+            },
+            {
+              "binders": [
+                "rest"
+              ],
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "exponent"
+                  },
+                  "op": "=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "rest"
+                    },
+                    {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "base"
+                        },
+                        {
+                          "k": "var",
+                          "name": "base"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "multiply",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "quotient",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "cond": {
+                        "k": "binary",
+                        "left": {
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "exponent"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "2"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "0"
+                            }
+                          ],
+                          "k": "prim",
+                          "operation": "remainder",
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        },
+                        "op": "=?",
+                        "right": {
+                          "k": "nat",
+                          "value": "1"
+                        }
+                      },
+                      "k": "if",
+                      "no": {
+                        "k": "var",
+                        "name": "accumulated"
+                      },
+                      "yes": {
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "accumulated"
+                          },
+                          {
+                            "k": "var",
+                            "name": "base"
+                          }
+                        ],
+                        "k": "prim",
+                        "operation": "multiply",
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      }
+                    }
+                  ],
+                  "k": "call",
+                  "name": "naturalPower"
+                },
+                "yes": {
+                  "k": "var",
+                  "name": "accumulated"
+                }
+              },
+              "constructor": "Nat.succ"
+            }
+          ],
+          "k": "match",
+          "value": {
+            "k": "var",
+            "name": "fuel"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "naturalPower",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "base",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "exponent",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "accumulated",
             "type": {
               "kind": "Nat"
             }
@@ -38631,6 +42043,489 @@ export const MODEL_SOURCE = Object.freeze({
           },
           {
             "name": "modulus",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.operandWidth": {
+        "body": {
+          "cond": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "left"
+            },
+            "op": "<=?",
+            "right": {
+              "k": "var",
+              "name": "right"
+            }
+          },
+          "k": "if",
+          "no": {
+            "k": "var",
+            "name": "left"
+          },
+          "yes": {
+            "k": "var",
+            "name": "right"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "operandWidth",
+        "params": [
+          {
+            "name": "left",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "right",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.powerWork": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "fuel"
+            },
+            {
+              "k": "var",
+              "name": "exponent"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ],
+          "k": "call",
+          "name": "powerWorkAcc"
+        },
+        "module": "Stitch.Compute",
+        "name": "powerWork",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "exponent",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.powerWorkAcc": {
+        "body": {
+          "branches": [
+            {
+              "binders": [],
+              "body": {
+                "k": "var",
+                "name": "accumulated"
+              },
+              "constructor": "Nat.zero"
+            },
+            {
+              "binders": [
+                "rest"
+              ],
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "exponent"
+                  },
+                  "op": "=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "rest"
+                    },
+                    {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "quotient",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "k": "binary",
+                      "left": {
+                        "k": "var",
+                        "name": "accumulated"
+                      },
+                      "op": "+",
+                      "right": {
+                        "k": "binary",
+                        "left": {
+                          "k": "nat",
+                          "value": "1"
+                        },
+                        "op": "+",
+                        "right": {
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "exponent"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "2"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "0"
+                            }
+                          ],
+                          "k": "prim",
+                          "operation": "remainder",
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        }
+                      }
+                    }
+                  ],
+                  "k": "call",
+                  "name": "powerWorkAcc"
+                },
+                "yes": {
+                  "k": "var",
+                  "name": "accumulated"
+                }
+              },
+              "constructor": "Nat.succ"
+            }
+          ],
+          "k": "match",
+          "value": {
+            "k": "var",
+            "name": "fuel"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "powerWorkAcc",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "exponent",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "accumulated",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.ringModulus": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "bits"
+            },
+            {
+              "k": "nat",
+              "value": "2"
+            },
+            {
+              "k": "var",
+              "name": "bits"
+            },
+            {
+              "k": "nat",
+              "value": "1"
+            }
+          ],
+          "k": "call",
+          "name": "naturalPower"
+        },
+        "module": "Stitch.Compute",
+        "name": "ringModulus",
+        "params": [
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.ringPow": {
+        "body": {
+          "branches": [
+            {
+              "binders": [],
+              "body": {
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "accumulated"
+                  },
+                  {
+                    "k": "var",
+                    "name": "modulus"
+                  }
+                ],
+                "k": "call",
+                "name": "normalize"
+              },
+              "constructor": "Nat.zero"
+            },
+            {
+              "binders": [
+                "rest"
+              ],
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "exponent"
+                  },
+                  "op": "=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "rest"
+                    },
+                    {
+                      "args": [
+                        {
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "base"
+                            },
+                            {
+                              "k": "var",
+                              "name": "base"
+                            }
+                          ],
+                          "k": "prim",
+                          "operation": "multiply",
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        },
+                        {
+                          "k": "var",
+                          "name": "modulus"
+                        }
+                      ],
+                      "k": "call",
+                      "name": "normalize"
+                    },
+                    {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "exponent"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "quotient",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    },
+                    {
+                      "k": "var",
+                      "name": "modulus"
+                    },
+                    {
+                      "cond": {
+                        "k": "binary",
+                        "left": {
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "exponent"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "2"
+                            },
+                            {
+                              "k": "nat",
+                              "value": "0"
+                            }
+                          ],
+                          "k": "prim",
+                          "operation": "remainder",
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        },
+                        "op": "=?",
+                        "right": {
+                          "k": "nat",
+                          "value": "1"
+                        }
+                      },
+                      "k": "if",
+                      "no": {
+                        "k": "var",
+                        "name": "accumulated"
+                      },
+                      "yes": {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "accumulated"
+                              },
+                              {
+                                "k": "var",
+                                "name": "base"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "multiply",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          {
+                            "k": "var",
+                            "name": "modulus"
+                          }
+                        ],
+                        "k": "call",
+                        "name": "normalize"
+                      }
+                    }
+                  ],
+                  "k": "call",
+                  "name": "ringPow"
+                },
+                "yes": {
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "accumulated"
+                    },
+                    {
+                      "k": "var",
+                      "name": "modulus"
+                    }
+                  ],
+                  "k": "call",
+                  "name": "normalize"
+                }
+              },
+              "constructor": "Nat.succ"
+            }
+          ],
+          "k": "match",
+          "value": {
+            "k": "var",
+            "name": "fuel"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "ringPow",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "base",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "exponent",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "modulus",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "accumulated",
             "type": {
               "kind": "Nat"
             }
@@ -38871,8 +42766,59 @@ export const MODEL_SOURCE = Object.freeze({
                                                   },
                                                   "k": "if",
                                                   "no": {
-                                                    "k": "var",
-                                                    "name": "x"
+                                                    "cond": {
+                                                      "k": "binary",
+                                                      "left": {
+                                                        "k": "var",
+                                                        "name": "op"
+                                                      },
+                                                      "op": "=?",
+                                                      "right": {
+                                                        "k": "nat",
+                                                        "value": "17"
+                                                      }
+                                                    },
+                                                    "k": "if",
+                                                    "no": {
+                                                      "k": "var",
+                                                      "name": "x"
+                                                    },
+                                                    "yes": {
+                                                      "args": [
+                                                        {
+                                                          "args": [
+                                                            {
+                                                              "k": "var",
+                                                              "name": "modulus"
+                                                            },
+                                                            {
+                                                              "k": "var",
+                                                              "name": "y"
+                                                            }
+                                                          ],
+                                                          "k": "call",
+                                                          "name": "binaryLength"
+                                                        },
+                                                        {
+                                                          "k": "var",
+                                                          "name": "x"
+                                                        },
+                                                        {
+                                                          "k": "var",
+                                                          "name": "y"
+                                                        },
+                                                        {
+                                                          "k": "var",
+                                                          "name": "modulus"
+                                                        },
+                                                        {
+                                                          "k": "nat",
+                                                          "value": "1"
+                                                        }
+                                                      ],
+                                                      "k": "call",
+                                                      "name": "ringPow"
+                                                    }
                                                   },
                                                   "yes": {
                                                     "args": [
@@ -39319,12 +43265,1043 @@ export const MODEL_SOURCE = Object.freeze({
         "result": {
           "kind": "Nat"
         }
+      },
+      "Stitch.Compute.typedInstructionAdmission": {
+        "body": {
+          "k": "binary",
+          "left": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "resultBits"
+            },
+            "op": "<=?",
+            "right": {
+              "k": "var",
+              "name": "capacityBits"
+            }
+          },
+          "op": "&&",
+          "right": {
+            "k": "binary",
+            "left": {
+              "args": [
+                {
+                  "k": "var",
+                  "name": "bits"
+                }
+              ],
+              "k": "call",
+              "name": "byteWidth"
+            },
+            "op": "&&",
+            "right": {
+              "k": "binary",
+              "left": {
+                "k": "binary",
+                "left": {
+                  "k": "var",
+                  "name": "bits"
+                },
+                "op": "<=?",
+                "right": {
+                  "k": "var",
+                  "name": "capacityBits"
+                }
+              },
+              "op": "&&",
+              "right": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "field": "opcode",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    }
+                  },
+                  "op": "<=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "3"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "k": "binary",
+                  "left": {
+                    "args": [
+                      {
+                        "field": "argumentBits",
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        }
+                      }
+                    ],
+                    "k": "call",
+                    "name": "byteWidth"
+                  },
+                  "op": "&&",
+                  "right": {
+                    "k": "binary",
+                    "left": {
+                      "k": "binary",
+                      "left": {
+                        "field": "argument",
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        }
+                      },
+                      "op": "<?",
+                      "right": {
+                        "args": [
+                          {
+                            "field": "argumentBits",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          }
+                        ],
+                        "k": "call",
+                        "name": "ringModulus"
+                      }
+                    },
+                    "op": "&&",
+                    "right": {
+                      "cond": {
+                        "k": "binary",
+                        "left": {
+                          "field": "opcode",
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "instruction"
+                          }
+                        },
+                        "op": "=?",
+                        "right": {
+                          "k": "nat",
+                          "value": "14"
+                        }
+                      },
+                      "k": "if",
+                      "no": {
+                        "k": "binary",
+                        "left": {
+                          "args": [
+                            {
+                              "field": "opcode",
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "instruction"
+                              }
+                            }
+                          ],
+                          "k": "call",
+                          "name": "instructionAllowed"
+                        },
+                        "op": "&&",
+                        "right": {
+                          "k": "binary",
+                          "left": {
+                            "k": "binary",
+                            "left": {
+                              "args": [
+                                {
+                                  "k": "var",
+                                  "name": "bits"
+                                },
+                                {
+                                  "field": "argumentBits",
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "instruction"
+                                  }
+                                }
+                              ],
+                              "k": "call",
+                              "name": "arithmeticWidth"
+                            },
+                            "op": "<=?",
+                            "right": {
+                              "k": "var",
+                              "name": "capacityBits"
+                            }
+                          },
+                          "op": "&&",
+                          "right": {
+                            "cond": {
+                              "k": "binary",
+                              "left": {
+                                "k": "binary",
+                                "left": {
+                                  "field": "opcode",
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "instruction"
+                                  }
+                                },
+                                "op": "=?",
+                                "right": {
+                                  "k": "nat",
+                                  "value": "15"
+                                }
+                              },
+                              "op": "||",
+                              "right": {
+                                "k": "binary",
+                                "left": {
+                                  "field": "opcode",
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "instruction"
+                                  }
+                                },
+                                "op": "=?",
+                                "right": {
+                                  "k": "nat",
+                                  "value": "16"
+                                }
+                              }
+                            },
+                            "k": "if",
+                            "no": {
+                              "k": "bool",
+                              "value": true
+                            },
+                            "yes": {
+                              "k": "binary",
+                              "left": {
+                                "k": "nat",
+                                "value": "0"
+                              },
+                              "op": "<?",
+                              "right": {
+                                "field": "argument",
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "instruction"
+                                }
+                              }
+                            }
+                          }
+                        }
+                      },
+                      "yes": {
+                        "k": "binary",
+                        "left": {
+                          "k": "binary",
+                          "left": {
+                            "k": "var",
+                            "name": "bits"
+                          },
+                          "op": "+",
+                          "right": {
+                            "field": "argumentBits",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          }
+                        },
+                        "op": "<=?",
+                        "right": {
+                          "k": "var",
+                          "name": "capacityBits"
+                        }
+                      }
+                    }
+                  }
+                },
+                "yes": {
+                  "k": "binary",
+                  "left": {
+                    "k": "binary",
+                    "left": {
+                      "field": "argumentBits",
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      }
+                    },
+                    "op": "=?",
+                    "right": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  },
+                  "op": "&&",
+                  "right": {
+                    "k": "binary",
+                    "left": {
+                      "field": "argument",
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      }
+                    },
+                    "op": "=?",
+                    "right": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "typedInstructionAdmission",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "TypedInstruction"
+            }
+          },
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "capacityBits",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "resultBits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.typedInstructionAllowed": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "instruction"
+            },
+            {
+              "k": "var",
+              "name": "bits"
+            },
+            {
+              "k": "var",
+              "name": "capacityBits"
+            },
+            {
+              "args": [
+                {
+                  "k": "var",
+                  "name": "instruction"
+                },
+                {
+                  "k": "var",
+                  "name": "bits"
+                }
+              ],
+              "k": "call",
+              "name": "typedResultBits"
+            }
+          ],
+          "k": "call",
+          "name": "typedInstructionAdmission"
+        },
+        "module": "Stitch.Compute",
+        "name": "typedInstructionAllowed",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "TypedInstruction"
+            }
+          },
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "capacityBits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.typedInstructionWork": {
+        "body": {
+          "body": {
+            "body": {
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "field": "opcode",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    }
+                  },
+                  "op": "=?",
+                  "right": {
+                    "k": "nat",
+                    "value": "14"
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "cond": {
+                    "k": "binary",
+                    "left": {
+                      "field": "opcode",
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "instruction"
+                      }
+                    },
+                    "op": "=?",
+                    "right": {
+                      "k": "nat",
+                      "value": "17"
+                    }
+                  },
+                  "k": "if",
+                  "no": {
+                    "cond": {
+                      "k": "binary",
+                      "left": {
+                        "k": "binary",
+                        "left": {
+                          "field": "opcode",
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "instruction"
+                          }
+                        },
+                        "op": "=?",
+                        "right": {
+                          "k": "nat",
+                          "value": "6"
+                        }
+                      },
+                      "op": "||",
+                      "right": {
+                        "k": "binary",
+                        "left": {
+                          "k": "binary",
+                          "left": {
+                            "k": "nat",
+                            "value": "15"
+                          },
+                          "op": "<=?",
+                          "right": {
+                            "field": "opcode",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          }
+                        },
+                        "op": "&&",
+                        "right": {
+                          "k": "binary",
+                          "left": {
+                            "field": "opcode",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          },
+                          "op": "<=?",
+                          "right": {
+                            "k": "nat",
+                            "value": "16"
+                          }
+                        }
+                      }
+                    },
+                    "k": "if",
+                    "no": {
+                      "cond": {
+                        "k": "binary",
+                        "left": {
+                          "k": "binary",
+                          "left": {
+                            "k": "nat",
+                            "value": "7"
+                          },
+                          "op": "<=?",
+                          "right": {
+                            "field": "opcode",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          }
+                        },
+                        "op": "&&",
+                        "right": {
+                          "k": "binary",
+                          "left": {
+                            "field": "opcode",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          },
+                          "op": "<=?",
+                          "right": {
+                            "k": "nat",
+                            "value": "9"
+                          }
+                        }
+                      },
+                      "k": "if",
+                      "no": {
+                        "k": "binary",
+                        "left": {
+                          "k": "nat",
+                          "value": "1"
+                        },
+                        "op": "+",
+                        "right": {
+                          "k": "var",
+                          "name": "limbs"
+                        }
+                      },
+                      "yes": {
+                        "k": "binary",
+                        "left": {
+                          "k": "nat",
+                          "value": "1"
+                        },
+                        "op": "+",
+                        "right": {
+                          "k": "var",
+                          "name": "width"
+                        }
+                      }
+                    },
+                    "yes": {
+                      "k": "binary",
+                      "left": {
+                        "k": "nat",
+                        "value": "1"
+                      },
+                      "op": "+",
+                      "right": {
+                        "k": "var",
+                        "name": "productWork"
+                      }
+                    }
+                  },
+                  "yes": {
+                    "k": "binary",
+                    "left": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "op": "+",
+                    "right": {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "productWork"
+                        },
+                        {
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "width"
+                            },
+                            {
+                              "field": "argument",
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "instruction"
+                              }
+                            }
+                          ],
+                          "k": "call",
+                          "name": "powerWork"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "multiply",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    }
+                  }
+                },
+                "yes": {
+                  "k": "binary",
+                  "left": {
+                    "k": "nat",
+                    "value": "1"
+                  },
+                  "op": "+",
+                  "right": {
+                    "args": [
+                      {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "bits"
+                        },
+                        "op": "+",
+                        "right": {
+                          "field": "argumentBits",
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "instruction"
+                          }
+                        }
+                      },
+                      {
+                        "k": "nat",
+                        "value": "8"
+                      },
+                      {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    ],
+                    "k": "prim",
+                    "operation": "quotient",
+                    "type": {
+                      "kind": "Nat"
+                    }
+                  }
+                }
+              },
+              "k": "let",
+              "name": "productWork",
+              "type": {
+                "kind": "Nat"
+              },
+              "value": {
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "limbs"
+                  },
+                  {
+                    "k": "var",
+                    "name": "limbs"
+                  }
+                ],
+                "k": "prim",
+                "operation": "multiply",
+                "type": {
+                  "kind": "Nat"
+                }
+              }
+            },
+            "k": "let",
+            "name": "limbs",
+            "type": {
+              "kind": "Nat"
+            },
+            "value": {
+              "args": [
+                {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "width"
+                  },
+                  "op": "+",
+                  "right": {
+                    "k": "nat",
+                    "value": "63"
+                  }
+                },
+                {
+                  "k": "nat",
+                  "value": "64"
+                },
+                {
+                  "k": "nat",
+                  "value": "0"
+                }
+              ],
+              "k": "prim",
+              "operation": "quotient",
+              "type": {
+                "kind": "Nat"
+              }
+            }
+          },
+          "k": "let",
+          "name": "width",
+          "type": {
+            "kind": "Nat"
+          },
+          "value": {
+            "args": [
+              {
+                "k": "var",
+                "name": "bits"
+              },
+              {
+                "field": "argumentBits",
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                }
+              }
+            ],
+            "k": "call",
+            "name": "arithmeticWidth"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "typedInstructionWork",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "TypedInstruction"
+            }
+          },
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.typedResultBits": {
+        "body": {
+          "cond": {
+            "k": "binary",
+            "left": {
+              "field": "opcode",
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              }
+            },
+            "op": "=?",
+            "right": {
+              "k": "nat",
+              "value": "14"
+            }
+          },
+          "k": "if",
+          "no": {
+            "cond": {
+              "k": "binary",
+              "left": {
+                "k": "binary",
+                "left": {
+                  "k": "nat",
+                  "value": "10"
+                },
+                "op": "<=?",
+                "right": {
+                  "field": "opcode",
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  }
+                }
+              },
+              "op": "&&",
+              "right": {
+                "k": "binary",
+                "left": {
+                  "field": "opcode",
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  }
+                },
+                "op": "<=?",
+                "right": {
+                  "k": "nat",
+                  "value": "13"
+                }
+              }
+            },
+            "k": "if",
+            "no": {
+              "args": [
+                {
+                  "k": "var",
+                  "name": "bits"
+                },
+                {
+                  "field": "argumentBits",
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  }
+                }
+              ],
+              "k": "call",
+              "name": "arithmeticWidth"
+            },
+            "yes": {
+              "k": "nat",
+              "value": "8"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "bits"
+            },
+            "op": "+",
+            "right": {
+              "field": "argumentBits",
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "typedResultBits",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "TypedInstruction"
+            }
+          },
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.typedStep": {
+        "body": {
+          "cond": {
+            "k": "binary",
+            "left": {
+              "field": "opcode",
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "instruction"
+              }
+            },
+            "op": "=?",
+            "right": {
+              "k": "nat",
+              "value": "14"
+            }
+          },
+          "k": "if",
+          "no": {
+            "k": "record",
+            "name": "Word",
+            "values": {
+              "bits": {
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "instruction"
+                  },
+                  {
+                    "field": "bits",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "word"
+                    }
+                  }
+                ],
+                "k": "call",
+                "name": "typedResultBits"
+              },
+              "value": {
+                "args": [
+                  {
+                    "k": "record",
+                    "name": "Instruction",
+                    "values": {
+                      "argument": {
+                        "field": "argument",
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        }
+                      },
+                      "opcode": {
+                        "field": "opcode",
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "instruction"
+                        }
+                      }
+                    }
+                  },
+                  {
+                    "field": "value",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "word"
+                    }
+                  },
+                  {
+                    "args": [
+                      {
+                        "args": [
+                          {
+                            "field": "bits",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "word"
+                            }
+                          },
+                          {
+                            "field": "argumentBits",
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "instruction"
+                            }
+                          }
+                        ],
+                        "k": "call",
+                        "name": "arithmeticWidth"
+                      }
+                    ],
+                    "k": "call",
+                    "name": "ringModulus"
+                  }
+                ],
+                "k": "call",
+                "name": "ringStep"
+              }
+            }
+          },
+          "yes": {
+            "args": [
+              {
+                "k": "var",
+                "name": "word"
+              },
+              {
+                "k": "record",
+                "name": "Word",
+                "values": {
+                  "bits": {
+                    "field": "argumentBits",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    }
+                  },
+                  "value": {
+                    "field": "argument",
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "instruction"
+                    }
+                  }
+                }
+              }
+            ],
+            "k": "call",
+            "name": "concatWords"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "typedStep",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "TypedInstruction"
+            }
+          },
+          {
+            "name": "word",
+            "type": {
+              "kind": "Word"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Word"
+        }
       }
     },
-    "interpreterSha256": "64b3309f0f0525a16807c9b20532c9dd08c632b0c6c62006b1c33fce343aad7a",
+    "interpreterSha256": "7f0515e4b326beeb82a1a6b15fb739d664e9c8c02fabffd8d285b417faf5c87a",
     "roots": [
       "Stitch.Compute.checkpointLinkAllowed",
-      "Stitch.Compute.ringStep"
+      "Stitch.Compute.instructionWork",
+      "Stitch.Compute.ringStep",
+      "Stitch.Compute.typedInstructionAllowed",
+      "Stitch.Compute.typedInstructionWork",
+      "Stitch.Compute.typedResultBits",
+      "Stitch.Compute.typedStep"
     ],
     "schema": "stitch/execution-semantics/1",
     "types": {
@@ -39344,10 +44321,50 @@ export const MODEL_SOURCE = Object.freeze({
           }
         ],
         "kind": "structure"
+      },
+      "Stitch.Compute.TypedInstruction": {
+        "fields": [
+          {
+            "name": "opcode",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "argument",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "argumentBits",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "kind": "structure"
+      },
+      "Stitch.Compute.Word": {
+        "fields": [
+          {
+            "name": "bits",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "value",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "kind": "structure"
       }
     }
   },
-  "generatorSha256": "34049f97cea5602b8b433a86cc9e3a1ccf602c7a86442de66c68baa9a3f9fb8d",
+  "generatorSha256": "7aacb22c351ee9b032b5ee4236a26f85aad3504e1fac34d77b11af4116bfe297",
   "bindingSources": [
     {
       "path": "app/src/Foundation/Arch.lex.tex",
@@ -39367,7 +44384,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
+      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -39387,7 +44404,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
-      "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
@@ -39581,7 +44598,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
-      "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
@@ -39633,7 +44650,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "0cfe8d9860895b19ee3e1c96884e055b2568a86fd8caa690c1506a38923e5122"
+      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
     }
   ],
   "theorems": [
@@ -40232,6 +45249,24 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Compute.zeroExponentIsRingUnit",
+      "proof": "induction",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.zeroExponentCostsNoMultiplications",
+      "proof": "induction",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.powerRetainsExponentBitsAboveU64",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Compute.semanticTamperingRefused",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Compute.lex.tex",
@@ -40276,6 +45311,42 @@ export const MODEL_SOURCE = Object.freeze({
     {
       "id": "Stitch.Compute.checkpointTransitionNeverRollsBack",
       "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.concatPreservesDeclaredWidth",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.concatIsBigEndianAppend",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.typedResumeEqualsUninterrupted",
+      "proof": "induction",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.concatCapacityCannotTruncate",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.typedAdmissionBoundsDeclaredWidth",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.typedAdmissionBoundsResultWidth",
+      "proof": "apply",
       "source": "app/src/Stitch/Compute.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
@@ -41190,33 +46261,56 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.ChannelFlow.sendAllowed",
     "Stitch.Compute.advanceCheckpoint",
     "Stitch.Compute.appendProgram",
+    "Stitch.Compute.appendTypedProgram",
+    "Stitch.Compute.arithmeticWidth",
+    "Stitch.Compute.binaryLength",
+    "Stitch.Compute.binaryLengthAcc",
+    "Stitch.Compute.bitwiseAcc",
+    "Stitch.Compute.byteWidth",
     "Stitch.Compute.checkpointCommitted",
     "Stitch.Compute.checkpointLinkAllowed",
     "Stitch.Compute.checkpointMatchesJob",
     "Stitch.Compute.checkpointSuccessor",
     "Stitch.Compute.committedCheckpointAllowed",
     "Stitch.Compute.committedCheckpointSuccessor",
+    "Stitch.Compute.concatWords",
     "Stitch.Compute.execute",
     "Stitch.Compute.inputCommitted",
     "Stitch.Compute.instructionAllowed",
     "Stitch.Compute.instructionCount",
     "Stitch.Compute.instructionWellFormed",
+    "Stitch.Compute.instructionWork",
     "Stitch.Compute.instructionsAllowed",
     "Stitch.Compute.instructionsWellFormed",
     "Stitch.Compute.jobAllowed",
     "Stitch.Compute.jobCommitted",
     "Stitch.Compute.natBitwise",
+    "Stitch.Compute.naturalPower",
     "Stitch.Compute.normalize",
+    "Stitch.Compute.operandWidth",
+    "Stitch.Compute.powerWork",
+    "Stitch.Compute.powerWorkAcc",
     "Stitch.Compute.programAllowed",
     "Stitch.Compute.programCommitted",
     "Stitch.Compute.replayedValue",
     "Stitch.Compute.ringModulus",
+    "Stitch.Compute.ringPow",
     "Stitch.Compute.ringStep",
     "Stitch.Compute.sameInstruction",
     "Stitch.Compute.sameInstructions",
     "Stitch.Compute.stateCommitted",
     "Stitch.Compute.supportedWidth",
     "Stitch.Compute.takeSteps",
+    "Stitch.Compute.typedExecute",
+    "Stitch.Compute.typedInstructionAdmission",
+    "Stitch.Compute.typedInstructionAllowed",
+    "Stitch.Compute.typedInstructionWork",
+    "Stitch.Compute.typedProgramAllowed",
+    "Stitch.Compute.typedProgramWork",
+    "Stitch.Compute.typedProgramWorkAcc",
+    "Stitch.Compute.typedResultBits",
+    "Stitch.Compute.typedStep",
+    "Stitch.Compute.wordAllowed",
     "Stitch.Custody.acknowledgeTransfer",
     "Stitch.Custody.activeCount",
     "Stitch.Custody.activeThreshold",
@@ -41410,17 +46504,18 @@ function coerce(value,type,module) {
   if(!constructor||!Array.isArray(value.fields)||value.fields.length!==constructor.fields.length)throw new TypeError('model constructor required for '+id);
   return {tag:value.tag,fields:value.fields.map((v,i)=>coerce(v,constructor.fields[i],id.slice(0,id.lastIndexOf('.'))))};
 }
-function evaluate(ast,env,module) {
+const tailCall = Symbol("source-tail-call");
+function evaluate(ast,env,module,tail=false) {
   switch(ast.k) {
     case 'nat':return BigInt(ast.value);
     case 'bool':case 'string':return ast.value;
     case 'var':if(!Object.hasOwn(env,ast.name))throw Error('unbound model variable');return env[ast.name];
-    case 'if':return evaluate(evaluate(ast.cond,env,module)?ast.yes:ast.no,env,module);
+    case 'if':return evaluate(evaluate(ast.cond,env,module)?ast.yes:ast.no,env,module,tail);
     case 'not':return !evaluate(ast.value,env,module);
     case 'project':return evaluate(ast.value,env,module)[ast.field];
-    case 'let':return evaluate(ast.body,{...env,[ast.name]:evaluate(ast.value,env,module)},module);
+    case 'let':return evaluate(ast.body,{...env,[ast.name]:evaluate(ast.value,env,module)},module,tail);
     case 'record':return Object.fromEntries(Object.entries(ast.values).map(([k,v])=>[k,evaluate(v,env,module)]));
-    case 'call':return invoke(qualify(module,ast.name),ast.args.map(x=>evaluate(x,env,module)));
+    case 'call': {const id=qualify(module,ast.name),args=ast.args.map(x=>evaluate(x,env,module));return tail?{[tailCall]:true,id,args}:invoke(id,args);}
     case 'nil':return [];
     case 'cons':return [evaluate(ast.head,env,module),...evaluate(ast.tail,env,module)];
     case 'ctor':return {tag:ast.name.split('.').at(-1),fields:ast.args.map(x=>evaluate(x,env,module))};
@@ -41428,7 +46523,7 @@ function evaluate(ast,env,module) {
       const value=evaluate(ast.value,env,module);let tag,fields;
       if(Array.isArray(value)){tag=value.length?'cons':'nil';fields=value.length?[value[0],value.slice(1)]:[];}else if(typeof value==='bigint'){tag=value===0n?'zero':'succ';fields=value===0n?[]:[value-1n];}else if(typeof value==='boolean'){tag=value?'true':'false';fields=[];}else {tag=value.tag;fields=value.fields;}
       const b=ast.branches.find(x=>x.constructor.split('.').at(-1)===tag);
-      if(!b||b.binders.length!==fields.length)throw Error('nonexhaustive model match');return evaluate(b.body,{...env,...Object.fromEntries(b.binders.map((n,i)=>[n,fields[i]]))},module);
+      if(!b||b.binders.length!==fields.length)throw Error('nonexhaustive model match');return evaluate(b.body,{...env,...Object.fromEntries(b.binders.map((n,i)=>[n,fields[i]]))},module,tail);
     }
     case 'binary': {
       const left=evaluate(ast.left,env,module);
@@ -41444,7 +46539,7 @@ function evaluate(ast,env,module) {
     default:throw Error('unsupported model node '+ast.k);
   }
 }
-function invoke(id,args) {const d=definitions[id];if(!d||d.params.length!==args.length)throw Error('unknown model function/arity '+id);return evaluate(d.body,Object.fromEntries(d.params.map((p,i)=>[p.name,args[i]])),d.module);}
+function invoke(id,args) {for(;;){const d=definitions[id];if(!d||d.params.length!==args.length)throw Error('unknown model function/arity '+id);const result=evaluate(d.body,Object.fromEntries(d.params.map((p,i)=>[p.name,args[i]])),d.module,true);if(!result?.[tailCall])return result;id=result.id;args=result.args;}}
 export const model=Object.freeze(Object.fromEntries(Object.entries(definitions).map(([id,d])=>[id,(...args)=>{if(args.length!==d.params.length)throw new TypeError('model arity '+id);return invoke(id,args.map((v,i)=>coerce(v,d.params[i].type,d.module)));}])));
 
 export const budgetReserveAllowed = model["Stitch.Budget.reserveAllowed"];
