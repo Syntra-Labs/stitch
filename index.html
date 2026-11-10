@@ -3,7 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>stitch — Stratified Routing Persistence, UOR Storage & Distributed Compute</title>
+  <title>stitch — Live UOR Mesh Database, Distributed Compute & In-Browser Linux VM</title>
+  <script src="./v86/libv86.js"></script>
   <style>
     :root {
       --bg: #0a0a0a;
@@ -22,13 +23,13 @@
       font-family: var(--font);
       font-size: 12px;
       line-height: 1.45;
-      padding: 16px;
+      padding: 14px;
     }
 
     header {
       border: 1px solid var(--border);
       background: var(--panel);
-      padding: 12px 16px;
+      padding: 10px 14px;
       margin-bottom: 12px;
       display: flex;
       justify-content: space-between;
@@ -44,6 +45,7 @@
       display: grid;
       grid-template-columns: 1fr 1fr;
       gap: 12px;
+      margin-bottom: 12px;
     }
 
     @media (max-width: 1024px) {
@@ -53,10 +55,10 @@
     .stratum {
       border: 1px solid var(--border);
       background: var(--panel);
-      padding: 14px;
+      padding: 12px;
       display: flex;
       flex-direction: column;
-      gap: 10px;
+      gap: 9px;
     }
 
     .stratum-head {
@@ -64,7 +66,7 @@
       justify-content: space-between;
       align-items: baseline;
       border-bottom: 1px solid var(--border);
-      padding-bottom: 6px;
+      padding-bottom: 5px;
     }
 
     .muted { color: var(--muted); font-size: 11px; }
@@ -76,7 +78,7 @@
       align-items: center;
     }
 
-    input, select {
+    input {
       background: #000;
       color: var(--fg);
       border: 1px solid var(--border);
@@ -125,347 +127,495 @@
       border: 1px solid var(--border);
       padding: 8px;
       font-size: 11px;
-      overflow-x: auto;
+      max-height: 150px;
+      overflow-y: auto;
       white-space: pre-wrap;
+    }
+
+    #vmScreenContainer {
+      background: #000;
+      border: 1px solid var(--border);
+      min-height: 220px;
+      padding: 6px;
+      overflow: auto;
+      font-family: var(--font);
+      font-size: 12px;
+      color: #e8e8e8;
     }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Syntra-Labs / stitch — Stratified Verification & Comparative Benchmark Console</h1>
-      <div class="muted">5 Isolated Layers: L1 UOR Addressing | L2 Refresh Schedulers | L3 Ephemeral Database | L4 Distributed Compute | L5 Transport (WebRTC + DoH)</div>
+      <h1>Syntra-Labs / stitch — Live Multi-Peer UOR Database, Distributed Compute & In-Browser Linux 5.6 VM</h1>
+      <div class="muted">
+        Local Node: <strong id="nodeIdLabel">...</strong> |
+        WebRTC Open Peers: <strong id="peerCountLabel">0</strong> |
+        Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
+        P(alive): <strong id="schedPAliveLabel">1.000</strong> |
+        H(p): <strong id="schedEntropyLabel">0.000 bit</strong>
+      </div>
     </div>
     <div class="controls">
-      <button id="runAllBenchBtn">Re-Run All Layer Benchmarks</button>
+      <label class="muted">Mesh Key:</label>
+      <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
+      <button id="reconnectBtn">Join Mesh & Sync</button>
+      <button id="runAllBenchBtn" class="secondary">Re-Run All Benchmarks</button>
     </div>
   </header>
 
+  <!-- LIVE WIRED SECTION: REAL NETWORK DATABASE + DISTRIBUTED COMPUTE + IN-BROWSER LINUX VM -->
   <div class="grid">
-    <!-- STRATUM 1: UOR CONTENT ADDRESSING & RING KERNEL -->
+    <!-- LIVE PANEL A: REAL NETWORK-BACKED UOR CONTENT-ADDRESSED DATABASE -->
     <section class="stratum">
       <div class="stratum-head">
-        <h2>Layer 1: UOR Content Addressing & Ring Z/(2^n)Z</h2>
-        <span class="muted">src/layer1-uor/index.js (uor-foundation v0.5.2 conformant)</span>
+        <h2>Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
+        <span class="muted">Survives tab closes & 0-peer gaps</span>
       </div>
 
       <div class="controls">
-        <label class="muted">Samples:</label>
-        <input type="number" id="l1Samples" value="1000" min="100" max="10000" style="width: 80px;" />
-        <label class="muted">Payload (B):</label>
-        <input type="number" id="l1Bytes" value="64" min="8" max="4096" style="width: 70px;" />
-        <button id="runL1Btn" class="secondary">Run L1 Benchmark</button>
+        <input type="text" id="dbLabelInput" value="state.txt" placeholder="Filename in /mnt" style="width: 110px;" />
+        <input type="text" id="dbPayloadInput" value="Hello from live UOR mesh storage" style="flex: 1;" />
+        <button id="dbPutBtn">Put & Replicate</button>
+        <button id="dbSyncBtn" class="secondary">Recover from Warm Cache</button>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>Hasher Axis</th>
-            <th>Width (B)</th>
-            <th>Samples</th>
-            <th>Collisions</th>
-            <th>Time (ms)</th>
-            <th>Ops / sec</th>
-            <th>MB / s</th>
+            <th>UOR ContentAddress (u128)</th>
+            <th>Label (/mnt)</th>
+            <th>Size</th>
+            <th>Verified</th>
+            <th>Source</th>
+            <th>Payload Preview</th>
           </tr>
         </thead>
-        <tbody id="l1Body"></tbody>
-      </table>
-
-      <div class="controls">
-        <input type="text" id="l1InputText" value="[1, 2, 3, 4]" style="flex: 1;" />
-        <button id="l1MintBtn" class="secondary">Mint UOR Address</button>
-      </div>
-      <div class="mono-out" id="l1MintOut"></div>
-    </section>
-
-    <!-- STRATUM 2: LIVENESS & REFRESH SCHEDULERS -->
-    <section class="stratum">
-      <div class="stratum-head">
-        <h2>Layer 2: Liveness & Refresh Schedulers</h2>
-        <span class="muted">src/layer2-schedulers/index.js</span>
-      </div>
-
-      <div class="controls">
-        <label class="muted">Duration (s):</label>
-        <input type="number" id="l2Duration" value="600" style="width: 70px;" />
-        <label class="muted">TTL (s):</label>
-        <input type="number" id="l2Ttl" value="60" style="width: 60px;" />
-        <label class="muted">Drop Interval (s):</label>
-        <input type="number" id="l2DropInterval" value="18" style="width: 60px;" />
-        <button id="runL2Btn" class="secondary">Run L2 Benchmark</button>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Scheduler Policy</th>
-            <th>Refreshes Issued</th>
-            <th>Unavailable (s)</th>
-            <th>Availability Ratio</th>
-            <th>Mean Recovery Lag (s)</th>
-          </tr>
-        </thead>
-        <tbody id="l2Body"></tbody>
+        <tbody id="liveDbBody">
+          <tr><td colspan="6" class="muted">No objects yet. Click "Put & Replicate" or "Recover from Warm Cache".</td></tr>
+        </tbody>
       </table>
     </section>
 
-    <!-- STRATUM 3: DISTRIBUTED EPHEMERAL UOR DATABASE -->
+    <!-- LIVE PANEL B: REAL DISTRIBUTED COMPUTE & FAILOVER TAKEOVER -->
     <section class="stratum">
       <div class="stratum-head">
-        <h2>Layer 3: Ephemeral UOR Database (100% Node Turnover)</h2>
-        <span class="muted">src/layer3-storage/index.js</span>
+        <h2>Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
+        <span class="muted">Close tab mid-job; peer tab resumes from last step</span>
       </div>
 
       <div class="controls">
-        <label class="muted">Objects:</label>
-        <input type="number" id="l3Objects" value="24" style="width: 60px;" />
-        <label class="muted">Size (B):</label>
-        <input type="number" id="l3Size" value="256" style="width: 65px;" />
-        <label class="muted">Turnover Generations:</label>
-        <input type="number" id="l3Gens" value="8" style="width: 55px;" />
-        <button id="runL3Btn" class="secondary">Run L3 Benchmark</button>
+        <label class="muted">Steps:</label>
+        <input type="number" id="jobStepsInput" value="12" min="3" max="60" style="width: 60px;" />
+        <label class="muted">Step Delay (ms):</label>
+        <input type="number" id="jobDelayInput" value="800" min="100" max="3000" style="width: 75px;" />
+        <button id="startJobBtn">Start Distributed UOR Job</button>
+        <button id="takeoverJobsBtn" class="secondary">Scan & Take Over Stalled Jobs</button>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>Storage & Repair Strategy</th>
-            <th>Gen-0 Nodes Alive</th>
-            <th>Recovered</th>
-            <th>Retention Rate</th>
-            <th>Storage Amp</th>
-            <th>Repair Bytes</th>
-            <th>Repair Ops</th>
-          </tr>
-        </thead>
-        <tbody id="l3Body"></tbody>
-      </table>
-    </section>
-
-    <!-- STRATUM 4: DISTRIBUTED UOR COMPUTE ENGINE -->
-    <section class="stratum">
-      <div class="stratum-head">
-        <h2>Layer 4: Distributed UOR Compute Engine</h2>
-        <span class="muted">src/layer4-compute/index.js</span>
-      </div>
-
-      <div class="controls">
-        <label class="muted">Tasks:</label>
-        <input type="number" id="l4Tasks" value="20" style="width: 60px;" />
-        <label class="muted">Steps/Task:</label>
-        <input type="number" id="l4Steps" value="24" style="width: 60px;" />
-        <label class="muted">Drop Modulo:</label>
-        <input type="number" id="l4DropMod" value="9" style="width: 55px;" />
-        <button id="runL4Btn" class="secondary">Run L4 Benchmark</button>
-      </div>
-
-      <table>
-        <thead>
-          <tr>
-            <th>Execution & Fault Strategy</th>
-            <th>Completed</th>
-            <th>Mean Latency (ticks)</th>
-            <th>Total Ring Ops</th>
-            <th>Wasted Ops</th>
-            <th>Checkpoints</th>
+            <th>Job ID</th>
+            <th>Progress</th>
+            <th>Owner Node</th>
+            <th>Current W64 Ring Value</th>
+            <th>Status</th>
             <th>Trace Verified</th>
           </tr>
         </thead>
-        <tbody id="l4Body"></tbody>
+        <tbody id="liveJobsBody">
+          <tr><td colspan="6" class="muted">No active jobs. Start a job and close this tab mid-run to test peer takeover.</td></tr>
+        </tbody>
       </table>
     </section>
 
-    <!-- STRATUM 5: NETWORK & DNS CONTROL-PLANE ADAPTERS -->
-    <section class="stratum" style="grid-column: 1 / -1;">
+    <!-- LIVE PANEL C: IN-BROWSER X86 LINUX 5.6 VM (v86) + ETHERNET OVER WEBRTC -->
+    <section class="stratum">
       <div class="stratum-head">
-        <h2>Layer 5: Transport Adapters (WebRTC DataChannel + RFC 8484 DNS-over-HTTPS)</h2>
-        <span class="muted">src/layer5-transport/index.js</span>
+        <h2>In-Browser x86 Linux 5.6 VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
+        <span class="muted" id="vmStatusLabel">VM Standby</span>
       </div>
 
       <div class="controls">
-        <label class="muted">Channel Key:</label>
-        <input type="text" id="l5Key" value="syntra-uor-bus-01" style="width: 160px;" />
-        <button id="l5ConnectBtn">Connect WebRTC Peer</button>
-        <button id="l5ReplicateBtn" class="secondary">Replicate UOR Object to Peer</button>
-        <label class="muted" style="margin-left: 12px;">DoH Query:</label>
-        <input type="text" id="l5DnsName" value="_xmpp-client._tcp.jabber.org" style="width: 210px;" />
-        <button id="l5SrvBtn" class="secondary">Resolve SRV</button>
-        <button id="l5TxtBtn" class="secondary">Resolve TXT</button>
+        <button id="bootVmBtn">Boot Linux 5.6 VM</button>
+        <input type="text" id="vmCmdInput" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
+        <button id="runVmCmdBtn" class="secondary">Run in VM & Store Output in UOR DB</button>
       </div>
 
-      <div class="mono-out" id="l5Log">Initializing Layer 5 transport node...</div>
+      <div id="vmScreenContainer">
+        <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux 5.6 VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
+All UOR database objects are automatically mounted inside /mnt/ in the VM, and eth0 is bridged over WebRTC.</div>
+        <canvas style="display: none;"></canvas>
+      </div>
+    </section>
+
+    <!-- LIVE PANEL D: LAYER 5 DNS SRV/TXT DoH READER + PUBLIC DUCKDNS TXT WRITER & TELEMETRY -->
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
+        <span class="muted">RFC 8484 DoH + Single-GET Dynamic DNS</span>
+      </div>
+
+      <div class="controls">
+        <input type="text" id="dnsQueryInput" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
+        <button id="resolveSrvBtn" class="secondary">Resolve SRV (DoH)</button>
+        <button id="resolveTxtBtn" class="secondary">Resolve TXT (DoH)</button>
+      </div>
+
+      <div class="controls">
+        <input type="text" id="duckSubInput" placeholder="DuckDNS subdomain" style="width: 130px;" />
+        <input type="text" id="duckTokenInput" placeholder="Public scoped token" style="width: 140px;" />
+        <button id="writeDuckTxtBtn" class="secondary">Write Pointer to DNS TXT</button>
+      </div>
+
+      <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
+    </section>
+  </div>
+
+  <!-- COMPARATIVE STRATUM BENCHMARK TABLES -->
+  <div class="grid">
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 1 Benchmark: UOR Hasher Substitution Axis (1,000 × 64B)</h2>
+        <span class="muted">uor-foundation v0.5.2 conformant</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Hasher</th><th>Width (B)</th><th>Collisions</th><th>Time (ms)</th><th>Ops/sec</th><th>MB/s</th></tr>
+        </thead>
+        <tbody id="l1BenchBody"></tbody>
+      </table>
+    </section>
+
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 2 Benchmark: Refresh Schedulers (600s, Drop=18s, TTL=60s)</h2>
+        <span class="muted">4 Isolated Policies</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Policy</th><th>Refreshes</th><th>Unavailable (s)</th><th>Availability</th><th>Mean Lag (s)</th></tr>
+        </thead>
+        <tbody id="l2BenchBody"></tbody>
+      </table>
+    </section>
+
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 3 Benchmark: Storage Durability (100% Cohort Turnover)</h2>
+        <span class="muted">0 Initial Nodes Remaining</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Gen-0 Left</th><th>Recovered</th><th>Retention</th><th>Amp</th><th>Repair Bytes</th></tr>
+        </thead>
+        <tbody id="l3BenchBody"></tbody>
+      </table>
+    </section>
+
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 4 Benchmark: Compute Engine Under Worker Churn</h2>
+        <span class="muted">20 Tasks × 24 Z/(2^64)Z Ops</span>
+      </div>
+      <table>
+        <thead>
+          <tr><th>Strategy</th><th>Done</th><th>Latency (ticks)</th><th>Total Ops</th><th>Wasted Ops</th><th>Trace Verified</th></tr>
+        </thead>
+        <tbody id="l4BenchBody"></tbody>
+      </table>
     </section>
   </div>
 
   <script type="module">
+    import { benchmarkUorHashers } from './src/layer1-uor/index.js';
     import {
-      Fnv1aHasher16,
-      mintContentAddress,
-      benchmarkUorHashers
-    } from './src/layer1-uor/index.js';
-    import { benchmarkSchedulers } from './src/layer2-schedulers/index.js';
-    import { benchmarkStorageStrategies } from './src/layer3-storage/index.js';
-    import { benchmarkComputeStrategies } from './src/layer4-compute/index.js';
-    import { DohResolver, WebRtcTransportNode } from './src/layer5-transport/index.js';
+      ShannonEntropyHysteresisScheduler,
+      benchmarkSchedulers
+    } from './src/layer2-schedulers/index.js';
+    import {
+      LiveUorMeshDatabase,
+      benchmarkStorageStrategies
+    } from './src/layer3-storage/index.js';
+    import {
+      LinuxVmNode,
+      LiveDistributedComputeCoordinator,
+      benchmarkComputeStrategies
+    } from './src/layer4-compute/index.js';
+    import {
+      DohResolver,
+      WebRtcTransportNode,
+      formatPointerTxt
+    } from './src/layer5-transport/index.js';
 
-    function runL1() {
-      const samples = Number(document.getElementById('l1Samples').value) || 1000;
-      const bytes = Number(document.getElementById('l1Bytes').value) || 64;
-      const rows = benchmarkUorHashers(samples, bytes);
-      document.getElementById('l1Body').innerHTML = rows.map(r => `
-        <tr>
-          <td><strong>${r.hasher}</strong></td>
-          <td>${r.output_bytes}</td>
-          <td>${r.samples}</td>
-          <td>${r.collisions}</td>
-          <td>${r.elapsed_ms}</td>
-          <td>${r.ops_per_sec}</td>
-          <td>${r.throughput_mb_s}</td>
-        </tr>
-      `).join('');
-    }
-
-    function mintInteractive() {
-      const raw = document.getElementById('l1InputText').value.trim();
-      let bytes;
-      try {
-        const arr = JSON.parse(raw);
-        bytes = Array.isArray(arr) ? new Uint8Array(arr) : new TextEncoder().encode(raw);
-      } catch {
-        bytes = new TextEncoder().encode(raw);
-      }
-      const { address, fingerprint } = mintContentAddress(bytes, Fnv1aHasher16);
-      document.getElementById('l1MintOut').textContent =
-        `Input Bytes (${bytes.length}B): [${Array.from(bytes).join(', ')}]\n` +
-        `UOR ContentAddress (u128): ${address.toHex()}\n` +
-        `UOR ContentFingerprint (${fingerprint.widthBytes}B): ${fingerprint.toHex()}`;
-    }
-
-    function runL2() {
-      const durationSeconds = Number(document.getElementById('l2Duration').value) || 600;
-      const ttlSeconds = Number(document.getElementById('l2Ttl').value) || 60;
-      const step = Math.max(3, Number(document.getElementById('l2DropInterval').value) || 18);
-      const dropTimestamps = [];
-      for (let t = step; t < durationSeconds; t += step) dropTimestamps.push(t);
-
-      const rows = benchmarkSchedulers({ durationSeconds, ttlSeconds, dropTimestamps });
-      document.getElementById('l2Body').innerHTML = rows.map(r => `
-        <tr>
-          <td><strong>${r.scheduler}</strong></td>
-          <td>${r.refreshes_issued}</td>
-          <td>${r.unavailable_seconds}</td>
-          <td>${(r.availability_ratio * 100).toFixed(2)}%</td>
-          <td>${r.mean_recovery_lag_sec}</td>
-        </tr>
-      `).join('');
-    }
-
-    function runL3() {
-      const objectCount = Number(document.getElementById('l3Objects').value) || 24;
-      const objectSizeBytes = Number(document.getElementById('l3Size').value) || 256;
-      const generations = Number(document.getElementById('l3Gens').value) || 8;
-      const rows = benchmarkStorageStrategies({ objectCount, objectSizeBytes, initialNodes: 5, generations });
-      document.getElementById('l3Body').innerHTML = rows.map(r => `
-        <tr>
-          <td><strong>${r.strategy}</strong></td>
-          <td>${r.initial_nodes_remaining}</td>
-          <td>${r.objects_recovered} / ${r.objects_written}</td>
-          <td>${(r.retention_rate * 100).toFixed(1)}%</td>
-          <td>${r.storage_amplification}x</td>
-          <td>${r.network_bytes_transferred} B</td>
-          <td>${r.repair_ops}</td>
-        </tr>
-      `).join('');
-    }
-
-    function runL4() {
-      const taskCount = Number(document.getElementById('l4Tasks').value) || 20;
-      const stepsPerTask = Number(document.getElementById('l4Steps').value) || 24;
-      const dropStepModulo = Number(document.getElementById('l4DropMod').value) || 9;
-      const rows = benchmarkComputeStrategies({ taskCount, stepsPerTask, workerLambda: 0.08, dropStepModulo });
-      document.getElementById('l4Body').innerHTML = rows.map(r => `
-        <tr>
-          <td><strong>${r.strategy}</strong></td>
-          <td>${r.tasks_completed}</td>
-          <td>${r.mean_latency_ticks}</td>
-          <td>${r.total_ring_ops}</td>
-          <td>${r.wasted_ring_ops}</td>
-          <td>${r.checkpoints_written}</td>
-          <td>${(r.trace_verified_rate * 100).toFixed(1)}%</td>
-        </tr>
-      `).join('');
-    }
-
-    function runAll() {
-      runL1();
-      mintInteractive();
-      runL2();
-      runL3();
-      runL4();
-    }
-
-    document.getElementById('runL1Btn').addEventListener('click', runL1);
-    document.getElementById('l1MintBtn').addEventListener('click', mintInteractive);
-    document.getElementById('runL2Btn').addEventListener('click', runL2);
-    document.getElementById('runL3Btn').addEventListener('click', runL3);
-    document.getElementById('runL4Btn').addEventListener('click', runL4);
-    document.getElementById('runAllBenchBtn').addEventListener('click', runAll);
-
-    // Layer 5 setup
-    const l5Log = document.getElementById('l5Log');
-    function appendL5Log(line) {
+    const logBox = document.getElementById('wireLogBox');
+    function logWire(tag, text) {
       const ts = new Date().toISOString().slice(11, 19);
-      l5Log.textContent = `[${ts}] ${line}\n` + l5Log.textContent.slice(0, 2400);
+      logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
     }
 
-    const doh = new DohResolver();
-    let rtcNode = null;
+    // 1. Layer-2 Scheduler driving live refreshes
+    const scheduler = new ShannonEntropyHysteresisScheduler({
+      ttlSeconds: 60,
+      epsilon: 0.08,
+      entropyThreshold: 0.40,
+      hysteresis: 0.04,
+      minFloorSeconds: 5
+    });
+    const nowSec = () => Date.now() / 1000;
+    scheduler.markRefreshed(nowSec());
+    scheduler.recordFailure(nowSec() - 80);
+    scheduler.recordFailure(nowSec() - 40);
 
-    function startRtc() {
-      if (rtcNode) rtcNode.close();
-      const key = document.getElementById('l5Key').value.trim() || 'syntra-uor-bus-01';
-      rtcNode = new WebRtcTransportNode({
-        channelKey: key,
-        onEvent: ev => {
-          if (ev.type === 'signaling_ready') {
-            appendL5Log(`Signaling active on topic=${ev.topic} (localPeer=${ev.peerId})`);
-          } else if (ev.type === 'channel_open') {
-            appendL5Log(`WebRTC DataChannel open with remotePeer=${ev.remotePeerId}`);
-          } else if (ev.type === 'heartbeat') {
-            appendL5Log(`Heartbeat #${ev.count} from ${ev.remotePeerId} (rtt=${ev.rttMs ?? '—'} ms)`);
-          } else if (ev.type === 'uor_replicate') {
-            const { address } = mintContentAddress(ev.bytes, Fnv1aHasher16);
-            appendL5Log(`Received UOR block ${ev.addressHex} (${ev.bytes.length}B), verified=${address.toHex() === ev.addressHex}`);
+    // 2. Layer-5 Multi-Peer WebRTC Mesh Transport
+    const hashKey = location.hash.replace(/^#/, '').trim();
+    if (hashKey) document.getElementById('meshKeyInput').value = hashKey;
+
+    const transport = new WebRtcTransportNode({
+      channelKey: document.getElementById('meshKeyInput').value.trim(),
+      onEvent: async ev => {
+        document.getElementById('peerCountLabel').textContent = String(transport.openPeers().length);
+
+        if (ev.type === 'signaling_ready') {
+          logWire('SIGNAL', `Listening on topic=${ev.topic} (peerId=${ev.peerId})`);
+        } else if (ev.type === 'channel_open') {
+          logWire('WEBRTC', `DataChannel open with ${ev.remoteId}; requesting UOR shard sync`);
+          transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', from: transport.peerId });
+        } else if (ev.type === 'peer_disconnected') {
+          scheduler.recordFailure(nowSec());
+          logWire('CHURN', `Peer ${ev.remoteId} disconnected; checking stalled jobs for takeover`);
+          const resumed = await computeCoord.syncAndTakeOverJobs();
+          if (resumed.length > 0) {
+            logWire('FAILOVER', `Resumed stalled compute jobs from last UOR checkpoint: ${resumed.join(', ')}`);
+          }
+        } else if (ev.type === 'mesh_message') {
+          const { from, msg } = ev;
+          if (msg.type === 'uor_shard' || msg.type === 'uor_sync_req') {
+            await liveDb.handleMeshMessage(from, msg);
+          } else if (msg.type === 'compute_ckpt') {
+            await computeCoord.handleMeshMessage(from, msg);
+          } else if (msg.type === 'eth_frame') {
+            vmNode.handleIncomingEthFrame(msg.frame);
           }
         }
-      });
-      rtcNode.connect(key);
-    }
-
-    document.getElementById('l5ConnectBtn').addEventListener('click', startRtc);
-    document.getElementById('l5ReplicateBtn').addEventListener('click', () => {
-      const payload = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
-      const { address } = mintContentAddress(payload, Fnv1aHasher16);
-      const sent = rtcNode && rtcNode.replicateUorObject(address.toHex(), payload);
-      appendL5Log(sent ? `Replicated ${address.toHex()} over DataChannel` : `DataChannel not open; open page in 2nd tab to test replication`);
+      }
     });
 
-    async function resolveDns(type) {
-      const name = document.getElementById('l5DnsName').value.trim();
-      try {
-        const res = await doh.resolve(name, type);
-        appendL5Log(`DoH ${type} ${name}: status=${res.status}, ttl=${res.ttl_seconds}s, rtt=${res.rtt_ms}ms, cacheHit=${res.cache_hit_inferred}, records=${JSON.stringify(res.records)}`);
-      } catch (e) {
-        appendL5Log(`DoH error: ${e.message}`);
+    document.getElementById('nodeIdLabel').textContent = transport.peerId;
+
+    // 3. Layer-4 In-Browser Linux 5.6 VM Node (v86)
+    const vmNode = new LinuxVmNode({
+      transport,
+      screenContainer: document.getElementById('vmScreenContainer'),
+      onStatus: st => {
+        document.getElementById('vmStatusLabel').textContent =
+          st.state === 'online'
+            ? `ONLINE (eth0=${st.ip})`
+            : st.state === 'booting'
+            ? `BOOTING LINUX 5.6 (${st.ip})...`
+            : `ERROR: ${st.message}`;
+        logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}`);
       }
+    });
+
+    // 4. Layer-3 Live Network-Backed UOR Database
+    const liveDb = new LiveUorMeshDatabase({
+      transport,
+      scheduler,
+      vmBridge: vmNode,
+      onUpdate: ev => {
+        renderLiveDbTable();
+        if (ev.type === 'object_verified') {
+          logWire('UOR-DB', `Verified & mounted ${ev.entry.addressHex.slice(0, 22)}... (${ev.entry.originalLength}B) from ${ev.entry.source}`);
+        }
+      }
+    });
+
+    function renderLiveDbTable() {
+      const tbody = document.getElementById('liveDbBody');
+      const items = Array.from(liveDb.objects.values());
+      if (items.length === 0) return;
+      tbody.innerHTML = items.map(e => {
+        const preview = e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(reassembling shards...)';
+        return `
+          <tr>
+            <td><code>${e.addressHex.slice(0, 24)}…</code></td>
+            <td>${e.label || '—'}</td>
+            <td>${e.originalLength} B</td>
+            <td>${e.verified ? 'YES (UOR)' : 'PARTIAL'}</td>
+            <td>${e.source}</td>
+            <td><code>${preview.replace(/</g, '&lt;')}</code></td>
+          </tr>
+        `;
+      }).join('');
     }
 
-    document.getElementById('l5SrvBtn').addEventListener('click', () => resolveDns('SRV'));
-    document.getElementById('l5TxtBtn').addEventListener('click', () => resolveDns('TXT'));
+    // 5. Layer-4 Live Distributed Compute Coordinator
+    const computeCoord = new LiveDistributedComputeCoordinator({
+      transport,
+      liveDb,
+      onJobUpdate: () => renderJobsTable()
+    });
 
-    runAll();
-    startRtc();
+    function renderJobsTable() {
+      const tbody = document.getElementById('liveJobsBody');
+      const jobs = Array.from(computeCoord.jobs.values());
+      if (jobs.length === 0) return;
+      tbody.innerHTML = jobs.map(j => `
+        <tr>
+          <td><strong>${j.jobId}</strong></td>
+          <td>${j.stepIndex} / ${j.totalSteps}</td>
+          <td>${j.ownerPeerId} (${j.sourceTag})</td>
+          <td><code>${j.currentValueHex}</code></td>
+          <td>${j.status.toUpperCase()}</td>
+          <td>${j.verified ? 'CERTIFIED' : 'IN-FLIGHT'}</td>
+        </tr>
+      `).join('');
+    }
+
+    // UI Controls Wiring
+    async function joinAndSync() {
+      const key = document.getElementById('meshKeyInput').value.trim() || 'syntra-uor-bus-01';
+      location.hash = key;
+      transport.connect(key);
+      const rec = await liveDb.syncFromNetwork('30m');
+      const resumed = await computeCoord.syncAndTakeOverJobs('30m');
+      logWire('SYNC', `Recovered ${rec} UOR objects from warm cache; resumed ${resumed.length} jobs.`);
+    }
+
+    document.getElementById('reconnectBtn').addEventListener('click', joinAndSync);
+
+    document.getElementById('dbPutBtn').addEventListener('click', async () => {
+      const label = document.getElementById('dbLabelInput').value.trim() || 'data.txt';
+      const payload = document.getElementById('dbPayloadInput').value;
+      const entry = await liveDb.put(payload, { label, persistWarm: true });
+      renderLiveDbTable();
+      logWire('PUT', `Stored & replicated ${entry.addressHex} (2-of-3 XOR parity shards)`);
+    });
+
+    document.getElementById('dbSyncBtn').addEventListener('click', async () => {
+      const count = await liveDb.syncFromNetwork('30m');
+      renderLiveDbTable();
+      logWire('WARM-SYNC', `Recovered ${count} verified UOR objects from warm relay buffer.`);
+    });
+
+    document.getElementById('startJobBtn').addEventListener('click', () => {
+      const totalSteps = Number(document.getElementById('jobStepsInput').value) || 12;
+      const stepDelayMs = Number(document.getElementById('jobDelayInput').value) || 800;
+      computeCoord.startOrResumeJob({ totalSteps, stepDelayMs });
+      logWire('COMPUTE', `Started ${totalSteps}-step distributed UOR reduction job`);
+    });
+
+    document.getElementById('takeoverJobsBtn').addEventListener('click', async () => {
+      const resumed = await computeCoord.syncAndTakeOverJobs('30m');
+      logWire('TAKEOVER', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No stalled jobs found.');
+    });
+
+    document.getElementById('bootVmBtn').addEventListener('click', () => {
+      vmNode.boot();
+    });
+
+    document.getElementById('runVmCmdBtn').addEventListener('click', async () => {
+      const cmd = document.getElementById('vmCmdInput').value.trim();
+      if (!cmd) return;
+      try {
+        logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
+        const outBytes = await vmNode.executeShellCommand(cmd, 8000);
+        const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: true });
+        renderLiveDbTable();
+        logWire('VM-DONE', `Stored VM stdout in UOR DB at ${entry.addressHex}`);
+      } catch (e) {
+        logWire('VM-ERR', e.message);
+      }
+    });
+
+    // DNS DoH & DuckDNS TXT Controls
+    const doh = new DohResolver();
+    document.getElementById('resolveSrvBtn').addEventListener('click', async () => {
+      const q = document.getElementById('dnsQueryInput').value.trim();
+      try {
+        const r = await doh.resolve(q, 'SRV');
+        logWire('DOH-SRV', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms, records=${JSON.stringify(r.records)}`);
+      } catch (e) {
+        logWire('DOH-ERR', e.message);
+      }
+    });
+
+    document.getElementById('resolveTxtBtn').addEventListener('click', async () => {
+      const q = document.getElementById('dnsQueryInput').value.trim();
+      try {
+        const r = await doh.resolve(q, 'TXT');
+        logWire('DOH-TXT', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms, records=${JSON.stringify(r.records)}`);
+      } catch (e) {
+        logWire('DOH-ERR', e.message);
+      }
+    });
+
+    document.getElementById('writeDuckTxtBtn').addEventListener('click', async () => {
+      const subdomain = document.getElementById('duckSubInput').value.trim();
+      const token = document.getElementById('duckTokenInput').value.trim();
+      if (!subdomain || !token) {
+        logWire('DNS-WRITE', 'Provide DuckDNS subdomain and scoped token to write TXT record.');
+        return;
+      }
+      const latestRoot = Array.from(liveDb.objects.keys()).pop() || '0';
+      const txtValue = formatPointerTxt({
+        peerId: transport.peerId,
+        endpoint: `wss://ntfy.sh/${transport.signalTopic()}`,
+        rootAddress: latestRoot.slice(0, 24)
+      });
+      try {
+        const res = await doh.writeDuckDnsTxt({ subdomain, token, txtValue });
+        logWire('DNS-WRITE', `Updated ${res.fqdn} TXT="${txtValue}" -> response=${res.response}`);
+      } catch (e) {
+        logWire('DNS-ERR', e.message);
+      }
+    });
+
+    // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
+    setInterval(() => {
+      const st = scheduler.evaluate(nowSec());
+      document.getElementById('schedLambdaLabel').textContent = `${st.lambda.toFixed(3)}/s`;
+      document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
+      document.getElementById('schedEntropyLabel').textContent = `${st.entropyBits.toFixed(3)} bit`;
+
+      if (st.shouldRefresh) {
+        scheduler.markRefreshed(nowSec());
+        transport.sendSignal({ kind: 'announce' });
+        logWire('SCHED', `Proactive refresh triggered [reason=${st.reason}, H=${st.entropyBits.toFixed(3)} bit]`);
+      }
+    }, 1000);
+
+    // Comparative Benchmarks Runner
+    function runAllBenchmarks() {
+      const l1 = benchmarkUorHashers(1000, 64);
+      document.getElementById('l1BenchBody').innerHTML = l1.map(r => `
+        <tr><td><strong>${r.hasher}</strong></td><td>${r.output_bytes}</td><td>${r.collisions}</td><td>${r.elapsed_ms}</td><td>${r.ops_per_sec}</td><td>${r.throughput_mb_s}</td></tr>
+      `).join('');
+
+      const drops = [];
+      for (let t = 18; t < 600; t += 18) drops.push(t);
+      const l2 = benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: drops });
+      document.getElementById('l2BenchBody').innerHTML = l2.map(r => `
+        <tr><td><strong>${r.scheduler}</strong></td><td>${r.refreshes_issued}</td><td>${r.unavailable_seconds}</td><td>${(r.availability_ratio * 100).toFixed(2)}%</td><td>${r.mean_recovery_lag_sec}</td></tr>
+      `).join('');
+
+      const l3 = benchmarkStorageStrategies({ objectCount: 24, objectSizeBytes: 256, initialNodes: 5, generations: 8 });
+      document.getElementById('l3BenchBody').innerHTML = l3.map(r => `
+        <tr><td><strong>${r.strategy}</strong></td><td>${r.initial_nodes_remaining}</td><td>${r.objects_recovered}/${r.objects_written}</td><td>${(r.retention_rate * 100).toFixed(1)}%</td><td>${r.storage_amplification}x</td><td>${r.network_bytes_transferred} B</td></tr>
+      `).join('');
+
+      const l4 = benchmarkComputeStrategies({ taskCount: 20, stepsPerTask: 24, workerLambda: 0.08, dropStepModulo: 9 });
+      document.getElementById('l4BenchBody').innerHTML = l4.map(r => `
+        <tr><td><strong>${r.strategy}</strong></td><td>${r.tasks_completed}</td><td>${r.mean_latency_ticks}</td><td>${r.total_ring_ops}</td><td>${r.wasted_ring_ops}</td><td>${(r.trace_verified_rate * 100).toFixed(1)}%</td></tr>
+      `).join('');
+    }
+
+    document.getElementById('runAllBenchBtn').addEventListener('click', runAllBenchmarks);
+
+    runAllBenchmarks();
+    joinAndSync();
   </script>
 </body>
 </html>

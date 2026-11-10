@@ -33,12 +33,14 @@ import {
   encodeXorShards2of3,
   decodeXorShards2of3,
   DistributedUorDatabase,
+  LiveUorMeshDatabase,
   benchmarkStorageStrategies
 } from '../src/layer3-storage/index.js';
 
 import {
   executeProgramSlice,
   finalizeAndVerifyExecution,
+  LiveDistributedComputeCoordinator,
   benchmarkComputeStrategies
 } from '../src/layer4-compute/index.js';
 
@@ -155,6 +157,116 @@ import {
 
   const srv = parseSrvRecord('10 20 443 node.example.net.');
   assert.deepEqual(srv, { priority: 10, weight: 20, port: 443, target: 'node.example.net' });
+}
+
+// ============================================================================
+// END-TO-END MULTI-PEER WIRE TEST (LiveUorMeshDatabase + LiveDistributedComputeCoordinator)
+// ============================================================================
+{
+  const warmBus = [];
+  const createWiredNode = peerId => {
+    const handlers = [];
+    const peers = new Map();
+    return {
+      peerId,
+      handlers,
+      peers,
+      openPeers() {
+        return Array.from(peers.keys()).map(remoteId => ({ remoteId }));
+      },
+      sendToPeer(remoteId, pkt) {
+        const target = peers.get(remoteId);
+        if (target) {
+          for (const fn of target.handlers) fn(peerId, pkt);
+          return true;
+        }
+        return false;
+      },
+      broadcast(pkt) {
+        let count = 0;
+        for (const [remoteId, target] of peers.entries()) {
+          for (const fn of target.handlers) fn(peerId, pkt);
+          count++;
+        }
+        return count;
+      },
+      async publishWarmEnvelope(pkt) {
+        warmBus.push(pkt);
+        return true;
+      },
+      async fetchWarmEnvelopes() {
+        return [...warmBus];
+      }
+    };
+  };
+
+  // 1. Peer A writes UOR object -> shards travel over wire to Peer B & Warm Relay
+  //    Then BOTH Peer A and Peer B are destroyed (0 live peers), and Peer C boots from Warm Relay!
+  const netA = createWiredNode('node-A');
+  const netB = createWiredNode('node-B');
+  netA.peers.set('node-B', netB);
+  netB.peers.set('node-A', netA);
+
+  const mountedInVmB = [];
+  const dbA = new LiveUorMeshDatabase({ transport: netA });
+  const dbB = new LiveUorMeshDatabase({
+    transport: netB,
+    vmBridge: {
+      async mountUorObject(addressHex, bytes, label) {
+        mountedInVmB.push({ addressHex, bytes, label });
+      }
+    }
+  });
+  netA.handlers.push((from, msg) => dbA.handleMeshMessage(from, msg));
+  netB.handlers.push((from, msg) => dbB.handleMeshMessage(from, msg));
+
+  const written = await dbA.put('state-across-zero-peer-gap', { label: 'kernel_state.txt', persistWarm: true });
+  assert.equal(dbB.get(written.addressHex).ok, true);
+  assert.equal(dbB.get(written.addressHex).text, 'state-across-zero-peer-gap');
+  assert.equal(mountedInVmB.length, 1);
+
+  // Destroy BOTH Peer A and Peer B (0 live peers online), then spawn Peer C and recover from warm buffer
+  dbA.objects.clear();
+  dbB.objects.clear();
+  const netC = createWiredNode('node-C');
+  const dbC = new LiveUorMeshDatabase({ transport: netC });
+  const recoveredCount = await dbC.syncFromNetwork();
+  assert.equal(recoveredCount, 1);
+  assert.equal(dbC.get(written.addressHex).text, 'state-across-zero-peer-gap');
+
+  // 2. Peer A starts a 9-step compute job, crashes at step 3 (after checkpointing to warm bus),
+  //    and Peer C takes over from step 3, finishes steps 3..9, and verifies the 9-step UOR Trace!
+  const coordC = new LiveDistributedComputeCoordinator({ transport: netC, liveDb: dbC });
+  // Simulate Peer A publishing checkpoint at step 3 before dying
+  const seed = Datum.w64(104729n);
+  const partial = executeProgramSlice({
+    initialDatum: seed,
+    program: [
+      { op: PrimitiveOp.ADD, arg: Datum.w64(257n) },
+      { op: PrimitiveOp.XOR, arg: Datum.w64(0x9e3779b97f4a7c15n) },
+      { op: PrimitiveOp.SUCC }
+    ]
+  });
+  await netA.publishWarmEnvelope({
+    type: 'compute_ckpt',
+    jobId: 'job-crash-test',
+    totalSteps: 9,
+    stepIndex: 3,
+    currentValueHex: '0x' + partial.datum.value.toString(16),
+    events: partial.events.map(e => ({ stepIndex: e.stepIndex, op: e.op, targetHex: e.target.toHex() })),
+    ownerPeerId: 'node-A-dead',
+    status: 'running'
+  });
+
+  const resumedIds = await coordC.syncAndTakeOverJobs();
+  assert.deepEqual(resumedIds, ['job-crash-test']);
+  // Wait for zero-delay takeover completion
+  await new Promise(r => setTimeout(r, 3000));
+  const completedJob = coordC.jobs.get('job-crash-test');
+  assert.equal(completedJob.status, 'completed');
+  assert.equal(completedJob.stepIndex, 9);
+  assert.equal(completedJob.verified, true);
+  assert.equal(dbC.get(completedJob.resultAddressHex).ok, true);
 }
 
 // ============================================================================

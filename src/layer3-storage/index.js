@@ -413,3 +413,220 @@ export function benchmarkStorageStrategies({
     };
   });
 }
+
+/**
+ * Live Network-Backed UOR Content-Addressed Database (`LiveUorMeshDatabase`).
+ * Wires Layer 1 (UOR addressing) + Layer 2 (refresh scheduler) + Layer 3 (2-of-3 XOR parity)
+ * directly over Layer 5 (`WebRtcTransportNode` + warm relay ring-buffer) and syncs recovered
+ * objects into the in-browser v86 Linux VM `/mnt` 9p filesystem.
+ */
+export class LiveUorMeshDatabase {
+  /**
+   * @param {object} params
+   * @param {import('../layer5-transport/index.js').WebRtcTransportNode} params.transport
+   * @param {object} [params.scheduler] - Layer-2 scheduler instance
+   * @param {(ev: object) => void} [params.onUpdate]
+   * @param {object} [params.vmBridge] - Optional LinuxVmNode to mirror UOR blocks into `/mnt/`
+   */
+  constructor({ transport, scheduler = null, onUpdate = () => {}, vmBridge = null }) {
+    this.transport = transport;
+    this.scheduler = scheduler;
+    this.onUpdate = onUpdate;
+    this.vmBridge = vmBridge;
+
+    /**
+     * addressHex -> {
+     *   addressHex: string,
+     *   fingerprintHex: string,
+     *   originalLength: number,
+     *   label: string,
+     *   createdAtSec: number,
+     *   shards: [Uint8Array | null, Uint8Array | null, Uint8Array | null],
+     *   bytes: Uint8Array | null,
+     *   verified: boolean,
+     *   source: string
+     * }
+     */
+    this.objects = new Map();
+    this.replicationsSent = 0;
+    this.replicationsReceived = 0;
+    this.warmRecoveries = 0;
+  }
+
+  /**
+   * Handle incoming mesh messages from `WebRtcTransportNode`.
+   */
+  async handleMeshMessage(fromPeerId, msg) {
+    if (!msg) return;
+
+    if (msg.type === 'uor_shard') {
+      await this.ingestShardEnvelope(msg, `webrtc:${fromPeerId}`);
+    } else if (msg.type === 'uor_sync_req') {
+      // Newly joined peer requested all current UOR objects
+      for (const entry of this.objects.values()) {
+        if (!entry.bytes) continue;
+        const { shards } = encodeXorShards2of3(entry.bytes);
+        for (let sIdx = 0; sIdx < 3; sIdx++) {
+          this.transport.sendToPeer(fromPeerId, {
+            type: 'uor_shard',
+            addressHex: entry.addressHex,
+            fingerprintHex: entry.fingerprintHex,
+            originalLength: entry.originalLength,
+            label: entry.label,
+            shardIndex: sIdx,
+            shardBytes: Array.from(shards[sIdx])
+          });
+          this.replicationsSent++;
+        }
+      }
+    }
+  }
+
+  async ingestShardEnvelope(env, sourceTag = 'remote') {
+    const {
+      addressHex,
+      fingerprintHex,
+      originalLength,
+      label = '',
+      shardIndex,
+      shardBytes
+    } = env;
+
+    if (!addressHex || typeof shardIndex !== 'number' || !Array.isArray(shardBytes)) {
+      return false;
+    }
+
+    let entry = this.objects.get(addressHex);
+    if (!entry) {
+      entry = {
+        addressHex,
+        fingerprintHex,
+        originalLength,
+        label,
+        createdAtSec: Math.floor(Date.now() / 1000),
+        shards: [null, null, null],
+        bytes: null,
+        verified: false,
+        source: sourceTag
+      };
+      this.objects.set(addressHex, entry);
+    }
+
+    entry.shards[shardIndex] = new Uint8Array(shardBytes);
+    this.replicationsReceived++;
+
+    if (!entry.verified) {
+      const candidateBytes = decodeXorShards2of3(entry.originalLength, entry.shards);
+      if (candidateBytes) {
+        const { address, fingerprint } = mintContentAddress(candidateBytes, Fnv1aHasher16);
+        if (address.toHex() === addressHex && fingerprint.toHex() === fingerprintHex) {
+          entry.bytes = candidateBytes;
+          entry.verified = true;
+          entry.source = sourceTag;
+          // Regenerate all 3 parity shards now that object is verified
+          entry.shards = encodeXorShards2of3(candidateBytes).shards;
+          if (this.vmBridge) {
+            await this.vmBridge.mountUorObject(addressHex, candidateBytes, label);
+          }
+          this.onUpdate({ type: 'object_verified', entry });
+          return true;
+        }
+      }
+    }
+    this.onUpdate({ type: 'shard_ingested', addressHex, shardIndex, sourceTag });
+    return false;
+  }
+
+  /**
+   * Store a byte payload or UTF-8 string into the live distributed UOR mesh database,
+   * split into 2-of-3 XOR parity shards, replicate over WebRTC, and publish to warm relay buffer.
+   */
+  async put(payload, { label = 'data', persistWarm = true } = {}) {
+    const bytes = payload instanceof Uint8Array
+      ? payload
+      : new TextEncoder().encode(String(payload));
+
+    const { address, fingerprint } = mintContentAddress(bytes, Fnv1aHasher16);
+    const addressHex = address.toHex();
+    const fingerprintHex = fingerprint.toHex();
+    const { originalLength, shards } = encodeXorShards2of3(bytes);
+
+    const entry = {
+      addressHex,
+      fingerprintHex,
+      originalLength,
+      label,
+      createdAtSec: Math.floor(Date.now() / 1000),
+      shards,
+      bytes: new Uint8Array(bytes),
+      verified: true,
+      source: `local:${this.transport.peerId}`
+    };
+    this.objects.set(addressHex, entry);
+
+    if (this.vmBridge) {
+      await this.vmBridge.mountUorObject(addressHex, bytes, label);
+    }
+
+    // Replicate all 3 XOR parity shards across connected WebRTC peers
+    for (let sIdx = 0; sIdx < 3; sIdx++) {
+      const shardPacket = {
+        type: 'uor_shard',
+        addressHex,
+        fingerprintHex,
+        originalLength,
+        label,
+        shardIndex: sIdx,
+        shardBytes: Array.from(shards[sIdx])
+      };
+      const sent = this.transport.broadcast(shardPacket);
+      this.replicationsSent += sent;
+
+      // Also push shards 0 and 1 (sufficient for 2-of-3 reconstruction) to warm relay cache
+      // so state survives even if all browser tabs close simultaneously (0 live peers)
+      if (persistWarm && sIdx < 2 && bytes.length <= 2048) {
+        await this.transport.publishWarmEnvelope(shardPacket);
+      }
+    }
+
+    if (this.scheduler) {
+      this.scheduler.markRefreshed(Date.now() / 1000);
+    }
+
+    this.onUpdate({ type: 'object_put', entry });
+    return entry;
+  }
+
+  get(addressHex) {
+    const entry = this.objects.get(addressHex);
+    if (!entry || !entry.verified || !entry.bytes) {
+      return { ok: false, bytes: null, text: null, entry: null };
+    }
+    return {
+      ok: true,
+      bytes: entry.bytes,
+      text: new TextDecoder().decode(entry.bytes),
+      entry
+    };
+  }
+
+  /**
+   * Request full shard synchronization from currently connected WebRTC peers
+   * AND poll the warm relay ring-buffer to recover objects after a 0-peer gap.
+   */
+  async syncFromNetwork(sinceWindow = '30m') {
+    this.transport.broadcast({ type: 'uor_sync_req', from: this.transport.peerId });
+    const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow);
+    let recovered = 0;
+    for (const env of envelopes) {
+      if (env && env.type === 'uor_shard') {
+        const newlyVerified = await this.ingestShardEnvelope(env, `warm-relay:${env.from || 'cache'}`);
+        if (newlyVerified) {
+          this.warmRecoveries++;
+          recovered++;
+        }
+      }
+    }
+    return recovered;
+  }
+}
