@@ -18,5 +18,8 @@ if [ "$mode" = --prepare ]; then
   exit 0
 fi
 node scripts/check-model.mjs --check
-(cd app && lexlean fmt --check && lexlean lock --check && lexlean check && lexlean verify)
+(cd app && lexlean fmt --check && lexlean lock --check)
+# The pinned template uses this single owner for source checking, Lean/kernel
+# replay, exact axiom audit, generated native code, holo and acceptance vectors.
+# A preceding lexlean verify would repeat its proof gate.
 prismpm --project app verify

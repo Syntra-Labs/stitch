@@ -8,31 +8,84 @@ inductive{
   name: Reachability,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: Unknown, fields: []}, {name: Reachable, fields: []}, {name: TimedOut, fields: []}, {name: Conflicting, fields: []}]
+  constructors: [
+    {name: Unknown, fields: []},
+    {name: Reachable, fields: []},
+    {name: TimedOut, fields: []},
+    {name: Conflicting, fields: []}
+  ]
 }
+
 structure{
   name: PeerObservation,
   type_parameters: [],
   parameters: [],
-  fields: [{name: observer, type: Nat}, {name: peer, type: Nat}, {name: failureDomain, type: Nat}, {name: observedAt, type: Nat}, {name: expires, type: Nat}, {name: sequence, type: Nat}, {name: reachability, type: Reachability}, {name: authenticated, type: Bool}]
+  fields: [
+    {name: observer, type: Nat},
+    {name: peer, type: Nat},
+    {name: failureDomain, type: Nat},
+    {name: observedAt, type: Nat},
+    {name: expires, type: Nat},
+    {name: sequence, type: Nat},
+    {name: reachability, type: Reachability},
+    {name: authenticated, type: Bool}
+  ]
 }
+
 definition{
   name: observationFresh,
   parameters: [observedAt : Nat, expires : Nat, now : Nat],
   result: Bool,
   body: ((observedAt <=? now) && (now <? expires))
 }
+
 definition{
   name: acceptObservation,
-  parameters: [current : PeerObservation, candidate : PeerObservation],
+  parameters: [current : PeerObservation, candidate : PeerObservation, now : Nat],
   result: Bool,
-  body: (((project current observer) =? (project candidate observer)) && (((project current peer) =? (project candidate peer)) && (((project current sequence) <? (project candidate sequence)) && (((project current observedAt) <=? (project candidate observedAt)) && (project candidate authenticated)))))
+  body: (((project current observer) =? (project candidate observer)) && (((project current peer) =? (project candidate peer)) && (((project current sequence) <? (project candidate sequence)) && (((project current observedAt) <=? (project candidate observedAt)) && ((project candidate authenticated) && (observationFresh (project candidate observedAt) (project candidate expires) now))))))
 }
+
 theorem{
   name: expiredObservationRejected,
   parameters: [observedAt : Nat, expires : Nat, now : Nat],
   statement: ((expires <= now) -> ((observationFresh observedAt expires now) = false)),
-  proof: linear_arithmetic{definitions: [observationFresh]}
+  proof: linear_arithmetic{definitions: [observationFresh]},
+  axioms: [Quot.sound, propext]
+}
+
+definition{
+  name: reachableObservation,
+  parameters: [observation : PeerObservation, observer : Nat, now : Nat],
+  result: Bool,
+  body: (((project observation observer) =? observer) && ((project observation authenticated) && ((observationFresh (project observation observedAt) (project observation expires) now) && (match (project observation reachability)
+    | Reachability.Unknown => false
+    | Reachability.Reachable => true
+    | Reachability.TimedOut => false
+    | Reachability.Conflicting => false))))
+}
+
+definition{
+  name: updateObservation,
+  parameters: [current : PeerObservation, candidate : PeerObservation, now : Nat],
+  result: PeerObservation,
+  body: (if (acceptObservation current candidate now) then candidate else current)
+}
+
+theorem{
+  name: futureObservationRejected,
+  parameters: [observedAt : Nat, expires : Nat, now : Nat],
+  statement: ((now < observedAt) -> ((observationFresh observedAt expires now) = false)),
+  proof: linear_arithmetic{definitions: [observationFresh]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: acceptedObservationIsFresh,
+  parameters: [current : PeerObservation, candidate : PeerObservation, now : Nat],
+  statement: (((acceptObservation current candidate now) = true) -> (((project candidate observedAt) <= now) /\ (now < (project candidate expires)))),
+  proof: linear_arithmetic{definitions: [acceptObservation, observationFresh]},
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 \end{semanticmodule}
 \end{lexlean}

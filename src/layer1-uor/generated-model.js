@@ -3,6 +3,90 @@
  * This is NOT a Prism compiler, proof certificate, or whole-runtime certification.
  */
 const definitions = {
+  "Stitch.Budget.chooseBool": {
+    "module": "Stitch.Budget",
+    "name": "chooseBool",
+    "params": [
+      {
+        "name": "condition",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "condition"
+      },
+      "yes": {
+        "k": "var",
+        "name": "whenTrue"
+      },
+      "no": {
+        "k": "var",
+        "name": "whenFalse"
+      }
+    }
+  },
+  "Stitch.Budget.chooseNat": {
+    "module": "Stitch.Budget",
+    "name": "chooseNat",
+    "params": [
+      {
+        "name": "condition",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "condition"
+      },
+      "yes": {
+        "k": "var",
+        "name": "whenTrue"
+      },
+      "no": {
+        "k": "var",
+        "name": "whenFalse"
+      }
+    }
+  },
   "Stitch.Budget.reserveAllowed": {
     "module": "Stitch.Budget",
     "name": "reserveAllowed",
@@ -322,42 +406,62 @@ const definitions = {
     "body": {
       "k": "if",
       "cond": {
-        "k": "call",
-        "name": "settlementAllowed",
-        "args": [
-          {
-            "k": "var",
-            "name": "reserved"
-          },
-          {
-            "k": "var",
-            "name": "ceiling"
-          },
-          {
+        "k": "var",
+        "name": "known"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
             "k": "var",
             "name": "actual"
           },
-          {
-            "k": "var",
-            "name": "known"
-          }
-        ]
-      },
-      "yes": {
-        "k": "prim",
-        "operation": "subtract",
-        "args": [
-          {
-            "k": "var",
-            "name": "reserved"
-          },
-          {
+          "right": {
             "k": "var",
             "name": "ceiling"
           }
-        ],
-        "type": {
-          "kind": "Nat"
+        },
+        "yes": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "ceiling"
+            },
+            "right": {
+              "k": "var",
+              "name": "reserved"
+            }
+          },
+          "yes": {
+            "k": "prim",
+            "operation": "subtract",
+            "args": [
+              {
+                "k": "var",
+                "name": "reserved"
+              },
+              {
+                "k": "var",
+                "name": "ceiling"
+              }
+            ],
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          "no": {
+            "k": "var",
+            "name": "reserved"
+          }
+        },
+        "no": {
+          "k": "var",
+          "name": "reserved"
         }
       },
       "no": {
@@ -407,37 +511,57 @@ const definitions = {
     "body": {
       "k": "if",
       "cond": {
-        "k": "call",
-        "name": "settlementAllowed",
-        "args": [
-          {
-            "k": "var",
-            "name": "reserved"
-          },
-          {
-            "k": "var",
-            "name": "ceiling"
-          },
-          {
+        "k": "var",
+        "name": "known"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
             "k": "var",
             "name": "actual"
           },
-          {
+          "right": {
             "k": "var",
-            "name": "known"
+            "name": "ceiling"
           }
-        ]
-      },
-      "yes": {
-        "k": "binary",
-        "op": "+",
-        "left": {
+        },
+        "yes": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "ceiling"
+            },
+            "right": {
+              "k": "var",
+              "name": "reserved"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "var",
+              "name": "spent"
+            },
+            "right": {
+              "k": "var",
+              "name": "actual"
+            }
+          },
+          "no": {
+            "k": "var",
+            "name": "spent"
+          }
+        },
+        "no": {
           "k": "var",
           "name": "spent"
-        },
-        "right": {
-          "k": "var",
-          "name": "actual"
         }
       },
       "no": {
@@ -815,78 +939,107 @@ const definitions = {
       "kind": "Budget"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "call",
-        "name": "admitAction",
-        "args": [
-          {
+      "k": "record",
+      "name": "Budget",
+      "values": {
+        "epoch": {
+          "k": "project",
+          "value": {
             "k": "var",
             "name": "budget"
           },
-          {
+          "field": "epoch"
+        },
+        "start": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "cost"
+            "name": "budget"
           },
-          {
+          "field": "start"
+        },
+        "end": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "end"
+        },
+        "last": {
+          "k": "if",
+          "cond": {
+            "k": "call",
+            "name": "admitAction",
+            "args": [
+              {
+                "k": "var",
+                "name": "budget"
+              },
+              {
+                "k": "var",
+                "name": "cost"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "yes": {
             "k": "var",
             "name": "now"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "budget"
+            },
+            "field": "last"
           }
-        ]
-      },
-      "yes": {
-        "k": "record",
-        "name": "Budget",
-        "values": {
-          "epoch": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "budget"
-            },
-            "field": "epoch"
-          },
-          "start": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "budget"
-            },
-            "field": "start"
-          },
-          "end": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "budget"
-            },
-            "field": "end"
-          },
-          "last": {
+        },
+        "limit": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "now"
+            "name": "budget"
           },
-          "limit": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "budget"
-            },
-            "field": "limit"
+          "field": "limit"
+        },
+        "spent": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
           },
-          "spent": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "budget"
-            },
-            "field": "spent"
-          },
-          "reserved": {
-            "k": "record",
-            "name": "Resources",
-            "values": {
-              "transferBytes": {
+          "field": "spent"
+        },
+        "reserved": {
+          "k": "record",
+          "name": "Resources",
+          "values": {
+            "transferBytes": {
+              "k": "if",
+              "cond": {
+                "k": "call",
+                "name": "admitAction",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  {
+                    "k": "var",
+                    "name": "cost"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              },
+              "yes": {
                 "k": "binary",
                 "op": "+",
                 "left": {
@@ -910,7 +1063,40 @@ const definitions = {
                   "field": "transferBytes"
                 }
               },
-              "storageBytes": {
+              "no": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  "field": "reserved"
+                },
+                "field": "transferBytes"
+              }
+            },
+            "storageBytes": {
+              "k": "if",
+              "cond": {
+                "k": "call",
+                "name": "admitAction",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  {
+                    "k": "var",
+                    "name": "cost"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              },
+              "yes": {
                 "k": "binary",
                 "op": "+",
                 "left": {
@@ -934,7 +1120,40 @@ const definitions = {
                   "field": "storageBytes"
                 }
               },
-              "computeWork": {
+              "no": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  "field": "reserved"
+                },
+                "field": "storageBytes"
+              }
+            },
+            "computeWork": {
+              "k": "if",
+              "cond": {
+                "k": "call",
+                "name": "admitAction",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  {
+                    "k": "var",
+                    "name": "cost"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              },
+              "yes": {
                 "k": "binary",
                 "op": "+",
                 "left": {
@@ -958,7 +1177,40 @@ const definitions = {
                   "field": "computeWork"
                 }
               },
-              "refreshRequests": {
+              "no": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  "field": "reserved"
+                },
+                "field": "computeWork"
+              }
+            },
+            "refreshRequests": {
+              "k": "if",
+              "cond": {
+                "k": "call",
+                "name": "admitAction",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  {
+                    "k": "var",
+                    "name": "cost"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              },
+              "yes": {
                 "k": "binary",
                 "op": "+",
                 "left": {
@@ -981,14 +1233,22 @@ const definitions = {
                   },
                   "field": "refreshRequests"
                 }
+              },
+              "no": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "budget"
+                  },
+                  "field": "reserved"
+                },
+                "field": "refreshRequests"
               }
             }
           }
         }
-      },
-      "no": {
-        "k": "var",
-        "name": "budget"
       }
     }
   },
@@ -1057,6 +1317,3722 @@ const definitions = {
           "field": "limit"
         }
       ]
+    }
+  },
+  "Stitch.Budget.zeroResources": {
+    "module": "Stitch.Budget",
+    "name": "zeroResources",
+    "params": [],
+    "result": {
+      "kind": "Resources"
+    },
+    "body": {
+      "k": "record",
+      "name": "Resources",
+      "values": {
+        "transferBytes": {
+          "k": "nat",
+          "value": "0"
+        },
+        "storageBytes": {
+          "k": "nat",
+          "value": "0"
+        },
+        "computeWork": {
+          "k": "nat",
+          "value": "0"
+        },
+        "refreshRequests": {
+          "k": "nat",
+          "value": "0"
+        }
+      }
+    }
+  },
+  "Stitch.Budget.addResources": {
+    "module": "Stitch.Budget",
+    "name": "addResources",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Resources"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Resources"
+    },
+    "body": {
+      "k": "record",
+      "name": "Resources",
+      "values": {
+        "transferBytes": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "transferBytes"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "transferBytes"
+          }
+        },
+        "storageBytes": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "storageBytes"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "storageBytes"
+          }
+        },
+        "computeWork": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "computeWork"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "computeWork"
+          }
+        },
+        "refreshRequests": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "refreshRequests"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "refreshRequests"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.sameResources": {
+    "module": "Stitch.Budget",
+    "name": "sameResources",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Resources"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "left"
+          },
+          "field": "transferBytes"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "right"
+          },
+          "field": "transferBytes"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "storageBytes"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "storageBytes"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "computeWork"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "computeWork"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "refreshRequests"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "refreshRequests"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.resourcesAtMost": {
+    "module": "Stitch.Budget",
+    "name": "resourcesAtMost",
+    "params": [
+      {
+        "name": "actual",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "ceiling",
+        "type": {
+          "kind": "Resources"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "actual"
+          },
+          "field": "transferBytes"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "ceiling"
+          },
+          "field": "transferBytes"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "actual"
+            },
+            "field": "storageBytes"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ceiling"
+            },
+            "field": "storageBytes"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "actual"
+              },
+              "field": "computeWork"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ceiling"
+              },
+              "field": "computeWork"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "actual"
+              },
+              "field": "refreshRequests"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ceiling"
+              },
+              "field": "refreshRequests"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.selectionFromBool": {
+    "module": "Stitch.Budget",
+    "name": "selectionFromBool",
+    "params": [
+      {
+        "name": "condition",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Selection"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "condition"
+      },
+      "yes": {
+        "k": "ctor",
+        "name": "Selection.Accept",
+        "args": []
+      },
+      "no": {
+        "k": "ctor",
+        "name": "Selection.Reject",
+        "args": []
+      }
+    }
+  },
+  "Stitch.Budget.selectionValue": {
+    "module": "Stitch.Budget",
+    "name": "selectionValue",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.selectBoth": {
+    "module": "Stitch.Budget",
+    "name": "selectBoth",
+    "params": [
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "matching",
+        "type": {
+          "kind": "Selection"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Selection"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "pending"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "ctor",
+            "name": "Selection.Reject",
+            "args": []
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "matching"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.selectRemaining": {
+    "module": "Stitch.Budget",
+    "name": "selectRemaining",
+    "params": [
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "matching",
+        "type": {
+          "kind": "Selection"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Selection"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "pending"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "ctor",
+            "name": "Selection.Reject",
+            "args": []
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "matching"
+            },
+            "branches": [
+              {
+                "constructor": "Selection.Reject",
+                "binders": [],
+                "body": {
+                  "k": "ctor",
+                  "name": "Selection.Accept",
+                  "args": []
+                }
+              },
+              {
+                "constructor": "Selection.Accept",
+                "binders": [],
+                "body": {
+                  "k": "ctor",
+                  "name": "Selection.Reject",
+                  "args": []
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.selectBool": {
+    "module": "Stitch.Budget",
+    "name": "selectBool",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenFalse"
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenTrue"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.selectNat": {
+    "module": "Stitch.Budget",
+    "name": "selectNat",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenFalse"
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenTrue"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.selectLedger": {
+    "module": "Stitch.Budget",
+    "name": "selectLedger",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Ledger"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Ledger"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenFalse"
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenTrue"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.outcomeKnown": {
+    "module": "Stitch.Budget",
+    "name": "outcomeKnown",
+    "params": [
+      {
+        "name": "outcome",
+        "type": {
+          "kind": "SettlementOutcome"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "outcome"
+      },
+      "branches": [
+        {
+          "constructor": "SettlementOutcome.Unknown",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "SettlementOutcome.Known",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.reservationUnused": {
+    "module": "Stitch.Budget",
+    "name": "reservationUnused",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "head"
+                    },
+                    "field": "actionId"
+                  },
+                  {
+                    "k": "var",
+                    "name": "actionId"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "k": "call",
+              "name": "reservationUnused",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "actionId"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.resourceAt": {
+    "module": "Stitch.Budget",
+    "name": "resourceAt",
+    "params": [
+      {
+        "name": "resources",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "index"
+        },
+        "right": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "yes": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "resources"
+        },
+        "field": "transferBytes"
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "index"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "yes": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "resources"
+          },
+          "field": "storageBytes"
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "resources"
+            },
+            "field": "computeWork"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "resources"
+            },
+            "field": "refreshRequests"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.spentAt": {
+    "module": "Stitch.Budget",
+    "name": "spentAt",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "call",
+              "name": "selectNat",
+              "args": [
+                {
+                  "k": "call",
+                  "name": "selectionFromBool",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "settled"
+                    }
+                  ]
+                },
+                {
+                  "k": "call",
+                  "name": "resourceAt",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "actual"
+                    },
+                    {
+                      "k": "var",
+                      "name": "index"
+                    }
+                  ]
+                },
+                {
+                  "k": "nat",
+                  "value": "0"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "spentAt",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "index"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.reservedAt": {
+    "module": "Stitch.Budget",
+    "name": "reservedAt",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "call",
+              "name": "selectNat",
+              "args": [
+                {
+                  "k": "call",
+                  "name": "selectionFromBool",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "settled"
+                    }
+                  ]
+                },
+                {
+                  "k": "nat",
+                  "value": "0"
+                },
+                {
+                  "k": "call",
+                  "name": "resourceAt",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "ceiling"
+                    },
+                    {
+                      "k": "var",
+                      "name": "index"
+                    }
+                  ]
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "reservedAt",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "index"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.headChargedAt": {
+    "module": "Stitch.Budget",
+    "name": "headChargedAt",
+    "params": [
+      {
+        "name": "reservation",
+        "type": {
+          "kind": "Reservation"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "call",
+      "name": "selectNat",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectionFromBool",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "reservation"
+              },
+              "field": "settled"
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "resourceAt",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "reservation"
+              },
+              "field": "actual"
+            },
+            {
+              "k": "var",
+              "name": "index"
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "resourceAt",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "reservation"
+              },
+              "field": "ceiling"
+            },
+            {
+              "k": "var",
+              "name": "index"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.chargedAt": {
+    "module": "Stitch.Budget",
+    "name": "chargedAt",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "call",
+              "name": "headChargedAt",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "head"
+                },
+                {
+                  "k": "var",
+                  "name": "index"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "chargedAt",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "index"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.reservedTotal": {
+    "module": "Stitch.Budget",
+    "name": "reservedTotal",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "Resources"
+    },
+    "body": {
+      "k": "record",
+      "name": "Resources",
+      "values": {
+        "transferBytes": {
+          "k": "call",
+          "name": "reservedAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ]
+        },
+        "storageBytes": {
+          "k": "call",
+          "name": "reservedAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "1"
+            }
+          ]
+        },
+        "computeWork": {
+          "k": "call",
+          "name": "reservedAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "2"
+            }
+          ]
+        },
+        "refreshRequests": {
+          "k": "call",
+          "name": "reservedAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Budget.spentTotal": {
+    "module": "Stitch.Budget",
+    "name": "spentTotal",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "Resources"
+    },
+    "body": {
+      "k": "record",
+      "name": "Resources",
+      "values": {
+        "transferBytes": {
+          "k": "call",
+          "name": "spentAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ]
+        },
+        "storageBytes": {
+          "k": "call",
+          "name": "spentAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "1"
+            }
+          ]
+        },
+        "computeWork": {
+          "k": "call",
+          "name": "spentAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "2"
+            }
+          ]
+        },
+        "refreshRequests": {
+          "k": "call",
+          "name": "spentAt",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            },
+            {
+              "k": "nat",
+              "value": "3"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Budget.reservationCostValid": {
+    "module": "Stitch.Budget",
+    "name": "reservationCostValid",
+    "params": [
+      {
+        "name": "reservation",
+        "type": {
+          "kind": "Reservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "reservation"
+        },
+        "field": "settled"
+      },
+      "yes": {
+        "k": "call",
+        "name": "resourcesAtMost",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "reservation"
+            },
+            "field": "actual"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "reservation"
+            },
+            "field": "ceiling"
+          }
+        ]
+      },
+      "no": {
+        "k": "call",
+        "name": "sameResources",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "reservation"
+            },
+            "field": "actual"
+          },
+          {
+            "k": "call",
+            "name": "zeroResources",
+            "args": []
+          }
+        ]
+      }
+    }
+  },
+  "Stitch.Budget.reservationsValid": {
+    "module": "Stitch.Budget",
+    "name": "reservationsValid",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "epoch",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::digestWellFormed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  "field": "actionId"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  "field": "epoch"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "epoch"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "call",
+                  "name": "reservationUnused",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "tail"
+                    },
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "actionId"
+                    }
+                  ]
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "reservationCostValid",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "head"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "call",
+                    "name": "reservationsValid",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "tail"
+                      },
+                      {
+                        "k": "var",
+                        "name": "epoch"
+                      }
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.ledgerValid": {
+    "module": "Stitch.Budget",
+    "name": "ledgerValid",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "budgetValid",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ledger"
+            },
+            "field": "budget"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "start"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "last"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "last"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "end"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "reservationsValid",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "ledger"
+                  },
+                  "field": "reservations"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "budget"
+                  },
+                  "field": "epoch"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "sameResources",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "ledger"
+                      },
+                      "field": "budget"
+                    },
+                    "field": "spent"
+                  },
+                  {
+                    "k": "call",
+                    "name": "spentTotal",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "ledger"
+                        },
+                        "field": "reservations"
+                      }
+                    ]
+                  }
+                ]
+              },
+              "right": {
+                "k": "call",
+                "name": "sameResources",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "ledger"
+                      },
+                      "field": "budget"
+                    },
+                    "field": "reserved"
+                  },
+                  {
+                    "k": "call",
+                    "name": "reservedTotal",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "ledger"
+                        },
+                        "field": "reservations"
+                      }
+                    ]
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.ledgerBudget": {
+    "module": "Stitch.Budget",
+    "name": "ledgerBudget",
+    "params": [
+      {
+        "name": "budget",
+        "type": {
+          "kind": "Budget"
+        }
+      },
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Budget"
+    },
+    "body": {
+      "k": "record",
+      "name": "Budget",
+      "values": {
+        "epoch": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "epoch"
+        },
+        "start": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "start"
+        },
+        "end": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "end"
+        },
+        "last": {
+          "k": "var",
+          "name": "now"
+        },
+        "limit": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "limit"
+        },
+        "spent": {
+          "k": "call",
+          "name": "spentTotal",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            }
+          ]
+        },
+        "reserved": {
+          "k": "call",
+          "name": "reservedTotal",
+          "args": [
+            {
+              "k": "var",
+              "name": "reservations"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Budget.reserveLedgerAllowed": {
+    "module": "Stitch.Budget",
+    "name": "reserveLedgerAllowed",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "cost",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "reservationUnused",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ledger"
+            },
+            "field": "reservations"
+          },
+          {
+            "k": "var",
+            "name": "actionId"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "ledgerValid",
+          "args": [
+            {
+              "k": "var",
+              "name": "ledger"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::digestWellFormed",
+            "args": [
+              {
+                "k": "var",
+                "name": "actionId"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "admitAction",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              {
+                "k": "var",
+                "name": "cost"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.reservationCandidate": {
+    "module": "Stitch.Budget",
+    "name": "reservationCandidate",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "cost",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Ledger"
+    },
+    "body": {
+      "k": "let",
+      "name": "reservations",
+      "type": {
+        "kind": "List",
+        "element": {
+          "kind": "Reservation"
+        }
+      },
+      "value": {
+        "k": "cons",
+        "head": {
+          "k": "record",
+          "name": "Reservation",
+          "values": {
+            "actionId": {
+              "k": "var",
+              "name": "actionId"
+            },
+            "epoch": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "epoch"
+            },
+            "ceiling": {
+              "k": "var",
+              "name": "cost"
+            },
+            "actual": {
+              "k": "call",
+              "name": "zeroResources",
+              "args": []
+            },
+            "settled": {
+              "k": "bool",
+              "value": false
+            }
+          }
+        },
+        "tail": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "ledger"
+          },
+          "field": "reservations"
+        }
+      },
+      "body": {
+        "k": "record",
+        "name": "Ledger",
+        "values": {
+          "budget": {
+            "k": "call",
+            "name": "ledgerBudget",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              {
+                "k": "var",
+                "name": "reservations"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "reservations": {
+            "k": "var",
+            "name": "reservations"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.reserveLedger": {
+    "module": "Stitch.Budget",
+    "name": "reserveLedger",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "cost",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Ledger"
+    },
+    "body": {
+      "k": "call",
+      "name": "selectLedger",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectionFromBool",
+          "args": [
+            {
+              "k": "call",
+              "name": "reserveLedgerAllowed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                {
+                  "k": "var",
+                  "name": "actionId"
+                },
+                {
+                  "k": "var",
+                  "name": "cost"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "reservationCandidate",
+          "args": [
+            {
+              "k": "var",
+              "name": "ledger"
+            },
+            {
+              "k": "var",
+              "name": "actionId"
+            },
+            {
+              "k": "var",
+              "name": "cost"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "ledger"
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.settlementRecorded": {
+    "module": "Stitch.Budget",
+    "name": "settlementRecorded",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "call",
+            "name": "selectBool",
+            "args": [
+              {
+                "k": "call",
+                "name": "selectionFromBool",
+                "args": [
+                  {
+                    "k": "call",
+                    "name": "Stitch.Identity::sameDigest",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "head"
+                        },
+                        "field": "actionId"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "actionId"
+                      }
+                    ]
+                  }
+                ]
+              },
+              {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "call",
+                    "name": "selectionValue",
+                    "args": [
+                      {
+                        "k": "call",
+                        "name": "selectionFromBool",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "head"
+                            },
+                            "field": "settled"
+                          }
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      "field": "epoch"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "epoch"
+                    }
+                  },
+                  "right": {
+                    "k": "call",
+                    "name": "resourcesAtMost",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "actual"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "head"
+                        },
+                        "field": "ceiling"
+                      }
+                    ]
+                  }
+                }
+              },
+              {
+                "k": "call",
+                "name": "settlementRecorded",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "tail"
+                  },
+                  {
+                    "k": "var",
+                    "name": "observation"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.settleLedgerAllowed": {
+    "module": "Stitch.Budget",
+    "name": "settleLedgerAllowed",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "outcomeKnown",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "observation"
+            },
+            "field": "outcome"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "ledgerValid",
+          "args": [
+            {
+              "k": "var",
+              "name": "ledger"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "observation"
+              },
+              "field": "epoch"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "epoch"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "ledger"
+                  },
+                  "field": "budget"
+                },
+                "field": "last"
+              },
+              "right": {
+                "k": "var",
+                "name": "now"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "<?",
+                "left": {
+                  "k": "var",
+                  "name": "now"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "budget"
+                  },
+                  "field": "end"
+                }
+              },
+              "right": {
+                "k": "call",
+                "name": "settlementRecorded",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "reservations"
+                  },
+                  {
+                    "k": "var",
+                    "name": "observation"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.selectedSettlementRecord": {
+    "module": "Stitch.Budget",
+    "name": "selectedSettlementRecord",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "reservation",
+        "type": {
+          "kind": "Reservation"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Reservation"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "reservation"
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "record",
+            "name": "Reservation",
+            "values": {
+              "actionId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "reservation"
+                },
+                "field": "actionId"
+              },
+              "epoch": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "reservation"
+                },
+                "field": "epoch"
+              },
+              "ceiling": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "reservation"
+                },
+                "field": "ceiling"
+              },
+              "actual": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "actual"
+              },
+              "settled": {
+                "k": "bool",
+                "value": true
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.updateSettlementRecord": {
+    "module": "Stitch.Budget",
+    "name": "updateSettlementRecord",
+    "params": [
+      {
+        "name": "reservation",
+        "type": {
+          "kind": "Reservation"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      },
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Reservation"
+    },
+    "body": {
+      "k": "call",
+      "name": "selectedSettlementRecord",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectBoth",
+          "args": [
+            {
+              "k": "var",
+              "name": "pending"
+            },
+            {
+              "k": "call",
+              "name": "selectionFromBool",
+              "args": [
+                {
+                  "k": "call",
+                  "name": "Stitch.Identity::sameDigest",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "reservation"
+                      },
+                      "field": "actionId"
+                    },
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "actionId"
+                    }
+                  ]
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "reservation"
+        },
+        {
+          "k": "var",
+          "name": "observation"
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.recordSettlementFrom": {
+    "module": "Stitch.Budget",
+    "name": "recordSettlementFrom",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      },
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      }
+    ],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "Reservation"
+      }
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "nil",
+            "type": {
+              "kind": "Reservation"
+            }
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "cons",
+            "head": {
+              "k": "call",
+              "name": "updateSettlementRecord",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "head"
+                },
+                {
+                  "k": "var",
+                  "name": "observation"
+                },
+                {
+                  "k": "var",
+                  "name": "pending"
+                }
+              ]
+            },
+            "tail": {
+              "k": "call",
+              "name": "recordSettlementFrom",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "observation"
+                },
+                {
+                  "k": "call",
+                  "name": "selectRemaining",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "pending"
+                    },
+                    {
+                      "k": "call",
+                      "name": "selectionFromBool",
+                      "args": [
+                        {
+                          "k": "call",
+                          "name": "Stitch.Identity::sameDigest",
+                          "args": [
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "head"
+                              },
+                              "field": "actionId"
+                            },
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "observation"
+                              },
+                              "field": "actionId"
+                            }
+                          ]
+                        }
+                      ]
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.recordSettlement": {
+    "module": "Stitch.Budget",
+    "name": "recordSettlement",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "Reservation"
+      }
+    },
+    "body": {
+      "k": "call",
+      "name": "recordSettlementFrom",
+      "args": [
+        {
+          "k": "var",
+          "name": "reservations"
+        },
+        {
+          "k": "var",
+          "name": "observation"
+        },
+        {
+          "k": "ctor",
+          "name": "Selection.Accept",
+          "args": []
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.settlementCandidate": {
+    "module": "Stitch.Budget",
+    "name": "settlementCandidate",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Ledger"
+    },
+    "body": {
+      "k": "let",
+      "name": "reservations",
+      "type": {
+        "kind": "List",
+        "element": {
+          "kind": "Reservation"
+        }
+      },
+      "value": {
+        "k": "call",
+        "name": "recordSettlement",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ledger"
+            },
+            "field": "reservations"
+          },
+          {
+            "k": "var",
+            "name": "observation"
+          }
+        ]
+      },
+      "body": {
+        "k": "record",
+        "name": "Ledger",
+        "values": {
+          "budget": {
+            "k": "call",
+            "name": "ledgerBudget",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              {
+                "k": "var",
+                "name": "reservations"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "reservations": {
+            "k": "var",
+            "name": "reservations"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.settleLedger": {
+    "module": "Stitch.Budget",
+    "name": "settleLedger",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "SettlementObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Ledger"
+    },
+    "body": {
+      "k": "call",
+      "name": "selectLedger",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectionFromBool",
+          "args": [
+            {
+              "k": "call",
+              "name": "settleLedgerAllowed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                {
+                  "k": "var",
+                  "name": "observation"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "settlementCandidate",
+          "args": [
+            {
+              "k": "var",
+              "name": "ledger"
+            },
+            {
+              "k": "var",
+              "name": "observation"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "ledger"
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.reservationNumericValidity": {
+    "module": "Stitch.Budget",
+    "name": "reservationNumericValidity",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Ledger"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "budgetValid",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ledger"
+            },
+            "field": "budget"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "start"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "last"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "last"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "end"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "sameResources",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "budget"
+                  },
+                  "field": "spent"
+                },
+                {
+                  "k": "call",
+                  "name": "spentTotal",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "ledger"
+                      },
+                      "field": "reservations"
+                    }
+                  ]
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "sameResources",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "budget"
+                  },
+                  "field": "reserved"
+                },
+                {
+                  "k": "call",
+                  "name": "reservedTotal",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "ledger"
+                      },
+                      "field": "reservations"
+                    }
+                  ]
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Budget.reservationSelectNat": {
+    "module": "Stitch.Budget",
+    "name": "reservationSelectNat",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenFalse"
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenTrue"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.scalarChargeSafe": {
+    "module": "Stitch.Budget",
+    "name": "scalarChargeSafe",
+    "params": [
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "recorded",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "bound",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "call",
+      "name": "selectBool",
+      "args": [
+        {
+          "k": "var",
+          "name": "pending"
+        },
+        {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "var",
+              "name": "recorded"
+            }
+          },
+          "right": {
+            "k": "var",
+            "name": "bound"
+          }
+        },
+        {
+          "k": "var",
+          "name": "bound"
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.scalarFreshChargeCheck": {
+    "module": "Stitch.Budget",
+    "name": "scalarFreshChargeCheck",
+    "params": [
+      {
+        "name": "epochMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "actualWithin",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "actualBound",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "tailBound",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "resultBound",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "epochMatches"
+          },
+          "right": {
+            "k": "var",
+            "name": "actualWithin"
+          }
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "resultBound"
+      }
+    }
+  },
+  "Stitch.Budget.scalarStepChargeSafe": {
+    "module": "Stitch.Budget",
+    "name": "scalarStepChargeSafe",
+    "params": [
+      {
+        "name": "pending",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "matching",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "settled",
+        "type": {
+          "kind": "Selection"
+        }
+      },
+      {
+        "name": "epochMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "actualWithin",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "tailRecorded",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "actual",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "ceiling",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "oldActual",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "before",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "after",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "pending"
+      },
+      "branches": [
+        {
+          "constructor": "Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "after"
+            },
+            "right": {
+              "k": "var",
+              "name": "before"
+            }
+          }
+        },
+        {
+          "constructor": "Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "matching"
+            },
+            "branches": [
+              {
+                "constructor": "Selection.Reject",
+                "binders": [],
+                "body": {
+                  "k": "call",
+                  "name": "scalarChargeSafe",
+                  "args": [
+                    {
+                      "k": "ctor",
+                      "name": "Selection.Accept",
+                      "args": []
+                    },
+                    {
+                      "k": "var",
+                      "name": "tailRecorded"
+                    },
+                    {
+                      "k": "binary",
+                      "op": "<=?",
+                      "left": {
+                        "k": "var",
+                        "name": "after"
+                      },
+                      "right": {
+                        "k": "var",
+                        "name": "before"
+                      }
+                    }
+                  ]
+                }
+              },
+              {
+                "constructor": "Selection.Accept",
+                "binders": [],
+                "body": {
+                  "k": "match",
+                  "value": {
+                    "k": "var",
+                    "name": "settled"
+                  },
+                  "branches": [
+                    {
+                      "constructor": "Selection.Reject",
+                      "binders": [],
+                      "body": {
+                        "k": "call",
+                        "name": "scalarFreshChargeCheck",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "epochMatches"
+                          },
+                          {
+                            "k": "var",
+                            "name": "actualWithin"
+                          },
+                          {
+                            "k": "binary",
+                            "op": "<=?",
+                            "left": {
+                              "k": "var",
+                              "name": "actual"
+                            },
+                            "right": {
+                              "k": "var",
+                              "name": "ceiling"
+                            }
+                          },
+                          {
+                            "k": "binary",
+                            "op": "<=?",
+                            "left": {
+                              "k": "var",
+                              "name": "after"
+                            },
+                            "right": {
+                              "k": "var",
+                              "name": "before"
+                            }
+                          },
+                          {
+                            "k": "binary",
+                            "op": "<=?",
+                            "left": {
+                              "k": "binary",
+                              "op": "+",
+                              "left": {
+                                "k": "var",
+                                "name": "actual"
+                              },
+                              "right": {
+                                "k": "var",
+                                "name": "after"
+                              }
+                            },
+                            "right": {
+                              "k": "binary",
+                              "op": "+",
+                              "left": {
+                                "k": "var",
+                                "name": "ceiling"
+                              },
+                              "right": {
+                                "k": "var",
+                                "name": "before"
+                              }
+                            }
+                          }
+                        ]
+                      }
+                    },
+                    {
+                      "constructor": "Selection.Accept",
+                      "binders": [],
+                      "body": {
+                        "k": "bool",
+                        "value": true
+                      }
+                    }
+                  ]
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Budget.settlementImplies": {
+    "module": "Stitch.Budget",
+    "name": "settlementImplies",
+    "params": [
+      {
+        "name": "guard",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "guard"
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "candidate"
+      }
     }
   },
   "Stitch.Compute.instructionAllowed": {
@@ -1133,21 +5109,50 @@ const definitions = {
       "kind": "Nat"
     },
     "body": {
-      "k": "prim",
-      "operation": "shift_left",
-      "args": [
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "bits"
+      },
+      "branches": [
         {
-          "k": "nat",
-          "value": "1"
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "1"
+          }
         },
         {
-          "k": "var",
-          "name": "bits"
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "prim",
+            "operation": "multiply",
+            "args": [
+              {
+                "k": "nat",
+                "value": "2"
+              },
+              {
+                "k": "call",
+                "name": "ringModulus",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "rest"
+                  }
+                ]
+              }
+            ],
+            "type": {
+              "kind": "Nat"
+            }
+          }
         }
-      ],
-      "type": {
-        "kind": "Nat"
-      }
+      ]
     }
   },
   "Stitch.Compute.normalize": {
@@ -1190,6 +5195,338 @@ const definitions = {
       "type": {
         "kind": "Nat"
       }
+    }
+  },
+  "Stitch.Compute.natBitwise": {
+    "module": "Stitch.Compute",
+    "name": "natBitwise",
+    "params": [
+      {
+        "name": "fuel",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "opcode",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "left",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "fuel"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "var",
+                  "name": "right"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              }
+            },
+            "yes": {
+              "k": "nat",
+              "value": "0"
+            },
+            "no": {
+              "k": "let",
+              "name": "lowLeft",
+              "type": {
+                "kind": "Nat"
+              },
+              "value": {
+                "k": "prim",
+                "operation": "remainder",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "left"
+                  },
+                  {
+                    "k": "nat",
+                    "value": "2"
+                  },
+                  {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                ],
+                "type": {
+                  "kind": "Nat"
+                }
+              },
+              "body": {
+                "k": "let",
+                "name": "lowRight",
+                "type": {
+                  "kind": "Nat"
+                },
+                "value": {
+                  "k": "prim",
+                  "operation": "remainder",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "2"
+                    },
+                    {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  ],
+                  "type": {
+                    "kind": "Nat"
+                  }
+                },
+                "body": {
+                  "k": "let",
+                  "name": "low",
+                  "type": {
+                    "kind": "Nat"
+                  },
+                  "value": {
+                    "k": "if",
+                    "cond": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "var",
+                        "name": "opcode"
+                      },
+                      "right": {
+                        "k": "nat",
+                        "value": "7"
+                      }
+                    },
+                    "yes": {
+                      "k": "if",
+                      "cond": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "lowLeft"
+                        },
+                        "right": {
+                          "k": "var",
+                          "name": "lowRight"
+                        }
+                      },
+                      "yes": {
+                        "k": "nat",
+                        "value": "0"
+                      },
+                      "no": {
+                        "k": "nat",
+                        "value": "1"
+                      }
+                    },
+                    "no": {
+                      "k": "if",
+                      "cond": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "opcode"
+                        },
+                        "right": {
+                          "k": "nat",
+                          "value": "8"
+                        }
+                      },
+                      "yes": {
+                        "k": "prim",
+                        "operation": "multiply",
+                        "args": [
+                          {
+                            "k": "var",
+                            "name": "lowLeft"
+                          },
+                          {
+                            "k": "var",
+                            "name": "lowRight"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      },
+                      "no": {
+                        "k": "if",
+                        "cond": {
+                          "k": "binary",
+                          "op": "=?",
+                          "left": {
+                            "k": "binary",
+                            "op": "+",
+                            "left": {
+                              "k": "var",
+                              "name": "lowLeft"
+                            },
+                            "right": {
+                              "k": "var",
+                              "name": "lowRight"
+                            }
+                          },
+                          "right": {
+                            "k": "nat",
+                            "value": "0"
+                          }
+                        },
+                        "yes": {
+                          "k": "nat",
+                          "value": "0"
+                        },
+                        "no": {
+                          "k": "nat",
+                          "value": "1"
+                        }
+                      }
+                    }
+                  },
+                  "body": {
+                    "k": "binary",
+                    "op": "+",
+                    "left": {
+                      "k": "var",
+                      "name": "low"
+                    },
+                    "right": {
+                      "k": "prim",
+                      "operation": "multiply",
+                      "args": [
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "call",
+                          "name": "natBitwise",
+                          "args": [
+                            {
+                              "k": "var",
+                              "name": "rest"
+                            },
+                            {
+                              "k": "var",
+                              "name": "opcode"
+                            },
+                            {
+                              "k": "prim",
+                              "operation": "quotient",
+                              "args": [
+                                {
+                                  "k": "var",
+                                  "name": "left"
+                                },
+                                {
+                                  "k": "nat",
+                                  "value": "2"
+                                },
+                                {
+                                  "k": "nat",
+                                  "value": "0"
+                                }
+                              ],
+                              "type": {
+                                "kind": "Nat"
+                              }
+                            },
+                            {
+                              "k": "prim",
+                              "operation": "quotient",
+                              "args": [
+                                {
+                                  "k": "var",
+                                  "name": "right"
+                                },
+                                {
+                                  "k": "nat",
+                                  "value": "2"
+                                },
+                                {
+                                  "k": "nat",
+                                  "value": "0"
+                                }
+                              ],
+                              "type": {
+                                "kind": "Nat"
+                              }
+                            }
+                          ]
+                        }
+                      ],
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      ]
     }
   },
   "Stitch.Compute.ringStep": {
@@ -1531,9 +5868,17 @@ const definitions = {
                                 }
                               },
                               "yes": {
-                                "k": "prim",
-                                "operation": "bit_xor",
+                                "k": "call",
+                                "name": "natBitwise",
                                 "args": [
+                                  {
+                                    "k": "var",
+                                    "name": "modulus"
+                                  },
+                                  {
+                                    "k": "nat",
+                                    "value": "7"
+                                  },
                                   {
                                     "k": "var",
                                     "name": "x"
@@ -1542,10 +5887,7 @@ const definitions = {
                                     "k": "var",
                                     "name": "y"
                                   }
-                                ],
-                                "type": {
-                                  "kind": "Nat"
-                                }
+                                ]
                               },
                               "no": {
                                 "k": "if",
@@ -1562,9 +5904,17 @@ const definitions = {
                                   }
                                 },
                                 "yes": {
-                                  "k": "prim",
-                                  "operation": "bit_and",
+                                  "k": "call",
+                                  "name": "natBitwise",
                                   "args": [
+                                    {
+                                      "k": "var",
+                                      "name": "modulus"
+                                    },
+                                    {
+                                      "k": "nat",
+                                      "value": "8"
+                                    },
                                     {
                                       "k": "var",
                                       "name": "x"
@@ -1573,10 +5923,7 @@ const definitions = {
                                       "k": "var",
                                       "name": "y"
                                     }
-                                  ],
-                                  "type": {
-                                    "kind": "Nat"
-                                  }
+                                  ]
                                 },
                                 "no": {
                                   "k": "if",
@@ -1593,9 +5940,17 @@ const definitions = {
                                     }
                                   },
                                   "yes": {
-                                    "k": "prim",
-                                    "operation": "bit_or",
+                                    "k": "call",
+                                    "name": "natBitwise",
                                     "args": [
+                                      {
+                                        "k": "var",
+                                        "name": "modulus"
+                                      },
+                                      {
+                                        "k": "nat",
+                                        "value": "9"
+                                      },
                                       {
                                         "k": "var",
                                         "name": "x"
@@ -1604,10 +5959,7 @@ const definitions = {
                                         "k": "var",
                                         "name": "y"
                                       }
-                                    ],
-                                    "type": {
-                                      "kind": "Nat"
-                                    }
+                                    ]
                                   },
                                   "no": {
                                     "k": "if",
@@ -2085,42 +6437,42 @@ const definitions = {
       "op": "&&",
       "left": {
         "k": "var",
-        "name": "jobMatches"
+        "name": "replayMatches"
       },
       "right": {
         "k": "binary",
         "op": "&&",
         "left": {
           "k": "var",
-          "name": "programMatches"
+          "name": "jobMatches"
         },
         "right": {
           "k": "binary",
           "op": "&&",
           "left": {
             "k": "var",
-            "name": "inputMatches"
+            "name": "programMatches"
           },
           "right": {
             "k": "binary",
             "op": "&&",
             "left": {
               "k": "var",
-              "name": "modelMatches"
+              "name": "inputMatches"
             },
             "right": {
               "k": "binary",
               "op": "&&",
               "left": {
                 "k": "var",
-                "name": "predecessorMatches"
+                "name": "modelMatches"
               },
               "right": {
                 "k": "binary",
                 "op": "&&",
                 "left": {
                   "k": "var",
-                  "name": "replayMatches"
+                  "name": "predecessorMatches"
                 },
                 "right": {
                   "k": "binary",
@@ -2378,6 +6730,372 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Compute.sameInstruction": {
+    "module": "Stitch.Compute",
+    "name": "sameInstruction",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Instruction"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Instruction"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "left"
+          },
+          "field": "opcode"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "right"
+          },
+          "field": "opcode"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "left"
+          },
+          "field": "argument"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "right"
+          },
+          "field": "argument"
+        }
+      }
+    }
+  },
+  "Stitch.Compute.sameInstructions": {
+    "module": "Stitch.Compute",
+    "name": "sameInstructions",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Instruction"
+          }
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Instruction"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "left"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "branches": [
+              {
+                "constructor": "List.nil",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": true
+                }
+              },
+              {
+                "constructor": "List.cons",
+                "binders": [
+                  "head",
+                  "tail"
+                ],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "branches": [
+              {
+                "constructor": "List.nil",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              },
+              {
+                "constructor": "List.cons",
+                "binders": [
+                  "other",
+                  "rest"
+                ],
+                "body": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "sameInstruction",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      {
+                        "k": "var",
+                        "name": "other"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "call",
+                    "name": "sameInstructions",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "tail"
+                      },
+                      {
+                        "k": "var",
+                        "name": "rest"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Compute.instructionWellFormed": {
+    "module": "Stitch.Compute",
+    "name": "instructionWellFormed",
+    "params": [
+      {
+        "name": "instruction",
+        "type": {
+          "kind": "Instruction"
+        }
+      },
+      {
+        "name": "modulus",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "instructionAllowed",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "instruction"
+            },
+            "field": "opcode"
+          }
+        ]
+      },
+      "right": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "instruction"
+            },
+            "field": "opcode"
+          },
+          "right": {
+            "k": "nat",
+            "value": "3"
+          }
+        },
+        "yes": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "instruction"
+            },
+            "field": "argument"
+          },
+          "right": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "no": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "instruction"
+            },
+            "field": "argument"
+          },
+          "right": {
+            "k": "var",
+            "name": "modulus"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.instructionsWellFormed": {
+    "module": "Stitch.Compute",
+    "name": "instructionsWellFormed",
+    "params": [
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Instruction"
+          }
+        }
+      },
+      {
+        "name": "modulus",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "instructions"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "instructionWellFormed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "head"
+                },
+                {
+                  "k": "var",
+                  "name": "modulus"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "instructionsWellFormed",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "modulus"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
   "Stitch.Compute.programAllowed": {
     "module": "Stitch.Compute",
     "name": "programAllowed",
@@ -2420,7 +7138,7 @@ const definitions = {
         "op": "&&",
         "left": {
           "k": "call",
-          "name": "instructionsAllowed",
+          "name": "Stitch.Identity::digestWellFormed",
           "args": [
             {
               "k": "project",
@@ -2428,16 +7146,16 @@ const definitions = {
                 "k": "var",
                 "name": "program"
               },
-              "field": "instructions"
+              "field": "programRoot"
             }
           ]
         },
         "right": {
           "k": "binary",
-          "op": "<=?",
+          "op": "&&",
           "left": {
             "k": "call",
-            "name": "instructionCount",
+            "name": "Stitch.Identity::digestWellFormed",
             "args": [
               {
                 "k": "project",
@@ -2445,13 +7163,63 @@ const definitions = {
                   "k": "var",
                   "name": "program"
                 },
-                "field": "instructions"
+                "field": "modelRoot"
               }
             ]
           },
           "right": {
-            "k": "var",
-            "name": "maximumSteps"
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "instructionsWellFormed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "program"
+                  },
+                  "field": "instructions"
+                },
+                {
+                  "k": "call",
+                  "name": "ringModulus",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "program"
+                      },
+                      "field": "bits"
+                    }
+                  ]
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "call",
+                "name": "instructionCount",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "program"
+                    },
+                    "field": "instructions"
+                  }
+                ]
+              },
+              "right": {
+                "k": "var",
+                "name": "maximumSteps"
+              }
+            }
           }
         }
       }
@@ -2635,6 +7403,115 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Compute.jobAllowed": {
+    "module": "Stitch.Compute",
+    "name": "jobAllowed",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "maximumSteps",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "programAllowed",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "job"
+            },
+            "field": "program"
+          },
+          {
+            "k": "var",
+            "name": "maximumSteps"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "Stitch.Identity::digestWellFormed",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "job"
+              },
+              "field": "jobRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::digestWellFormed",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "job"
+                },
+                "field": "inputRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "job"
+              },
+              "field": "initialValue"
+            },
+            "right": {
+              "k": "call",
+              "name": "ringModulus",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "job"
+                    },
+                    "field": "program"
+                  },
+                  "field": "bits"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
   "Stitch.Compute.checkpointMatchesJob": {
     "module": "Stitch.Compute",
     "name": "checkpointMatchesJob",
@@ -2660,23 +7537,29 @@ const definitions = {
       "op": "&&",
       "left": {
         "k": "call",
-        "name": "Stitch.Identity::sameDigest",
+        "name": "jobAllowed",
         "args": [
           {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "job"
-            },
-            "field": "jobRoot"
+            "k": "var",
+            "name": "job"
           },
           {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "checkpoint"
-            },
-            "field": "jobRoot"
+            "k": "call",
+            "name": "instructionCount",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "job"
+                  },
+                  "field": "program"
+                },
+                "field": "instructions"
+              }
+            ]
           }
         ]
       },
@@ -2685,27 +7568,15 @@ const definitions = {
         "op": "&&",
         "left": {
           "k": "call",
-          "name": "Stitch.Identity::sameDigest",
+          "name": "Stitch.Identity::digestWellFormed",
           "args": [
-            {
-              "k": "project",
-              "value": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "job"
-                },
-                "field": "program"
-              },
-              "field": "programRoot"
-            },
             {
               "k": "project",
               "value": {
                 "k": "var",
                 "name": "checkpoint"
               },
-              "field": "programRoot"
+              "field": "jobRoot"
             }
           ]
         },
@@ -2714,23 +7585,15 @@ const definitions = {
           "op": "&&",
           "left": {
             "k": "call",
-            "name": "Stitch.Identity::sameDigest",
+            "name": "Stitch.Identity::digestWellFormed",
             "args": [
-              {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "job"
-                },
-                "field": "inputRoot"
-              },
               {
                 "k": "project",
                 "value": {
                   "k": "var",
                   "name": "checkpoint"
                 },
-                "field": "inputRoot"
+                "field": "programRoot"
               }
             ]
           },
@@ -2739,27 +7602,15 @@ const definitions = {
             "op": "&&",
             "left": {
               "k": "call",
-              "name": "Stitch.Identity::sameDigest",
+              "name": "Stitch.Identity::digestWellFormed",
               "args": [
-                {
-                  "k": "project",
-                  "value": {
-                    "k": "project",
-                    "value": {
-                      "k": "var",
-                      "name": "job"
-                    },
-                    "field": "program"
-                  },
-                  "field": "modelRoot"
-                },
                 {
                   "k": "project",
                   "value": {
                     "k": "var",
                     "name": "checkpoint"
                   },
-                  "field": "modelRoot"
+                  "field": "inputRoot"
                 }
               ]
             },
@@ -2767,59 +7618,243 @@ const definitions = {
               "k": "binary",
               "op": "&&",
               "left": {
+                "k": "call",
+                "name": "Stitch.Identity::digestWellFormed",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "checkpoint"
+                    },
+                    "field": "modelRoot"
+                  }
+                ]
+              },
+              "right": {
                 "k": "binary",
-                "op": "<=?",
+                "op": "&&",
                 "left": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "checkpoint"
-                  },
-                  "field": "step"
-                },
-                "right": {
                   "k": "call",
-                  "name": "instructionCount",
+                  "name": "Stitch.Identity::digestWellFormed",
                   "args": [
                     {
                       "k": "project",
                       "value": {
+                        "k": "var",
+                        "name": "checkpoint"
+                      },
+                      "field": "priorRoot"
+                    }
+                  ]
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "Stitch.Identity::digestWellFormed",
+                    "args": [
+                      {
                         "k": "project",
                         "value": {
                           "k": "var",
-                          "name": "job"
+                          "name": "checkpoint"
                         },
-                        "field": "program"
-                      },
-                      "field": "instructions"
-                    }
-                  ]
-                }
-              },
-              "right": {
-                "k": "binary",
-                "op": "=?",
-                "left": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "checkpoint"
+                        "field": "stateRoot"
+                      }
+                    ]
                   },
-                  "field": "value"
-                },
-                "right": {
-                  "k": "call",
-                  "name": "replayedValue",
-                  "args": [
-                    {
-                      "k": "var",
-                      "name": "job"
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "call",
+                      "name": "Stitch.Identity::digestWellFormed",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "checkpoint"
+                          },
+                          "field": "checkpointRoot"
+                        }
+                      ]
                     },
-                    {
-                      "k": "var",
-                      "name": "checkpoint"
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "call",
+                        "name": "Stitch.Identity::sameDigest",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "job"
+                            },
+                            "field": "jobRoot"
+                          },
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "checkpoint"
+                            },
+                            "field": "jobRoot"
+                          }
+                        ]
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "&&",
+                        "left": {
+                          "k": "call",
+                          "name": "Stitch.Identity::sameDigest",
+                          "args": [
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "job"
+                                },
+                                "field": "program"
+                              },
+                              "field": "programRoot"
+                            },
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "checkpoint"
+                              },
+                              "field": "programRoot"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "k": "binary",
+                          "op": "&&",
+                          "left": {
+                            "k": "call",
+                            "name": "Stitch.Identity::sameDigest",
+                            "args": [
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "job"
+                                },
+                                "field": "inputRoot"
+                              },
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "checkpoint"
+                                },
+                                "field": "inputRoot"
+                              }
+                            ]
+                          },
+                          "right": {
+                            "k": "binary",
+                            "op": "&&",
+                            "left": {
+                              "k": "call",
+                              "name": "Stitch.Identity::sameDigest",
+                              "args": [
+                                {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "job"
+                                    },
+                                    "field": "program"
+                                  },
+                                  "field": "modelRoot"
+                                },
+                                {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "checkpoint"
+                                  },
+                                  "field": "modelRoot"
+                                }
+                              ]
+                            },
+                            "right": {
+                              "k": "binary",
+                              "op": "&&",
+                              "left": {
+                                "k": "binary",
+                                "op": "<=?",
+                                "left": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "checkpoint"
+                                  },
+                                  "field": "step"
+                                },
+                                "right": {
+                                  "k": "call",
+                                  "name": "instructionCount",
+                                  "args": [
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "project",
+                                        "value": {
+                                          "k": "var",
+                                          "name": "job"
+                                        },
+                                        "field": "program"
+                                      },
+                                      "field": "instructions"
+                                    }
+                                  ]
+                                }
+                              },
+                              "right": {
+                                "k": "binary",
+                                "op": "=?",
+                                "left": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "checkpoint"
+                                  },
+                                  "field": "value"
+                                },
+                                "right": {
+                                  "k": "call",
+                                  "name": "replayedValue",
+                                  "args": [
+                                    {
+                                      "k": "var",
+                                      "name": "job"
+                                    },
+                                    {
+                                      "k": "var",
+                                      "name": "checkpoint"
+                                    }
+                                  ]
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
                     }
-                  ]
+                  }
                 }
               }
             }
@@ -2937,14 +7972,20 @@ const definitions = {
       }
     }
   },
-  "Stitch.Compute.jobAllowed": {
+  "Stitch.Compute.programCommitted": {
     "module": "Stitch.Compute",
-    "name": "jobAllowed",
+    "name": "programCommitted",
     "params": [
       {
-        "name": "job",
+        "name": "program",
         "type": {
-          "kind": "Job"
+          "kind": "Program"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "ProgramDigestObservation"
         }
       },
       {
@@ -2965,12 +8006,8 @@ const definitions = {
         "name": "programAllowed",
         "args": [
           {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "job"
-            },
-            "field": "program"
+            "k": "var",
+            "name": "program"
           },
           {
             "k": "var",
@@ -2980,18 +8017,362 @@ const definitions = {
       },
       "right": {
         "k": "binary",
-        "op": "<?",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "observation"
+              },
+              "field": "input"
+            },
+            "field": "version"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::sameDigest",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "input"
+                },
+                "field": "modelRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "program"
+                },
+                "field": "modelRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "input"
+                },
+                "field": "bits"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "program"
+                },
+                "field": "bits"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "sameInstructions",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "input"
+                    },
+                    "field": "instructions"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "program"
+                    },
+                    "field": "instructions"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "call",
+                  "name": "Stitch.Identity::digestAccepted",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "digest"
+                    }
+                  ]
+                },
+                "right": {
+                  "k": "call",
+                  "name": "Stitch.Identity::sameDigest",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "digest"
+                      },
+                      "field": "expected"
+                    },
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "program"
+                      },
+                      "field": "programRoot"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.inputCommitted": {
+    "module": "Stitch.Compute",
+    "name": "inputCommitted",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "InputDigestObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
         "left": {
           "k": "project",
           "value": {
-            "k": "var",
-            "name": "job"
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "observation"
+            },
+            "field": "input"
           },
-          "field": "initialValue"
+          "field": "version"
         },
         "right": {
+          "k": "nat",
+          "value": "1"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "observation"
+              },
+              "field": "input"
+            },
+            "field": "bits"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "job"
+              },
+              "field": "program"
+            },
+            "field": "bits"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "input"
+              },
+              "field": "value"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "job"
+              },
+              "field": "initialValue"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::digestAccepted",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "digest"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "Stitch.Identity::sameDigest",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "observation"
+                    },
+                    "field": "digest"
+                  },
+                  "field": "expected"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "job"
+                  },
+                  "field": "inputRoot"
+                }
+              ]
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.jobCommitted": {
+    "module": "Stitch.Compute",
+    "name": "jobCommitted",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "commitments",
+        "type": {
+          "kind": "JobCommitments"
+        }
+      },
+      {
+        "name": "maximumSteps",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "expectedModelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Identity::digestWellFormed",
+        "args": [
+          {
+            "k": "var",
+            "name": "expectedModelRoot"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
           "k": "call",
-          "name": "ringModulus",
+          "name": "Stitch.Identity::sameDigest",
           "args": [
             {
               "k": "project",
@@ -3003,10 +8384,1316 @@ const definitions = {
                 },
                 "field": "program"
               },
-              "field": "bits"
+              "field": "modelRoot"
+            },
+            {
+              "k": "var",
+              "name": "expectedModelRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "jobAllowed",
+            "args": [
+              {
+                "k": "var",
+                "name": "job"
+              },
+              {
+                "k": "var",
+                "name": "maximumSteps"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "programCommitted",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "job"
+                  },
+                  "field": "program"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "commitments"
+                  },
+                  "field": "program"
+                },
+                {
+                  "k": "var",
+                  "name": "maximumSteps"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "inputCommitted",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "job"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "commitments"
+                    },
+                    "field": "input"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "commitments"
+                        },
+                        "field": "job"
+                      },
+                      "field": "input"
+                    },
+                    "field": "version"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "1"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "Stitch.Identity::sameDigest",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "commitments"
+                            },
+                            "field": "job"
+                          },
+                          "field": "input"
+                        },
+                        "field": "programRoot"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "job"
+                          },
+                          "field": "program"
+                        },
+                        "field": "programRoot"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "call",
+                      "name": "Stitch.Identity::sameDigest",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "project",
+                            "value": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "commitments"
+                              },
+                              "field": "job"
+                            },
+                            "field": "input"
+                          },
+                          "field": "inputRoot"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "job"
+                          },
+                          "field": "inputRoot"
+                        }
+                      ]
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "call",
+                        "name": "Stitch.Identity::sameDigest",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "project",
+                              "value": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "commitments"
+                                },
+                                "field": "job"
+                              },
+                              "field": "input"
+                            },
+                            "field": "modelRoot"
+                          },
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "job"
+                              },
+                              "field": "program"
+                            },
+                            "field": "modelRoot"
+                          }
+                        ]
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "&&",
+                        "left": {
+                          "k": "binary",
+                          "op": "=?",
+                          "left": {
+                            "k": "project",
+                            "value": {
+                              "k": "project",
+                              "value": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "commitments"
+                                },
+                                "field": "job"
+                              },
+                              "field": "input"
+                            },
+                            "field": "initialValue"
+                          },
+                          "right": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "job"
+                            },
+                            "field": "initialValue"
+                          }
+                        },
+                        "right": {
+                          "k": "binary",
+                          "op": "&&",
+                          "left": {
+                            "k": "call",
+                            "name": "Stitch.Identity::digestAccepted",
+                            "args": [
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "commitments"
+                                  },
+                                  "field": "job"
+                                },
+                                "field": "digest"
+                              }
+                            ]
+                          },
+                          "right": {
+                            "k": "call",
+                            "name": "Stitch.Identity::sameDigest",
+                            "args": [
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "commitments"
+                                    },
+                                    "field": "job"
+                                  },
+                                  "field": "digest"
+                                },
+                                "field": "expected"
+                              },
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "job"
+                                },
+                                "field": "jobRoot"
+                              }
+                            ]
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.stateCommitted": {
+    "module": "Stitch.Compute",
+    "name": "stateCommitted",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "checkpoint",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "StateDigestObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "observation"
+            },
+            "field": "input"
+          },
+          "field": "version"
+        },
+        "right": {
+          "k": "nat",
+          "value": "1"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "Stitch.Identity::sameDigest",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "input"
+              },
+              "field": "jobRoot"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "checkpoint"
+              },
+              "field": "jobRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::sameDigest",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "input"
+                },
+                "field": "programRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "checkpoint"
+                },
+                "field": "programRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::sameDigest",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "observation"
+                    },
+                    "field": "input"
+                  },
+                  "field": "inputRoot"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "checkpoint"
+                  },
+                  "field": "inputRoot"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "input"
+                    },
+                    "field": "modelRoot"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "checkpoint"
+                    },
+                    "field": "modelRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "input"
+                    },
+                    "field": "bits"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "job"
+                      },
+                      "field": "program"
+                    },
+                    "field": "bits"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "input"
+                      },
+                      "field": "step"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "checkpoint"
+                      },
+                      "field": "step"
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "observation"
+                          },
+                          "field": "input"
+                        },
+                        "field": "value"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "checkpoint"
+                        },
+                        "field": "value"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "call",
+                        "name": "Stitch.Identity::digestAccepted",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "observation"
+                            },
+                            "field": "digest"
+                          }
+                        ]
+                      },
+                      "right": {
+                        "k": "call",
+                        "name": "Stitch.Identity::sameDigest",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "observation"
+                              },
+                              "field": "digest"
+                            },
+                            "field": "expected"
+                          },
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "checkpoint"
+                            },
+                            "field": "stateRoot"
+                          }
+                        ]
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.checkpointCommitted": {
+    "module": "Stitch.Compute",
+    "name": "checkpointCommitted",
+    "params": [
+      {
+        "name": "checkpoint",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "CheckpointDigestObservation"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "observation"
+            },
+            "field": "input"
+          },
+          "field": "version"
+        },
+        "right": {
+          "k": "nat",
+          "value": "1"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "Stitch.Identity::sameDigest",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "input"
+              },
+              "field": "jobRoot"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "checkpoint"
+              },
+              "field": "jobRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::sameDigest",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "input"
+                },
+                "field": "programRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "checkpoint"
+                },
+                "field": "programRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::sameDigest",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "observation"
+                    },
+                    "field": "input"
+                  },
+                  "field": "inputRoot"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "checkpoint"
+                  },
+                  "field": "inputRoot"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "input"
+                    },
+                    "field": "modelRoot"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "checkpoint"
+                    },
+                    "field": "modelRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "call",
+                  "name": "Stitch.Identity::sameDigest",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "input"
+                      },
+                      "field": "priorRoot"
+                    },
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "checkpoint"
+                      },
+                      "field": "priorRoot"
+                    }
+                  ]
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "Stitch.Identity::sameDigest",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "observation"
+                          },
+                          "field": "input"
+                        },
+                        "field": "stateRoot"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "checkpoint"
+                        },
+                        "field": "stateRoot"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "observation"
+                          },
+                          "field": "input"
+                        },
+                        "field": "step"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "checkpoint"
+                        },
+                        "field": "step"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "project",
+                          "value": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "observation"
+                            },
+                            "field": "input"
+                          },
+                          "field": "value"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "checkpoint"
+                          },
+                          "field": "value"
+                        }
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "&&",
+                        "left": {
+                          "k": "call",
+                          "name": "Stitch.Identity::digestAccepted",
+                          "args": [
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "observation"
+                              },
+                              "field": "digest"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "k": "call",
+                          "name": "Stitch.Identity::sameDigest",
+                          "args": [
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "observation"
+                                },
+                                "field": "digest"
+                              },
+                              "field": "expected"
+                            },
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "checkpoint"
+                              },
+                              "field": "checkpointRoot"
+                            }
+                          ]
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.committedCheckpointAllowed": {
+    "module": "Stitch.Compute",
+    "name": "committedCheckpointAllowed",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "checkpoint",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "jobCommitments",
+        "type": {
+          "kind": "JobCommitments"
+        }
+      },
+      {
+        "name": "checkpointCommitments",
+        "type": {
+          "kind": "CheckpointCommitments"
+        }
+      },
+      {
+        "name": "maximumSteps",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "expectedModelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "jobCommitted",
+        "args": [
+          {
+            "k": "var",
+            "name": "job"
+          },
+          {
+            "k": "var",
+            "name": "jobCommitments"
+          },
+          {
+            "k": "var",
+            "name": "maximumSteps"
+          },
+          {
+            "k": "var",
+            "name": "expectedModelRoot"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "checkpointMatchesJob",
+          "args": [
+            {
+              "k": "var",
+              "name": "job"
+            },
+            {
+              "k": "var",
+              "name": "checkpoint"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "stateCommitted",
+            "args": [
+              {
+                "k": "var",
+                "name": "job"
+              },
+              {
+                "k": "var",
+                "name": "checkpoint"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "checkpointCommitments"
+                },
+                "field": "state"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "checkpointCommitted",
+            "args": [
+              {
+                "k": "var",
+                "name": "checkpoint"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "checkpointCommitments"
+                },
+                "field": "checkpoint"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Compute.committedCheckpointSuccessor": {
+    "module": "Stitch.Compute",
+    "name": "committedCheckpointSuccessor",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "jobCommitments",
+        "type": {
+          "kind": "JobCommitments"
+        }
+      },
+      {
+        "name": "currentCommitments",
+        "type": {
+          "kind": "CheckpointCommitments"
+        }
+      },
+      {
+        "name": "candidateCommitments",
+        "type": {
+          "kind": "CheckpointCommitments"
+        }
+      },
+      {
+        "name": "maximumSteps",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "expectedModelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "committedCheckpointAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "job"
+          },
+          {
+            "k": "var",
+            "name": "current"
+          },
+          {
+            "k": "var",
+            "name": "jobCommitments"
+          },
+          {
+            "k": "var",
+            "name": "currentCommitments"
+          },
+          {
+            "k": "var",
+            "name": "maximumSteps"
+          },
+          {
+            "k": "var",
+            "name": "expectedModelRoot"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "committedCheckpointAllowed",
+          "args": [
+            {
+              "k": "var",
+              "name": "job"
+            },
+            {
+              "k": "var",
+              "name": "candidate"
+            },
+            {
+              "k": "var",
+              "name": "jobCommitments"
+            },
+            {
+              "k": "var",
+              "name": "candidateCommitments"
+            },
+            {
+              "k": "var",
+              "name": "maximumSteps"
+            },
+            {
+              "k": "var",
+              "name": "expectedModelRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "call",
+          "name": "checkpointSuccessor",
+          "args": [
+            {
+              "k": "var",
+              "name": "job"
+            },
+            {
+              "k": "var",
+              "name": "current"
+            },
+            {
+              "k": "var",
+              "name": "candidate"
             }
           ]
         }
+      }
+    }
+  },
+  "Stitch.Compute.advanceCheckpoint": {
+    "module": "Stitch.Compute",
+    "name": "advanceCheckpoint",
+    "params": [
+      {
+        "name": "job",
+        "type": {
+          "kind": "Job"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "Checkpoint"
+        }
+      },
+      {
+        "name": "jobCommitments",
+        "type": {
+          "kind": "JobCommitments"
+        }
+      },
+      {
+        "name": "currentCommitments",
+        "type": {
+          "kind": "CheckpointCommitments"
+        }
+      },
+      {
+        "name": "candidateCommitments",
+        "type": {
+          "kind": "CheckpointCommitments"
+        }
+      },
+      {
+        "name": "maximumSteps",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "expectedModelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Checkpoint"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "committedCheckpointSuccessor",
+        "args": [
+          {
+            "k": "var",
+            "name": "job"
+          },
+          {
+            "k": "var",
+            "name": "current"
+          },
+          {
+            "k": "var",
+            "name": "candidate"
+          },
+          {
+            "k": "var",
+            "name": "jobCommitments"
+          },
+          {
+            "k": "var",
+            "name": "currentCommitments"
+          },
+          {
+            "k": "var",
+            "name": "candidateCommitments"
+          },
+          {
+            "k": "var",
+            "name": "maximumSteps"
+          },
+          {
+            "k": "var",
+            "name": "expectedModelRoot"
+          }
+        ]
+      },
+      "yes": {
+        "k": "var",
+        "name": "candidate"
+      },
+      "no": {
+        "k": "var",
+        "name": "current"
       }
     }
   },
@@ -3170,6 +9857,94 @@ const definitions = {
       }
     }
   },
+  "Stitch.Custody.activeThreshold": {
+    "module": "Stitch.Custody",
+    "name": "activeThreshold",
+    "params": [
+      {
+        "name": "a",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "b",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "c",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "<=?",
+      "left": {
+        "k": "nat",
+        "value": "2"
+      },
+      "right": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "if",
+          "cond": {
+            "k": "var",
+            "name": "a"
+          },
+          "yes": {
+            "k": "nat",
+            "value": "1"
+          },
+          "no": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "if",
+            "cond": {
+              "k": "var",
+              "name": "b"
+            },
+            "yes": {
+              "k": "nat",
+              "value": "1"
+            },
+            "no": {
+              "k": "nat",
+              "value": "0"
+            }
+          },
+          "right": {
+            "k": "if",
+            "cond": {
+              "k": "var",
+              "name": "c"
+            },
+            "yes": {
+              "k": "nat",
+              "value": "1"
+            },
+            "no": {
+              "k": "nat",
+              "value": "0"
+            }
+          }
+        }
+      }
+    }
+  },
   "Stitch.Custody.recoverable": {
     "module": "Stitch.Custody",
     "name": "recoverable",
@@ -3218,21 +9993,916 @@ const definitions = {
         ]
       },
       "right": {
+        "k": "call",
+        "name": "activeThreshold",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active0"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active1"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active2"
+          }
+        ]
+      }
+    }
+  },
+  "Stitch.Custody.receiptLive": {
+    "module": "Stitch.Custody",
+    "name": "receiptLive",
+    "params": [
+      {
+        "name": "manifestRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "holder",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "receipt",
+        "type": {
+          "kind": "Receipt"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
         "k": "binary",
-        "op": "<=?",
+        "op": "<?",
         "left": {
+          "k": "var",
+          "name": "index"
+        },
+        "right": {
           "k": "nat",
-          "value": "2"
+          "value": "3"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "Stitch.Identity::digestWellFormed",
+          "args": [
+            {
+              "k": "var",
+              "name": "manifestRoot"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::digestWellFormed",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "receipt"
+                },
+                "field": "requestRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::digestWellFormed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "receipt"
+                  },
+                  "field": "fragmentRoot"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "manifestRoot"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "receipt"
+                    },
+                    "field": "manifestRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "index"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "receipt"
+                    },
+                    "field": "index"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "holder"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "receipt"
+                      },
+                      "field": "holderId"
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "receipt"
+                      },
+                      "field": "identityAuthenticated"
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "binary",
+                        "op": "<=?",
+                        "left": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "receipt"
+                          },
+                          "field": "observedAt"
+                        },
+                        "right": {
+                          "k": "var",
+                          "name": "now"
+                        }
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "<?",
+                        "left": {
+                          "k": "var",
+                          "name": "now"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "receipt"
+                          },
+                          "field": "leaseUntil"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.indexedCopyLive": {
+    "module": "Stitch.Custody",
+    "name": "indexedCopyLive",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "index"
+        },
+        "right": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "yes": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active0"
         },
         "right": {
           "k": "call",
-          "name": "activeCount",
+          "name": "receiptLive",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "manifestRoot"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "holder0"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "receipt0"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "index"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "yes": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active1"
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "1"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder1"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "receipt1"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "active2"
+            },
+            "right": {
+              "k": "call",
+              "name": "receiptLive",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "manifestRoot"
+                },
+                {
+                  "k": "nat",
+                  "value": "2"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder2"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "receipt2"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          },
+          "no": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.liveCount": {
+    "module": "Stitch.Custody",
+    "name": "liveCount",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "binary",
+      "op": "+",
+      "left": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active0"
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "0"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder0"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "receipt0"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        },
+        "yes": {
+          "k": "nat",
+          "value": "1"
+        },
+        "no": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "active1"
+            },
+            "right": {
+              "k": "call",
+              "name": "receiptLive",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "manifestRoot"
+                },
+                {
+                  "k": "nat",
+                  "value": "1"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder1"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "receipt1"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          },
+          "yes": {
+            "k": "nat",
+            "value": "1"
+          },
+          "no": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "right": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "active2"
+            },
+            "right": {
+              "k": "call",
+              "name": "receiptLive",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "manifestRoot"
+                },
+                {
+                  "k": "nat",
+                  "value": "2"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder2"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "receipt2"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          },
+          "yes": {
+            "k": "nat",
+            "value": "1"
+          },
+          "no": {
+            "k": "nat",
+            "value": "0"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.recoverableAt": {
+    "module": "Stitch.Custody",
+    "name": "recoverableAt",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "indexedCopyLive",
           "args": [
             {
               "k": "var",
               "name": "placement"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            },
+            {
+              "k": "var",
+              "name": "now"
             }
           ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "indexedCopyLive",
+            "args": [
+              {
+                "k": "var",
+                "name": "placement"
+              },
+              {
+                "k": "nat",
+                "value": "1"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "right": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder0"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder1"
+              }
+            }
+          }
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "||",
+        "left": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "indexedCopyLive",
+            "args": [
+              {
+                "k": "var",
+                "name": "placement"
+              },
+              {
+                "k": "nat",
+                "value": "0"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "indexedCopyLive",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "placement"
+                },
+                {
+                  "k": "nat",
+                  "value": "2"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            },
+            "right": {
+              "k": "not",
+              "value": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder0"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder2"
+                }
+              }
+            }
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "indexedCopyLive",
+            "args": [
+              {
+                "k": "var",
+                "name": "placement"
+              },
+              {
+                "k": "nat",
+                "value": "1"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "indexedCopyLive",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "placement"
+                },
+                {
+                  "k": "nat",
+                  "value": "2"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            },
+            "right": {
+              "k": "not",
+              "value": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder1"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder2"
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -3294,18 +10964,17 @@ const definitions = {
       "kind": "Bool"
     },
     "body": {
-      "k": "binary",
-      "op": "&&",
-      "left": {
+      "k": "if",
+      "cond": {
         "k": "var",
-        "name": "requested"
+        "name": "acknowledged"
       },
-      "right": {
+      "yes": {
         "k": "binary",
         "op": "&&",
         "left": {
           "k": "var",
-          "name": "acknowledged"
+          "name": "requested"
         },
         "right": {
           "k": "binary",
@@ -3351,6 +11020,10 @@ const definitions = {
             }
           }
         }
+      },
+      "no": {
+        "k": "bool",
+        "value": false
       }
     }
   },
@@ -3869,70 +11542,70 @@ const definitions = {
       "kind": "Placement"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "binary",
-        "op": "&&",
-        "left": {
-          "k": "var",
-          "name": "committed"
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "manifestRoot"
         },
-        "right": {
-          "k": "binary",
-          "op": "&&",
-          "left": {
-            "k": "not",
-            "value": {
-              "k": "binary",
-              "op": "=?",
-              "left": {
-                "k": "var",
-                "name": "target"
-              },
-              "right": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "holder1"
-              }
-            }
-          },
-          "right": {
-            "k": "not",
-            "value": {
-              "k": "binary",
-              "op": "=?",
-              "left": {
-                "k": "var",
-                "name": "target"
-              },
-              "right": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "holder2"
-              }
-            }
-          }
-        }
-      },
-      "yes": {
-        "k": "record",
-        "name": "Placement",
-        "values": {
-          "manifestRoot": {
-            "k": "project",
-            "value": {
+        "revision": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
               "k": "var",
-              "name": "placement"
+              "name": "committed"
             },
-            "field": "manifestRoot"
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder1"
+                  }
+                }
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder2"
+                  }
+                }
+              }
+            }
           },
-          "revision": {
+          "yes": {
             "k": "binary",
             "op": "+",
             "left": {
@@ -3948,51 +11621,198 @@ const definitions = {
               "value": "1"
             }
           },
-          "holder0": {
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "revision"
+          }
+        },
+        "holder0": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "committed"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder1"
+                  }
+                }
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder2"
+                  }
+                }
+              }
+            }
+          },
+          "yes": {
             "k": "var",
             "name": "target"
           },
-          "holder1": {
+          "no": {
             "k": "project",
             "value": {
               "k": "var",
               "name": "placement"
             },
-            "field": "holder1"
-          },
-          "holder2": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "holder2"
-          },
-          "active0": {
-            "k": "bool",
-            "value": true
-          },
-          "active1": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "active1"
-          },
-          "active2": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "active2"
+            "field": "holder0"
           }
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder1"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder2"
+        },
+        "active0": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "committed"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder1"
+                  }
+                }
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "target"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder2"
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active0"
+          }
+        },
+        "active1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active1"
+        },
+        "active2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active2"
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt0"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt1"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt2"
         }
-      },
-      "no": {
-        "k": "var",
-        "name": "placement"
       }
     }
   },
@@ -4011,40 +11831,40 @@ const definitions = {
       "kind": "Placement"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "binary",
-        "op": "&&",
-        "left": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
           "k": "project",
           "value": {
             "k": "var",
             "name": "placement"
           },
-          "field": "active1"
+          "field": "manifestRoot"
         },
-        "right": {
-          "k": "project",
-          "value": {
-            "k": "var",
-            "name": "placement"
-          },
-          "field": "active2"
-        }
-      },
-      "yes": {
-        "k": "record",
-        "name": "Placement",
-        "values": {
-          "manifestRoot": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
+        "revision": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "active1"
             },
-            "field": "manifestRoot"
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "active2"
+            }
           },
-          "revision": {
+          "yes": {
             "k": "binary",
             "op": "+",
             "left": {
@@ -4060,55 +11880,114 @@ const definitions = {
               "value": "1"
             }
           },
-          "holder0": {
+          "no": {
             "k": "project",
             "value": {
               "k": "var",
               "name": "placement"
             },
-            "field": "holder0"
-          },
-          "holder1": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "holder1"
-          },
-          "holder2": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "holder2"
-          },
-          "active0": {
-            "k": "bool",
-            "value": false
-          },
-          "active1": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "active1"
-          },
-          "active2": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "placement"
-            },
-            "field": "active2"
+            "field": "revision"
           }
+        },
+        "holder0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder0"
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder1"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder2"
+        },
+        "active0": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active0"
+          },
+          "right": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "active1"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "active2"
+              }
+            }
+          }
+        },
+        "active1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active1"
+        },
+        "active2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active2"
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt0"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt1"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt2"
         }
-      },
-      "no": {
-        "k": "var",
-        "name": "placement"
       }
     }
   },
@@ -4145,304 +12024,430 @@ const definitions = {
       "kind": "Placement"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "binary",
-        "op": "=?",
-        "left": {
-          "k": "var",
-          "name": "index"
-        },
-        "right": {
-          "k": "nat",
-          "value": "0"
-        }
-      },
-      "yes": {
-        "k": "if",
-        "cond": {
-          "k": "binary",
-          "op": "&&",
-          "left": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "committed"
+            "name": "placement"
           },
-          "right": {
+          "field": "manifestRoot"
+        },
+        "revision": {
+          "k": "if",
+          "cond": {
             "k": "binary",
-            "op": "&&",
+            "op": "||",
             "left": {
-              "k": "not",
-              "value": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
                 "k": "binary",
                 "op": "=?",
                 "left": {
                   "k": "var",
-                  "name": "target"
+                  "name": "index"
                 },
                 "right": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
+                  "k": "nat",
+                  "value": "0"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "var",
+                  "name": "committed"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "not",
+                    "value": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "var",
+                        "name": "target"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "placement"
+                        },
+                        "field": "holder1"
+                      }
+                    }
                   },
-                  "field": "holder1"
+                  "right": {
+                    "k": "not",
+                    "value": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "var",
+                        "name": "target"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "placement"
+                        },
+                        "field": "holder2"
+                      }
+                    }
+                  }
                 }
               }
             },
             "right": {
-              "k": "not",
-              "value": {
+              "k": "binary",
+              "op": "||",
+              "left": {
                 "k": "binary",
-                "op": "=?",
+                "op": "&&",
                 "left": {
-                  "k": "var",
-                  "name": "target"
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "index"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "1"
+                  }
                 },
                 "right": {
-                  "k": "project",
-                  "value": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
                     "k": "var",
-                    "name": "placement"
+                    "name": "committed"
                   },
-                  "field": "holder2"
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "target"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "placement"
+                          },
+                          "field": "holder0"
+                        }
+                      }
+                    },
+                    "right": {
+                      "k": "not",
+                      "value": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "target"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "placement"
+                          },
+                          "field": "holder2"
+                        }
+                      }
+                    }
+                  }
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "index"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "2"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "var",
+                    "name": "committed"
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "target"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "placement"
+                          },
+                          "field": "holder0"
+                        }
+                      }
+                    },
+                    "right": {
+                      "k": "not",
+                      "value": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "target"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "placement"
+                          },
+                          "field": "holder1"
+                        }
+                      }
+                    }
+                  }
                 }
               }
             }
-          }
-        },
-        "yes": {
-          "k": "record",
-          "name": "Placement",
-          "values": {
-            "manifestRoot": {
+          },
+          "yes": {
+            "k": "binary",
+            "op": "+",
+            "left": {
               "k": "project",
               "value": {
                 "k": "var",
                 "name": "placement"
               },
-              "field": "manifestRoot"
+              "field": "revision"
             },
-            "revision": {
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "revision"
+          }
+        },
+        "holder0": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
               "k": "binary",
-              "op": "+",
+              "op": "=?",
               "left": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
+                "k": "var",
+                "name": "index"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "committed"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder1"
+                    }
+                  }
                 },
-                "field": "revision"
+                "right": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder2"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "yes": {
+            "k": "var",
+            "name": "target"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "holder0"
+          }
+        },
+        "holder1": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "index"
               },
               "right": {
                 "k": "nat",
                 "value": "1"
               }
             },
-            "holder0": {
-              "k": "var",
-              "name": "target"
-            },
-            "holder1": {
-              "k": "project",
-              "value": {
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
                 "k": "var",
-                "name": "placement"
+                "name": "committed"
               },
-              "field": "holder1"
-            },
-            "holder2": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "placement"
-              },
-              "field": "holder2"
-            },
-            "active0": {
-              "k": "bool",
-              "value": true
-            },
-            "active1": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "placement"
-              },
-              "field": "active1"
-            },
-            "active2": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "placement"
-              },
-              "field": "active2"
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder0"
+                    }
+                  }
+                },
+                "right": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder2"
+                    }
+                  }
+                }
+              }
             }
-          }
-        },
-        "no": {
-          "k": "var",
-          "name": "placement"
-        }
-      },
-      "no": {
-        "k": "if",
-        "cond": {
-          "k": "binary",
-          "op": "=?",
-          "left": {
-            "k": "var",
-            "name": "index"
           },
-          "right": {
-            "k": "nat",
-            "value": "1"
+          "yes": {
+            "k": "var",
+            "name": "target"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "holder1"
           }
         },
-        "yes": {
+        "holder2": {
           "k": "if",
           "cond": {
             "k": "binary",
             "op": "&&",
             "left": {
-              "k": "var",
-              "name": "committed"
-            },
-            "right": {
               "k": "binary",
-              "op": "&&",
+              "op": "=?",
               "left": {
-                "k": "not",
-                "value": {
-                  "k": "binary",
-                  "op": "=?",
-                  "left": {
-                    "k": "var",
-                    "name": "target"
-                  },
-                  "right": {
-                    "k": "project",
-                    "value": {
-                      "k": "var",
-                      "name": "placement"
-                    },
-                    "field": "holder0"
-                  }
-                }
+                "k": "var",
+                "name": "index"
               },
               "right": {
-                "k": "not",
-                "value": {
-                  "k": "binary",
-                  "op": "=?",
-                  "left": {
-                    "k": "var",
-                    "name": "target"
-                  },
-                  "right": {
-                    "k": "project",
-                    "value": {
-                      "k": "var",
-                      "name": "placement"
-                    },
-                    "field": "holder2"
-                  }
-                }
+                "k": "nat",
+                "value": "2"
               }
-            }
-          },
-          "yes": {
-            "k": "record",
-            "name": "Placement",
-            "values": {
-              "manifestRoot": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "manifestRoot"
-              },
-              "revision": {
-                "k": "binary",
-                "op": "+",
-                "left": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "revision"
-                },
-                "right": {
-                  "k": "nat",
-                  "value": "1"
-                }
-              },
-              "holder0": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "holder0"
-              },
-              "holder1": {
-                "k": "var",
-                "name": "target"
-              },
-              "holder2": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "holder2"
-              },
-              "active0": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "active0"
-              },
-              "active1": {
-                "k": "bool",
-                "value": true
-              },
-              "active2": {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "placement"
-                },
-                "field": "active2"
-              }
-            }
-          },
-          "no": {
-            "k": "var",
-            "name": "placement"
-          }
-        },
-        "no": {
-          "k": "if",
-          "cond": {
-            "k": "binary",
-            "op": "=?",
-            "left": {
-              "k": "var",
-              "name": "index"
             },
             "right": {
-              "k": "nat",
-              "value": "2"
-            }
-          },
-          "yes": {
-            "k": "if",
-            "cond": {
               "k": "binary",
               "op": "&&",
               "left": {
@@ -4491,86 +12496,278 @@ const definitions = {
                   }
                 }
               }
-            },
-            "yes": {
-              "k": "record",
-              "name": "Placement",
-              "values": {
-                "manifestRoot": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "manifestRoot"
-                },
-                "revision": {
-                  "k": "binary",
-                  "op": "+",
-                  "left": {
-                    "k": "project",
-                    "value": {
-                      "k": "var",
-                      "name": "placement"
-                    },
-                    "field": "revision"
-                  },
-                  "right": {
-                    "k": "nat",
-                    "value": "1"
-                  }
-                },
-                "holder0": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "holder0"
-                },
-                "holder1": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "holder1"
-                },
-                "holder2": {
-                  "k": "var",
-                  "name": "target"
-                },
-                "active0": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "active0"
-                },
-                "active1": {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "placement"
-                  },
-                  "field": "active1"
-                },
-                "active2": {
-                  "k": "bool",
-                  "value": true
-                }
-              }
-            },
-            "no": {
-              "k": "var",
-              "name": "placement"
             }
           },
+          "yes": {
+            "k": "var",
+            "name": "target"
+          },
           "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "holder2"
+          }
+        },
+        "active0": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "index"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "committed"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder1"
+                    }
+                  }
+                },
+                "right": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder2"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active0"
+          }
+        },
+        "active1": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "index"
+              },
+              "right": {
+                "k": "nat",
+                "value": "1"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "committed"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder0"
+                    }
+                  }
+                },
+                "right": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder2"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active1"
+          }
+        },
+        "active2": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "index"
+              },
+              "right": {
+                "k": "nat",
+                "value": "2"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "committed"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder0"
+                    }
+                  }
+                },
+                "right": {
+                  "k": "not",
+                  "value": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "target"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "holder1"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "active2"
+          }
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
             "k": "var",
             "name": "placement"
-          }
+          },
+          "field": "receipt0"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt1"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt2"
         }
       }
     }
@@ -4961,6 +13158,126 @@ const definitions = {
           }
         }
       ]
+    }
+  },
+  "Stitch.Custody.physicalCopyLive": {
+    "module": "Stitch.Custody",
+    "name": "physicalCopyLive",
+    "params": [
+      {
+        "name": "copy",
+        "type": {
+          "kind": "PhysicalCopy"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "copy"
+        },
+        "field": "retained"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "copy"
+            },
+            "field": "superseded"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::sameDigest",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "copy"
+                },
+                "field": "fragmentRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "copy"
+                  },
+                  "field": "receipt"
+                },
+                "field": "fragmentRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "copy"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "copy"
+                },
+                "field": "index"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "copy"
+                },
+                "field": "holder"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "copy"
+                },
+                "field": "receipt"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        }
+      }
     }
   },
   "Stitch.Custody.physicalBytes": {
@@ -6209,6 +14526,316 @@ const definitions = {
       }
     }
   },
+  "Stitch.Custody.sourceLive": {
+    "module": "Stitch.Custody",
+    "name": "sourceLive",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "transfer",
+        "type": {
+          "kind": "Transfer"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "sourcePlaced",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "var",
+            "name": "transfer"
+          }
+        ]
+      },
+      "right": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "transfer"
+            },
+            "field": "index"
+          },
+          "right": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "yes": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Identity::sameDigest",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "transfer"
+                },
+                "field": "fragmentRoot"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "receipt0"
+                },
+                "field": "fragmentRoot"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "0"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder0"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "receipt0"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "transfer"
+              },
+              "field": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::sameDigest",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "transfer"
+                  },
+                  "field": "fragmentRoot"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "receipt1"
+                  },
+                  "field": "fragmentRoot"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "receiptLive",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "manifestRoot"
+                },
+                {
+                  "k": "nat",
+                  "value": "1"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "holder1"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "placement"
+                  },
+                  "field": "receipt1"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
+          },
+          "no": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "transfer"
+                },
+                "field": "index"
+              },
+              "right": {
+                "k": "nat",
+                "value": "2"
+              }
+            },
+            "yes": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "transfer"
+                    },
+                    "field": "fragmentRoot"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "placement"
+                      },
+                      "field": "receipt2"
+                    },
+                    "field": "fragmentRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "call",
+                "name": "receiptLive",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "manifestRoot"
+                  },
+                  {
+                    "k": "nat",
+                    "value": "2"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "holder2"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    "field": "receipt2"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              }
+            },
+            "no": {
+              "k": "bool",
+              "value": false
+            }
+          }
+        }
+      }
+    }
+  },
   "Stitch.Custody.fragmentBound": {
     "module": "Stitch.Custody",
     "name": "fragmentBound",
@@ -6586,7 +15213,7 @@ const definitions = {
         },
         {
           "k": "call",
-          "name": "sourcePlaced",
+          "name": "sourceLive",
           "args": [
             {
               "k": "var",
@@ -6595,6 +15222,10 @@ const definitions = {
             {
               "k": "var",
               "name": "transfer"
+            },
+            {
+              "k": "var",
+              "name": "now"
             }
           ]
         },
@@ -6624,9 +15255,247 @@ const definitions = {
       ]
     }
   },
-  "Stitch.Custody.migrationAllowed": {
+  "Stitch.Custody.choosePlacement": {
     "module": "Stitch.Custody",
-    "name": "migrationAllowed",
+    "name": "choosePlacement",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Stitch.Fragments::Bit"
+        }
+      },
+      {
+        "name": "yes",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "no",
+        "type": {
+          "kind": "Placement"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Stitch.Fragments::Bit.Zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "no"
+          }
+        },
+        {
+          "constructor": "Stitch.Fragments::Bit.One",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "yes"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Custody.chooseTruth": {
+    "module": "Stitch.Custody",
+    "name": "chooseTruth",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Stitch.Fragments::Bit"
+        }
+      },
+      {
+        "name": "yes",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "no",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Stitch.Fragments::Bit.Zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "no"
+          }
+        },
+        {
+          "constructor": "Stitch.Fragments::Bit.One",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "yes"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Custody.selectionOfTruth": {
+    "module": "Stitch.Custody",
+    "name": "selectionOfTruth",
+    "params": [
+      {
+        "name": "value",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Stitch.Fragments::Bit"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "value"
+      },
+      "yes": {
+        "k": "ctor",
+        "name": "Stitch.Fragments::Bit.One",
+        "args": []
+      },
+      "no": {
+        "k": "ctor",
+        "name": "Stitch.Fragments::Bit.Zero",
+        "args": []
+      }
+    }
+  },
+  "Stitch.Custody.selectPlacement": {
+    "module": "Stitch.Custody",
+    "name": "selectPlacement",
+    "params": [
+      {
+        "name": "guard",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "yes",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "no",
+        "type": {
+          "kind": "Placement"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "call",
+      "name": "choosePlacement",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectionOfTruth",
+          "args": [
+            {
+              "k": "var",
+              "name": "guard"
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "yes"
+        },
+        {
+          "k": "var",
+          "name": "no"
+        }
+      ]
+    }
+  },
+  "Stitch.Custody.selectTruth": {
+    "module": "Stitch.Custody",
+    "name": "selectTruth",
+    "params": [
+      {
+        "name": "guard",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "yes",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "no",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "call",
+      "name": "chooseTruth",
+      "args": [
+        {
+          "k": "call",
+          "name": "selectionOfTruth",
+          "args": [
+            {
+              "k": "var",
+              "name": "guard"
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "yes"
+        },
+        {
+          "k": "var",
+          "name": "no"
+        }
+      ]
+    }
+  },
+  "Stitch.Custody.migrationBase": {
+    "module": "Stitch.Custody",
+    "name": "migrationBase",
     "params": [
       {
         "name": "placement",
@@ -6638,6 +15507,12 @@ const definitions = {
         "name": "completed",
         "type": {
           "kind": "Transfer"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
         }
       },
       {
@@ -6689,8 +15564,891 @@ const definitions = {
           ]
         },
         "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "sourceLive",
+            "args": [
+              {
+                "k": "var",
+                "name": "placement"
+              },
+              {
+                "k": "var",
+                "name": "completed"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "completed"
+              },
+              "field": "index"
+            },
+            "right": {
+              "k": "var",
+              "name": "index"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.migrationGate0": {
+    "module": "Stitch.Custody",
+    "name": "migrationGate0",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "migrationBase",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "var",
+            "name": "completed"
+          },
+          {
+            "k": "nat",
+            "value": "0"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "completed"
+              },
+              "field": "targetHolder"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "holder1"
+            }
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder2"
+              }
+            }
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "0"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "receipt"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.committedPlacement0": {
+    "module": "Stitch.Custody",
+    "name": "committedPlacement0",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "manifestRoot"
+        },
+        "revision": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "revision"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "holder0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "targetHolder"
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder1"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder2"
+        },
+        "active0": {
+          "k": "bool",
+          "value": true
+        },
+        "active1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active1"
+        },
+        "active2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active2"
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "receipt"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt1"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt2"
+        }
+      }
+    }
+  },
+  "Stitch.Custody.migrationGate1": {
+    "module": "Stitch.Custody",
+    "name": "migrationGate1",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "migrationBase",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "var",
+            "name": "completed"
+          },
+          {
+            "k": "nat",
+            "value": "1"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "holder0"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "completed"
+              },
+              "field": "targetHolder"
+            }
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder2"
+              }
+            }
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "1"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "receipt"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.committedPlacement1": {
+    "module": "Stitch.Custody",
+    "name": "committedPlacement1",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "manifestRoot"
+        },
+        "revision": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "revision"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "holder0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder0"
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "targetHolder"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder2"
+        },
+        "active0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active0"
+        },
+        "active1": {
+          "k": "bool",
+          "value": true
+        },
+        "active2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active2"
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt0"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "receipt"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt2"
+        }
+      }
+    }
+  },
+  "Stitch.Custody.migrationGate2": {
+    "module": "Stitch.Custody",
+    "name": "migrationGate2",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "migrationBase",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "var",
+            "name": "completed"
+          },
+          {
+            "k": "nat",
+            "value": "2"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "placement"
+              },
+              "field": "holder0"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "completed"
+              },
+              "field": "targetHolder"
+            }
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "holder1"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              }
+            }
+          },
+          "right": {
+            "k": "call",
+            "name": "receiptLive",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "placement"
+                },
+                "field": "manifestRoot"
+              },
+              {
+                "k": "nat",
+                "value": "2"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "targetHolder"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "completed"
+                },
+                "field": "receipt"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Custody.committedPlacement2": {
+    "module": "Stitch.Custody",
+    "name": "committedPlacement2",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "manifestRoot"
+        },
+        "revision": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "revision"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "holder0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder0"
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder1"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "targetHolder"
+        },
+        "active0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active0"
+        },
+        "active1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active1"
+        },
+        "active2": {
+          "k": "bool",
+          "value": true
+        },
+        "receipt0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt0"
+        },
+        "receipt1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "receipt1"
+        },
+        "receipt2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "completed"
+          },
+          "field": "receipt"
+        }
+      }
+    }
+  },
+  "Stitch.Custody.migrationAllowed": {
+    "module": "Stitch.Custody",
+    "name": "migrationAllowed",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "completed",
+        "type": {
+          "kind": "Transfer"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "call",
+        "name": "migrationGate0",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "var",
+            "name": "completed"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "||",
+        "left": {
           "k": "call",
-          "name": "sourcePlaced",
+          "name": "migrationGate1",
           "args": [
             {
               "k": "var",
@@ -6699,8 +16457,208 @@ const definitions = {
             {
               "k": "var",
               "name": "completed"
+            },
+            {
+              "k": "var",
+              "name": "now"
             }
           ]
+        },
+        "right": {
+          "k": "call",
+          "name": "migrationGate2",
+          "args": [
+            {
+              "k": "var",
+              "name": "placement"
+            },
+            {
+              "k": "var",
+              "name": "completed"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Custody.installReceipt": {
+    "module": "Stitch.Custody",
+    "name": "installReceipt",
+    "params": [
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Placement"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "receipt",
+        "type": {
+          "kind": "Receipt"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Placement"
+    },
+    "body": {
+      "k": "record",
+      "name": "Placement",
+      "values": {
+        "manifestRoot": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "manifestRoot"
+        },
+        "revision": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "revision"
+        },
+        "holder0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder0"
+        },
+        "holder1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder1"
+        },
+        "holder2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "holder2"
+        },
+        "active0": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active0"
+        },
+        "active1": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active1"
+        },
+        "active2": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "placement"
+          },
+          "field": "active2"
+        },
+        "receipt0": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "0"
+            }
+          },
+          "yes": {
+            "k": "var",
+            "name": "receipt"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "receipt0"
+          }
+        },
+        "receipt1": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "yes": {
+            "k": "var",
+            "name": "receipt"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "receipt1"
+          }
+        },
+        "receipt2": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "index"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "var",
+            "name": "receipt"
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "placement"
+            },
+            "field": "receipt2"
+          }
         }
       }
     }
@@ -6732,59 +16690,122 @@ const definitions = {
       "kind": "Placement"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "call",
-        "name": "migrationAllowed",
-        "args": [
-          {
-            "k": "var",
-            "name": "placement"
-          },
-          {
-            "k": "var",
-            "name": "completed"
-          },
-          {
-            "k": "var",
-            "name": "now"
-          }
-        ]
-      },
-      "yes": {
-        "k": "call",
-        "name": "replaceIndex",
-        "args": [
-          {
-            "k": "var",
-            "name": "placement"
-          },
-          {
-            "k": "project",
-            "value": {
+      "k": "call",
+      "name": "selectPlacement",
+      "args": [
+        {
+          "k": "call",
+          "name": "migrationGate0",
+          "args": [
+            {
+              "k": "var",
+              "name": "placement"
+            },
+            {
               "k": "var",
               "name": "completed"
             },
-            "field": "index"
-          },
-          {
-            "k": "project",
-            "value": {
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "committedPlacement0",
+          "args": [
+            {
+              "k": "var",
+              "name": "placement"
+            },
+            {
               "k": "var",
               "name": "completed"
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "selectPlacement",
+          "args": [
+            {
+              "k": "call",
+              "name": "migrationGate1",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "placement"
+                },
+                {
+                  "k": "var",
+                  "name": "completed"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
             },
-            "field": "targetHolder"
-          },
-          {
-            "k": "bool",
-            "value": true
-          }
-        ]
-      },
-      "no": {
-        "k": "var",
-        "name": "placement"
-      }
+            {
+              "k": "call",
+              "name": "committedPlacement1",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "placement"
+                },
+                {
+                  "k": "var",
+                  "name": "completed"
+                }
+              ]
+            },
+            {
+              "k": "call",
+              "name": "selectPlacement",
+              "args": [
+                {
+                  "k": "call",
+                  "name": "migrationGate2",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    {
+                      "k": "var",
+                      "name": "completed"
+                    },
+                    {
+                      "k": "var",
+                      "name": "now"
+                    }
+                  ]
+                },
+                {
+                  "k": "call",
+                  "name": "committedPlacement2",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "placement"
+                    },
+                    {
+                      "k": "var",
+                      "name": "completed"
+                    }
+                  ]
+                },
+                {
+                  "k": "var",
+                  "name": "placement"
+                }
+              ]
+            }
+          ]
+        }
+      ]
     }
   },
   "Stitch.Encoding.dependenciesReady": {
@@ -7054,50 +17075,1200 @@ const definitions = {
       }
     }
   },
-  "Stitch.Evidence.scopeReusable": {
+  "Stitch.Evidence.claimCode": {
     "module": "Stitch.Evidence",
-    "name": "scopeReusable",
+    "name": "claimCode",
     "params": [
       {
-        "name": "provedHorizon",
+        "name": "value",
         "type": {
-          "kind": "Nat"
+          "kind": "ClaimKind"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "value"
+      },
+      "branches": [
+        {
+          "constructor": "ClaimKind.Integrity",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "ClaimKind.Authorization",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        {
+          "constructor": "ClaimKind.Reconstruction",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "2"
+          }
+        },
+        {
+          "constructor": "ClaimKind.PureExecution",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "3"
+          }
+        },
+        {
+          "constructor": "ClaimKind.Availability",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "4"
+          }
+        },
+        {
+          "constructor": "ClaimKind.Durability",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "5"
+          }
+        },
+        {
+          "constructor": "ClaimKind.Confidentiality",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "6"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.kindCode": {
+    "module": "Stitch.Evidence",
+    "name": "kindCode",
+    "params": [
+      {
+        "name": "value",
+        "type": {
+          "kind": "EvidenceKind"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "value"
+      },
+      "branches": [
+        {
+          "constructor": "EvidenceKind.Specified",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.KernelChecked",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.ImplementationTested",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "2"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.IndependentlyReplayed",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "3"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.FieldMeasured",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "4"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.Refuted",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "5"
+          }
+        },
+        {
+          "constructor": "EvidenceKind.Untested",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "6"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.effectCode": {
+    "module": "Stitch.Evidence",
+    "name": "effectCode",
+    "params": [
+      {
+        "name": "value",
+        "type": {
+          "kind": "HostEffect"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "value"
+      },
+      "branches": [
+        {
+          "constructor": "HostEffect.ReadClock",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "HostEffect.SendFragment",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        {
+          "constructor": "HostEffect.PersistFragment",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "2"
+          }
+        },
+        {
+          "constructor": "HostEffect.ReadDNS",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "3"
+          }
+        },
+        {
+          "constructor": "HostEffect.WriteDNS",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "4"
+          }
+        },
+        {
+          "constructor": "HostEffect.ReceivePeer",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "5"
+          }
+        },
+        {
+          "constructor": "HostEffect.RunVM",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "6"
+          }
+        },
+        {
+          "constructor": "HostEffect.FetchDependency",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "7"
+          }
+        },
+        {
+          "constructor": "HostEffect.VerifySignature",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "8"
+          }
+        },
+        {
+          "constructor": "HostEffect.HashBytes",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "9"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.dependencyKindCode": {
+    "module": "Stitch.Evidence",
+    "name": "dependencyKindCode",
+    "params": [
+      {
+        "name": "value",
+        "type": {
+          "kind": "Stitch.Encoding::DependencyKind"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "value"
+      },
+      "branches": [
+        {
+          "constructor": "Stitch.Encoding::DependencyKind.Decoder",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        {
+          "constructor": "Stitch.Encoding::DependencyKind.Parameters",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        {
+          "constructor": "Stitch.Encoding::DependencyKind.Basis",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "2"
+          }
+        },
+        {
+          "constructor": "Stitch.Encoding::DependencyKind.Residual",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "3"
+          }
+        },
+        {
+          "constructor": "Stitch.Encoding::DependencyKind.Framing",
+          "binders": [],
+          "body": {
+            "k": "nat",
+            "value": "4"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.sameAssumptions": {
+    "module": "Stitch.Evidence",
+    "name": "sameAssumptions",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "HostAssumptions"
         }
       },
       {
-        "name": "requestedHorizon",
+        "name": "right",
         "type": {
-          "kind": "Nat"
+          "kind": "HostAssumptions"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "digestCollisionResistance"
+          },
+          "yes": {
+            "k": "nat",
+            "value": "1"
+          },
+          "no": {
+            "k": "nat",
+            "value": "0"
+          }
+        },
+        "right": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "digestCollisionResistance"
+          },
+          "yes": {
+            "k": "nat",
+            "value": "1"
+          },
+          "no": {
+            "k": "nat",
+            "value": "0"
+          }
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "signatureUnforgeability"
+            },
+            "yes": {
+              "k": "nat",
+              "value": "1"
+            },
+            "no": {
+              "k": "nat",
+              "value": "0"
+            }
+          },
+          "right": {
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "signatureUnforgeability"
+            },
+            "yes": {
+              "k": "nat",
+              "value": "1"
+            },
+            "no": {
+              "k": "nat",
+              "value": "0"
+            }
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "field": "authorizedKeyBinding"
+              },
+              "yes": {
+                "k": "nat",
+                "value": "1"
+              },
+              "no": {
+                "k": "nat",
+                "value": "0"
+              }
+            },
+            "right": {
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "right"
+                },
+                "field": "authorizedKeyBinding"
+              },
+              "yes": {
+                "k": "nat",
+                "value": "1"
+              },
+              "no": {
+                "k": "nat",
+                "value": "0"
+              }
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "left"
+                  },
+                  "field": "receiptAuthentication"
+                },
+                "yes": {
+                  "k": "nat",
+                  "value": "1"
+                },
+                "no": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              },
+              "right": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "right"
+                  },
+                  "field": "receiptAuthentication"
+                },
+                "yes": {
+                  "k": "nat",
+                  "value": "1"
+                },
+                "no": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "if",
+                  "cond": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "left"
+                    },
+                    "field": "storageRetentionForLease"
+                  },
+                  "yes": {
+                    "k": "nat",
+                    "value": "1"
+                  },
+                  "no": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                },
+                "right": {
+                  "k": "if",
+                  "cond": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "field": "storageRetentionForLease"
+                  },
+                  "yes": {
+                    "k": "nat",
+                    "value": "1"
+                  },
+                  "no": {
+                    "k": "nat",
+                    "value": "0"
+                  }
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "if",
+                    "cond": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "left"
+                      },
+                      "field": "independentFailureDomains"
+                    },
+                    "yes": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "no": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  },
+                  "right": {
+                    "k": "if",
+                    "cond": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "right"
+                      },
+                      "field": "independentFailureDomains"
+                    },
+                    "yes": {
+                      "k": "nat",
+                      "value": "1"
+                    },
+                    "no": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "if",
+                      "cond": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "left"
+                        },
+                        "field": "monotonicElapsedClock"
+                      },
+                      "yes": {
+                        "k": "nat",
+                        "value": "1"
+                      },
+                      "no": {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    },
+                    "right": {
+                      "k": "if",
+                      "cond": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "right"
+                        },
+                        "field": "monotonicElapsedClock"
+                      },
+                      "yes": {
+                        "k": "nat",
+                        "value": "1"
+                      },
+                      "no": {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "if",
+                      "cond": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "left"
+                        },
+                        "field": "releasedRuntimeMatchesModel"
+                      },
+                      "yes": {
+                        "k": "nat",
+                        "value": "1"
+                      },
+                      "no": {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    },
+                    "right": {
+                      "k": "if",
+                      "cond": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "right"
+                        },
+                        "field": "releasedRuntimeMatchesModel"
+                      },
+                      "yes": {
+                        "k": "nat",
+                        "value": "1"
+                      },
+                      "no": {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Evidence.sameDependency": {
+    "module": "Stitch.Evidence",
+    "name": "sameDependency",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Stitch.Encoding::Dependency"
         }
       },
       {
-        "name": "provedFailures",
+        "name": "right",
         "type": {
-          "kind": "Nat"
+          "kind": "Stitch.Encoding::Dependency"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Identity::sameDigest",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "root"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "root"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "call",
+            "name": "dependencyKindCode",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "field": "kind"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "dependencyKindCode",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "right"
+                },
+                "field": "kind"
+              }
+            ]
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "byteLength"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "byteLength"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Identity::digestWellFormed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "left"
+                  },
+                  "field": "root"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "field": "present"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "right"
+                  },
+                  "field": "present"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "left"
+                    },
+                    "field": "integrityChecked"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "field": "integrityChecked"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Evidence.dependenciesUnchanged": {
+    "module": "Stitch.Evidence",
+    "name": "dependenciesUnchanged",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Stitch.Encoding::Dependency"
+          }
         }
       },
       {
-        "name": "requestedFailures",
+        "name": "right",
         "type": {
-          "kind": "Nat"
+          "kind": "List",
+          "element": {
+            "kind": "Stitch.Encoding::Dependency"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "left"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "branches": [
+              {
+                "constructor": "List.nil",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": true
+                }
+              },
+              {
+                "constructor": "List.cons",
+                "binders": [
+                  "other",
+                  "rest"
+                ],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              }
+            ]
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "branches": [
+              {
+                "constructor": "List.nil",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              },
+              {
+                "constructor": "List.cons",
+                "binders": [
+                  "other",
+                  "rest"
+                ],
+                "body": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "sameDependency",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "head"
+                      },
+                      {
+                        "k": "var",
+                        "name": "other"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "call",
+                    "name": "dependenciesUnchanged",
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "tail"
+                      },
+                      {
+                        "k": "var",
+                        "name": "rest"
+                      }
+                    ]
+                  }
+                }
+              }
+            ]
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.effectMember": {
+    "module": "Stitch.Evidence",
+    "name": "effectMember",
+    "params": [
+      {
+        "name": "effect",
+        "type": {
+          "kind": "HostEffect"
         }
       },
       {
-        "name": "bindingsMatch",
+        "name": "effects",
         "type": {
-          "kind": "Bool"
+          "kind": "List",
+          "element": {
+            "kind": "HostEffect"
+          }
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "effects"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "call",
+                "name": "effectCode",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "effect"
+                  }
+                ]
+              },
+              "right": {
+                "k": "call",
+                "name": "effectCode",
+                "args": [
+                  {
+                    "k": "var",
+                    "name": "head"
+                  }
+                ]
+              }
+            },
+            "right": {
+              "k": "call",
+              "name": "effectMember",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "effect"
+                },
+                {
+                  "k": "var",
+                  "name": "tail"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.effectsCovered": {
+    "module": "Stitch.Evidence",
+    "name": "effectsCovered",
+    "params": [
+      {
+        "name": "requested",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "HostEffect"
+          }
         }
       },
       {
-        "name": "assumptionsMatch",
+        "name": "allowed",
         "type": {
-          "kind": "Bool"
+          "kind": "List",
+          "element": {
+            "kind": "HostEffect"
+          }
         }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "requested"
       },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "effectMember",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "head"
+                },
+                {
+                  "k": "var",
+                  "name": "allowed"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "effectsCovered",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "allowed"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Evidence.positiveEvidenceKind": {
+    "module": "Stitch.Evidence",
+    "name": "positiveEvidenceKind",
+    "params": [
       {
-        "name": "dependencyClosureUnchanged",
+        "name": "kind",
         "type": {
-          "kind": "Bool"
+          "kind": "EvidenceKind"
         }
       }
     ],
@@ -7111,12 +18282,99 @@ const definitions = {
         "k": "binary",
         "op": "<=?",
         "left": {
-          "k": "var",
-          "name": "requestedHorizon"
+          "k": "nat",
+          "value": "1"
         },
         "right": {
-          "k": "var",
-          "name": "provedHorizon"
+          "k": "call",
+          "name": "kindCode",
+          "args": [
+            {
+              "k": "var",
+              "name": "kind"
+            }
+          ]
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "call",
+          "name": "kindCode",
+          "args": [
+            {
+              "k": "var",
+              "name": "kind"
+            }
+          ]
+        },
+        "right": {
+          "k": "nat",
+          "value": "4"
+        }
+      }
+    }
+  },
+  "Stitch.Evidence.scopeReusable": {
+    "module": "Stitch.Evidence",
+    "name": "scopeReusable",
+    "params": [
+      {
+        "name": "evidence",
+        "type": {
+          "kind": "Evidence"
+        }
+      },
+      {
+        "name": "requested",
+        "type": {
+          "kind": "Scope"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "call",
+          "name": "claimCode",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "evidence"
+              },
+              "field": "claim"
+            }
+          ]
+        },
+        "right": {
+          "k": "call",
+          "name": "claimCode",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "requested"
+              },
+              "field": "claim"
+            }
+          ]
         }
       },
       "right": {
@@ -7124,33 +18382,485 @@ const definitions = {
         "op": "&&",
         "left": {
           "k": "binary",
-          "op": "<=?",
+          "op": "=?",
           "left": {
-            "k": "var",
-            "name": "requestedFailures"
+            "k": "call",
+            "name": "kindCode",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "evidence"
+                },
+                "field": "kind"
+              }
+            ]
           },
           "right": {
-            "k": "var",
-            "name": "provedFailures"
+            "k": "call",
+            "name": "kindCode",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "requested"
+                },
+                "field": "kind"
+              }
+            ]
           }
         },
         "right": {
           "k": "binary",
           "op": "&&",
           "left": {
-            "k": "var",
-            "name": "bindingsMatch"
+            "k": "call",
+            "name": "positiveEvidenceKind",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "evidence"
+                },
+                "field": "kind"
+              }
+            ]
           },
           "right": {
             "k": "binary",
             "op": "&&",
             "left": {
-              "k": "var",
-              "name": "assumptionsMatch"
+              "k": "call",
+              "name": "Stitch.Identity::digestWellFormed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "evidence"
+                  },
+                  "field": "modelRoot"
+                }
+              ]
             },
             "right": {
-              "k": "var",
-              "name": "dependencyClosureUnchanged"
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Identity::sameDigest",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "evidence"
+                    },
+                    "field": "modelRoot"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "requested"
+                    },
+                    "field": "modelRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "call",
+                  "name": "Stitch.Identity::digestWellFormed",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "evidence"
+                      },
+                      "field": "artifactRoot"
+                    }
+                  ]
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "call",
+                    "name": "Stitch.Identity::sameDigest",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "evidence"
+                        },
+                        "field": "artifactRoot"
+                      },
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "requested"
+                        },
+                        "field": "artifactRoot"
+                      }
+                    ]
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "call",
+                      "name": "Stitch.Identity::digestWellFormed",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "evidence"
+                          },
+                          "field": "subjectRoot"
+                        }
+                      ]
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "call",
+                        "name": "Stitch.Identity::sameDigest",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "evidence"
+                            },
+                            "field": "subjectRoot"
+                          },
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "requested"
+                            },
+                            "field": "subjectRoot"
+                          }
+                        ]
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "&&",
+                        "left": {
+                          "k": "call",
+                          "name": "Stitch.Identity::digestWellFormed",
+                          "args": [
+                            {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "evidence"
+                              },
+                              "field": "assumptionsRoot"
+                            }
+                          ]
+                        },
+                        "right": {
+                          "k": "binary",
+                          "op": "&&",
+                          "left": {
+                            "k": "call",
+                            "name": "Stitch.Identity::sameDigest",
+                            "args": [
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "evidence"
+                                },
+                                "field": "assumptionsRoot"
+                              },
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "requested"
+                                },
+                                "field": "assumptionsRoot"
+                              }
+                            ]
+                          },
+                          "right": {
+                            "k": "binary",
+                            "op": "&&",
+                            "left": {
+                              "k": "call",
+                              "name": "Stitch.Identity::digestWellFormed",
+                              "args": [
+                                {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "evidence"
+                                  },
+                                  "field": "dependencyRoot"
+                                }
+                              ]
+                            },
+                            "right": {
+                              "k": "binary",
+                              "op": "&&",
+                              "left": {
+                                "k": "call",
+                                "name": "Stitch.Identity::sameDigest",
+                                "args": [
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "evidence"
+                                    },
+                                    "field": "dependencyRoot"
+                                  },
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "requested"
+                                    },
+                                    "field": "dependencyRoot"
+                                  }
+                                ]
+                              },
+                              "right": {
+                                "k": "binary",
+                                "op": "&&",
+                                "left": {
+                                  "k": "call",
+                                  "name": "sameAssumptions",
+                                  "args": [
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "evidence"
+                                      },
+                                      "field": "assumptions"
+                                    },
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "requested"
+                                      },
+                                      "field": "assumptions"
+                                    }
+                                  ]
+                                },
+                                "right": {
+                                  "k": "binary",
+                                  "op": "&&",
+                                  "left": {
+                                    "k": "call",
+                                    "name": "dependenciesUnchanged",
+                                    "args": [
+                                      {
+                                        "k": "project",
+                                        "value": {
+                                          "k": "var",
+                                          "name": "evidence"
+                                        },
+                                        "field": "dependencies"
+                                      },
+                                      {
+                                        "k": "project",
+                                        "value": {
+                                          "k": "var",
+                                          "name": "requested"
+                                        },
+                                        "field": "dependencies"
+                                      }
+                                    ]
+                                  },
+                                  "right": {
+                                    "k": "binary",
+                                    "op": "&&",
+                                    "left": {
+                                      "k": "call",
+                                      "name": "effectsCovered",
+                                      "args": [
+                                        {
+                                          "k": "project",
+                                          "value": {
+                                            "k": "var",
+                                            "name": "requested"
+                                          },
+                                          "field": "hostEffects"
+                                        },
+                                        {
+                                          "k": "project",
+                                          "value": {
+                                            "k": "var",
+                                            "name": "evidence"
+                                          },
+                                          "field": "hostEffects"
+                                        }
+                                      ]
+                                    },
+                                    "right": {
+                                      "k": "binary",
+                                      "op": "&&",
+                                      "left": {
+                                        "k": "binary",
+                                        "op": "<=?",
+                                        "left": {
+                                          "k": "project",
+                                          "value": {
+                                            "k": "var",
+                                            "name": "evidence"
+                                          },
+                                          "field": "observedAt"
+                                        },
+                                        "right": {
+                                          "k": "var",
+                                          "name": "now"
+                                        }
+                                      },
+                                      "right": {
+                                        "k": "binary",
+                                        "op": "&&",
+                                        "left": {
+                                          "k": "binary",
+                                          "op": "<?",
+                                          "left": {
+                                            "k": "var",
+                                            "name": "now"
+                                          },
+                                          "right": {
+                                            "k": "project",
+                                            "value": {
+                                              "k": "var",
+                                              "name": "evidence"
+                                            },
+                                            "field": "validUntil"
+                                          }
+                                        },
+                                        "right": {
+                                          "k": "binary",
+                                          "op": "&&",
+                                          "left": {
+                                            "k": "binary",
+                                            "op": "<=?",
+                                            "left": {
+                                              "k": "binary",
+                                              "op": "+",
+                                              "left": {
+                                                "k": "var",
+                                                "name": "now"
+                                              },
+                                              "right": {
+                                                "k": "project",
+                                                "value": {
+                                                  "k": "var",
+                                                  "name": "requested"
+                                                },
+                                                "field": "horizon"
+                                              }
+                                            },
+                                            "right": {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "evidence"
+                                              },
+                                              "field": "validUntil"
+                                            }
+                                          },
+                                          "right": {
+                                            "k": "binary",
+                                            "op": "&&",
+                                            "left": {
+                                              "k": "binary",
+                                              "op": "<=?",
+                                              "left": {
+                                                "k": "binary",
+                                                "op": "+",
+                                                "left": {
+                                                  "k": "var",
+                                                  "name": "now"
+                                                },
+                                                "right": {
+                                                  "k": "project",
+                                                  "value": {
+                                                    "k": "var",
+                                                    "name": "requested"
+                                                  },
+                                                  "field": "horizon"
+                                                }
+                                              },
+                                              "right": {
+                                                "k": "binary",
+                                                "op": "+",
+                                                "left": {
+                                                  "k": "project",
+                                                  "value": {
+                                                    "k": "var",
+                                                    "name": "evidence"
+                                                  },
+                                                  "field": "observedAt"
+                                                },
+                                                "right": {
+                                                  "k": "project",
+                                                  "value": {
+                                                    "k": "var",
+                                                    "name": "evidence"
+                                                  },
+                                                  "field": "horizon"
+                                                }
+                                              }
+                                            },
+                                            "right": {
+                                              "k": "binary",
+                                              "op": "<=?",
+                                              "left": {
+                                                "k": "project",
+                                                "value": {
+                                                  "k": "var",
+                                                  "name": "requested"
+                                                },
+                                                "field": "failures"
+                                              },
+                                              "right": {
+                                                "k": "project",
+                                                "value": {
+                                                  "k": "var",
+                                                  "name": "evidence"
+                                                },
+                                                "field": "failureBound"
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
             }
           }
         }
@@ -7441,10 +19151,11 @@ const definitions = {
           "k": "binary",
           "op": "&&",
           "left": {
-            "k": "not",
-            "value": {
+            "k": "binary",
+            "op": "||",
+            "left": {
               "k": "binary",
-              "op": "=?",
+              "op": "<?",
               "left": {
                 "k": "var",
                 "name": "leftIndex"
@@ -7452,6 +19163,18 @@ const definitions = {
               "right": {
                 "k": "var",
                 "name": "rightIndex"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "<?",
+              "left": {
+                "k": "var",
+                "name": "rightIndex"
+              },
+              "right": {
+                "k": "var",
+                "name": "leftIndex"
               }
             }
           },
@@ -7486,36 +19209,66 @@ const definitions = {
       {
         "name": "left",
         "type": {
-          "kind": "Bool"
+          "kind": "Bit"
         }
       },
       {
         "name": "right",
         "type": {
-          "kind": "Bool"
+          "kind": "Bit"
         }
       }
     ],
     "result": {
-      "kind": "Bool"
+      "kind": "Bit"
     },
     "body": {
-      "k": "if",
-      "cond": {
+      "k": "match",
+      "value": {
         "k": "var",
         "name": "left"
       },
-      "yes": {
-        "k": "not",
-        "value": {
-          "k": "var",
-          "name": "right"
+      "branches": [
+        {
+          "constructor": "Bit.Zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "right"
+          }
+        },
+        {
+          "constructor": "Bit.One",
+          "binders": [],
+          "body": {
+            "k": "match",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "branches": [
+              {
+                "constructor": "Bit.Zero",
+                "binders": [],
+                "body": {
+                  "k": "ctor",
+                  "name": "Bit.One",
+                  "args": []
+                }
+              },
+              {
+                "constructor": "Bit.One",
+                "binders": [],
+                "body": {
+                  "k": "ctor",
+                  "name": "Bit.Zero",
+                  "args": []
+                }
+              }
+            ]
+          }
         }
-      },
-      "no": {
-        "k": "var",
-        "name": "right"
-      }
+      ]
     }
   },
   "Stitch.Fragments.leftParity": {
@@ -8347,6 +20100,12 @@ const definitions = {
         "type": {
           "kind": "PeerObservation"
         }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
       }
     ],
     "result": {
@@ -8445,15 +20204,235 @@ const definitions = {
               }
             },
             "right": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "candidate"
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "authenticated"
               },
-              "field": "authenticated"
+              "right": {
+                "k": "call",
+                "name": "observationFresh",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "candidate"
+                    },
+                    "field": "observedAt"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "candidate"
+                    },
+                    "field": "expires"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              }
             }
           }
         }
+      }
+    }
+  },
+  "Stitch.Observation.reachableObservation": {
+    "module": "Stitch.Observation",
+    "name": "reachableObservation",
+    "params": [
+      {
+        "name": "observation",
+        "type": {
+          "kind": "PeerObservation"
+        }
+      },
+      {
+        "name": "observer",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "observation"
+          },
+          "field": "observer"
+        },
+        "right": {
+          "k": "var",
+          "name": "observer"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "observation"
+          },
+          "field": "authenticated"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "observationFresh",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "observedAt"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "expires"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "right": {
+            "k": "match",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "observation"
+              },
+              "field": "reachability"
+            },
+            "branches": [
+              {
+                "constructor": "Reachability.Unknown",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              },
+              {
+                "constructor": "Reachability.Reachable",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": true
+                }
+              },
+              {
+                "constructor": "Reachability.TimedOut",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              },
+              {
+                "constructor": "Reachability.Conflicting",
+                "binders": [],
+                "body": {
+                  "k": "bool",
+                  "value": false
+                }
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Observation.updateObservation": {
+    "module": "Stitch.Observation",
+    "name": "updateObservation",
+    "params": [
+      {
+        "name": "current",
+        "type": {
+          "kind": "PeerObservation"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "PeerObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "PeerObservation"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "acceptObservation",
+        "args": [
+          {
+            "k": "var",
+            "name": "current"
+          },
+          {
+            "k": "var",
+            "name": "candidate"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "yes": {
+        "k": "var",
+        "name": "candidate"
+      },
+      "no": {
+        "k": "var",
+        "name": "current"
       }
     }
   },
@@ -8517,38 +20496,38 @@ const definitions = {
       "k": "binary",
       "op": "&&",
       "left": {
-        "k": "binary",
-        "op": "=?",
-        "left": {
-          "k": "var",
-          "name": "nextRevision"
-        },
-        "right": {
-          "k": "binary",
-          "op": "+",
-          "left": {
-            "k": "var",
-            "name": "currentRevision"
-          },
-          "right": {
-            "k": "nat",
-            "value": "1"
-          }
-        }
+        "k": "var",
+        "name": "authorityMatches"
       },
       "right": {
         "k": "binary",
         "op": "&&",
         "left": {
-          "k": "var",
-          "name": "predecessorMatches"
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "nextRevision"
+          },
+          "right": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "var",
+              "name": "currentRevision"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          }
         },
         "right": {
           "k": "binary",
           "op": "&&",
           "left": {
             "k": "var",
-            "name": "authorityMatches"
+            "name": "predecessorMatches"
           },
           "right": {
             "k": "binary",
@@ -8739,9 +20718,9 @@ const definitions = {
       ]
     }
   },
-  "Stitch.System.admit": {
+  "Stitch.System.admitAction": {
     "module": "Stitch.System",
-    "name": "admit",
+    "name": "admitAction",
     "params": [
       {
         "name": "state",
@@ -8770,7 +20749,7 @@ const definitions = {
       "op": "&&",
       "left": {
         "k": "call",
-        "name": "Stitch.Budget::admitAction",
+        "name": "Stitch.Custody::recoverableAt",
         "args": [
           {
             "k": "project",
@@ -8778,15 +20757,7 @@ const definitions = {
               "k": "var",
               "name": "state"
             },
-            "field": "budget"
-          },
-          {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "action"
-            },
-            "field": "cost"
+            "field": "placement"
           },
           {
             "k": "var",
@@ -8798,12 +20769,38 @@ const definitions = {
         "k": "binary",
         "op": "&&",
         "left": {
-          "k": "project",
-          "value": {
-            "k": "var",
-            "name": "action"
-          },
-          "field": "preconditionsChecked"
+          "k": "call",
+          "name": "Stitch.Budget::reserveLedgerAllowed",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "ledger"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "action"
+              },
+              "field": "actionId"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "action"
+              },
+              "field": "cost"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
         },
         "right": {
           "k": "binary",
@@ -8814,15 +20811,27 @@ const definitions = {
               "k": "var",
               "name": "action"
             },
-            "field": "dependenciesPresent"
+            "field": "preconditionsChecked"
           },
           "right": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "action"
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "action"
+              },
+              "field": "dependenciesPresent"
             },
-            "field": "authorizationChecked"
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "action"
+              },
+              "field": "authorizationChecked"
+            }
           }
         }
       }
@@ -8855,104 +20864,88 @@ const definitions = {
       "kind": "State"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "call",
-        "name": "admit",
-        "args": [
-          {
+      "k": "record",
+      "name": "State",
+      "values": {
+        "objects": {
+          "k": "project",
+          "value": {
             "k": "var",
             "name": "state"
           },
-          {
+          "field": "objects"
+        },
+        "encodings": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "action"
+            "name": "state"
           },
-          {
+          "field": "encodings"
+        },
+        "placement": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "now"
-          }
-        ]
-      },
-      "yes": {
-        "k": "record",
-        "name": "State",
-        "values": {
-          "objects": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "objects"
+            "name": "state"
           },
-          "encodings": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "encodings"
+          "field": "placement"
+        },
+        "peers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "placement": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "placement"
+          "field": "peers"
+        },
+        "pointers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "peers": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "peers"
+          "field": "pointers"
+        },
+        "jobs": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "pointers": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "pointers"
+          "field": "jobs"
+        },
+        "checkpoints": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "jobs": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "jobs"
-          },
-          "checkpoints": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "checkpoints"
-          },
-          "evidence": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "evidence"
-          },
-          "transfers": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "transfers"
-          },
-          "budget": {
+          "field": "checkpoints"
+        },
+        "ledger": {
+          "k": "if",
+          "cond": {
             "k": "call",
-            "name": "Stitch.Budget::reserveAction",
+            "name": "admitAction",
+            "args": [
+              {
+                "k": "var",
+                "name": "state"
+              },
+              {
+                "k": "var",
+                "name": "action"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "yes": {
+            "k": "call",
+            "name": "Stitch.Budget::reserveLedger",
             "args": [
               {
                 "k": "project",
@@ -8960,7 +20953,15 @@ const definitions = {
                   "k": "var",
                   "name": "state"
                 },
-                "field": "budget"
+                "field": "ledger"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "action"
+                },
+                "field": "actionId"
               },
               {
                 "k": "project",
@@ -8975,12 +20976,89 @@ const definitions = {
                 "name": "now"
               }
             ]
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "ledger"
           }
+        },
+        "evidence": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "evidence"
+        },
+        "transfers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "transfers"
+        }
+      }
+    }
+  },
+  "Stitch.System.ledgerPlacementValid": {
+    "module": "Stitch.System",
+    "name": "ledgerPlacementValid",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Stitch.Budget::Ledger"
         }
       },
-      "no": {
-        "k": "var",
-        "name": "state"
+      {
+        "name": "placement",
+        "type": {
+          "kind": "Stitch.Custody::Placement"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Budget::ledgerValid",
+        "args": [
+          {
+            "k": "var",
+            "name": "ledger"
+          }
+        ]
+      },
+      "right": {
+        "k": "call",
+        "name": "Stitch.Custody::recoverableAt",
+        "args": [
+          {
+            "k": "var",
+            "name": "placement"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "last"
+          }
+        ]
       }
     }
   },
@@ -8999,11 +21077,54 @@ const definitions = {
       "kind": "Bool"
     },
     "body": {
+      "k": "call",
+      "name": "ledgerPlacementValid",
+      "args": [
+        {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "ledger"
+        },
+        {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "placement"
+        }
+      ]
+    }
+  },
+  "Stitch.System.validAt": {
+    "module": "Stitch.System",
+    "name": "validAt",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
       "k": "binary",
       "op": "&&",
       "left": {
         "k": "call",
-        "name": "Stitch.Budget::budgetValid",
+        "name": "Stitch.Budget::ledgerValid",
         "args": [
           {
             "k": "project",
@@ -9011,13 +21132,13 @@ const definitions = {
               "k": "var",
               "name": "state"
             },
-            "field": "budget"
+            "field": "ledger"
           }
         ]
       },
       "right": {
         "k": "call",
-        "name": "Stitch.Custody::recoverable",
+        "name": "Stitch.Custody::recoverableAt",
         "args": [
           {
             "k": "project",
@@ -9026,6 +21147,10 @@ const definitions = {
               "name": "state"
             },
             "field": "placement"
+          },
+          {
+            "k": "var",
+            "name": "now"
           }
         ]
       }
@@ -9068,7 +21193,7 @@ const definitions = {
       "op": "&&",
       "left": {
         "k": "call",
-        "name": "Stitch.Budget::admitAction",
+        "name": "Stitch.Custody::recoverableAt",
         "args": [
           {
             "k": "project",
@@ -9076,11 +21201,7 @@ const definitions = {
               "k": "var",
               "name": "state"
             },
-            "field": "budget"
-          },
-          {
-            "k": "var",
-            "name": "cost"
+            "field": "placement"
           },
           {
             "k": "var",
@@ -9093,11 +21214,31 @@ const definitions = {
         "op": "&&",
         "left": {
           "k": "call",
-          "name": "Stitch.Custody::requestWellFormed",
+          "name": "Stitch.Budget::reserveLedgerAllowed",
           "args": [
             {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "ledger"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "transfer"
+              },
+              "field": "requestRoot"
+            },
+            {
               "k": "var",
-              "name": "transfer"
+              "name": "cost"
+            },
+            {
+              "k": "var",
+              "name": "now"
             }
           ]
         },
@@ -9106,7 +21247,7 @@ const definitions = {
           "op": "&&",
           "left": {
             "k": "call",
-            "name": "Stitch.Custody::requestedPhase",
+            "name": "Stitch.Custody::requestWellFormed",
             "args": [
               {
                 "k": "var",
@@ -9119,43 +21260,61 @@ const definitions = {
             "op": "&&",
             "left": {
               "k": "call",
-              "name": "Stitch.Custody::requestUnused",
+              "name": "Stitch.Custody::requestedPhase",
               "args": [
-                {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "state"
-                  },
-                  "field": "transfers"
-                },
-                {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "transfer"
-                  },
-                  "field": "requestRoot"
-                }
-              ]
-            },
-            "right": {
-              "k": "call",
-              "name": "Stitch.Custody::sourcePlaced",
-              "args": [
-                {
-                  "k": "project",
-                  "value": {
-                    "k": "var",
-                    "name": "state"
-                  },
-                  "field": "placement"
-                },
                 {
                   "k": "var",
                   "name": "transfer"
                 }
               ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "call",
+                "name": "Stitch.Custody::requestUnused",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "state"
+                    },
+                    "field": "transfers"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "transfer"
+                    },
+                    "field": "requestRoot"
+                  }
+                ]
+              },
+              "right": {
+                "k": "call",
+                "name": "Stitch.Custody::sourceLive",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "state"
+                    },
+                    "field": "placement"
+                  },
+                  {
+                    "k": "var",
+                    "name": "transfer"
+                  },
+                  {
+                    "k": "var",
+                    "name": "now"
+                  }
+                ]
+              }
             }
           }
         }
@@ -9195,100 +21354,158 @@ const definitions = {
       "kind": "State"
     },
     "body": {
-      "k": "if",
-      "cond": {
-        "k": "call",
-        "name": "requestMigrationAllowed",
-        "args": [
-          {
+      "k": "record",
+      "name": "State",
+      "values": {
+        "objects": {
+          "k": "project",
+          "value": {
             "k": "var",
             "name": "state"
           },
-          {
+          "field": "objects"
+        },
+        "encodings": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "transfer"
+            "name": "state"
           },
-          {
+          "field": "encodings"
+        },
+        "placement": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "cost"
+            "name": "state"
           },
-          {
+          "field": "placement"
+        },
+        "peers": {
+          "k": "project",
+          "value": {
             "k": "var",
-            "name": "now"
-          }
-        ]
-      },
-      "yes": {
-        "k": "record",
-        "name": "State",
-        "values": {
-          "objects": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "objects"
+            "name": "state"
           },
-          "encodings": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "encodings"
+          "field": "peers"
+        },
+        "pointers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "placement": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "placement"
+          "field": "pointers"
+        },
+        "jobs": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "peers": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "peers"
+          "field": "jobs"
+        },
+        "checkpoints": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "pointers": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
+          "field": "checkpoints"
+        },
+        "ledger": {
+          "k": "call",
+          "name": "Stitch.Budget::selectLedger",
+          "args": [
+            {
+              "k": "call",
+              "name": "Stitch.Budget::selectionFromBool",
+              "args": [
+                {
+                  "k": "call",
+                  "name": "requestMigrationAllowed",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "state"
+                    },
+                    {
+                      "k": "var",
+                      "name": "transfer"
+                    },
+                    {
+                      "k": "var",
+                      "name": "cost"
+                    },
+                    {
+                      "k": "var",
+                      "name": "now"
+                    }
+                  ]
+                }
+              ]
             },
-            "field": "pointers"
-          },
-          "jobs": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
+            {
+              "k": "call",
+              "name": "Stitch.Budget::reservationCandidate",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "ledger"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "transfer"
+                  },
+                  "field": "requestRoot"
+                },
+                {
+                  "k": "var",
+                  "name": "cost"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
             },
-            "field": "jobs"
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "ledger"
+            }
+          ]
+        },
+        "evidence": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
           },
-          "checkpoints": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "checkpoints"
-          },
-          "budget": {
+          "field": "evidence"
+        },
+        "transfers": {
+          "k": "if",
+          "cond": {
             "k": "call",
-            "name": "Stitch.Budget::reserveAction",
+            "name": "requestMigrationAllowed",
             "args": [
               {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "state"
-                },
-                "field": "budget"
+                "k": "var",
+                "name": "state"
+              },
+              {
+                "k": "var",
+                "name": "transfer"
               },
               {
                 "k": "var",
@@ -9300,15 +21517,7 @@ const definitions = {
               }
             ]
           },
-          "evidence": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
-            },
-            "field": "evidence"
-          },
-          "transfers": {
+          "yes": {
             "k": "cons",
             "head": {
               "k": "var",
@@ -9322,12 +21531,219 @@ const definitions = {
               },
               "field": "transfers"
             }
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "transfers"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.System.reservationActive": {
+    "module": "Stitch.System",
+    "name": "reservationActive",
+    "params": [
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Stitch.Budget::Reservation"
           }
         }
       },
-      "no": {
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "epoch",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
         "k": "var",
-        "name": "state"
+        "name": "reservations"
+      },
+      "branches": [
+        {
+          "constructor": "List.nil",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "List.cons",
+          "binders": [
+            "head",
+            "tail"
+          ],
+          "body": {
+            "k": "if",
+            "cond": {
+              "k": "call",
+              "name": "Stitch.Identity::sameDigest",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  "field": "actionId"
+                },
+                {
+                  "k": "var",
+                  "name": "actionId"
+                }
+              ]
+            },
+            "yes": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  "field": "epoch"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "epoch"
+                }
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "head"
+                  },
+                  "field": "settled"
+                }
+              }
+            },
+            "no": {
+              "k": "call",
+              "name": "reservationActive",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "tail"
+                },
+                {
+                  "k": "var",
+                  "name": "actionId"
+                },
+                {
+                  "k": "var",
+                  "name": "epoch"
+                }
+              ]
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.System.completionSafetyGuard": {
+    "module": "Stitch.System",
+    "name": "completionSafetyGuard",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Stitch.Budget::Ledger"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Budget::ledgerValid",
+        "args": [
+          {
+            "k": "var",
+            "name": "ledger"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "last"
+          },
+          "right": {
+            "k": "var",
+            "name": "now"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "var",
+            "name": "now"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            "field": "end"
+          }
+        }
       }
     }
   },
@@ -9380,22 +21796,42 @@ const definitions = {
       "op": "&&",
       "left": {
         "k": "binary",
-        "op": "<=?",
+        "op": "&&",
         "left": {
-          "k": "project",
-          "value": {
-            "k": "project",
-            "value": {
-              "k": "var",
-              "name": "state"
+          "k": "call",
+          "name": "completionSafetyGuard",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "ledger"
             },
-            "field": "budget"
-          },
-          "field": "last"
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
         },
         "right": {
-          "k": "var",
-          "name": "now"
+          "k": "call",
+          "name": "Stitch.Custody::recoverableAt",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "placement"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
         }
       },
       "right": {
@@ -9403,11 +21839,43 @@ const definitions = {
         "op": "&&",
         "left": {
           "k": "call",
-          "name": "Stitch.Custody::requestedPhase",
+          "name": "reservationActive",
           "args": [
             {
-              "k": "var",
-              "name": "transfer"
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "ledger"
+              },
+              "field": "reservations"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "transfer"
+              },
+              "field": "requestRoot"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "epoch"
             }
           ]
         },
@@ -9416,16 +21884,8 @@ const definitions = {
           "op": "&&",
           "left": {
             "k": "call",
-            "name": "Stitch.Custody::requestRecorded",
+            "name": "Stitch.Custody::requestedPhase",
             "args": [
-              {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "state"
-                },
-                "field": "transfers"
-              },
               {
                 "k": "var",
                 "name": "transfer"
@@ -9433,56 +21893,78 @@ const definitions = {
             ]
           },
           "right": {
-            "k": "call",
-            "name": "Stitch.Custody::migrationAllowed",
-            "args": [
-              {
-                "k": "project",
-                "value": {
-                  "k": "var",
-                  "name": "state"
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "Stitch.Custody::requestRecorded",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "transfers"
                 },
-                "field": "placement"
-              },
-              {
-                "k": "call",
-                "name": "Stitch.Custody::prepareCompletion",
-                "args": [
-                  {
-                    "k": "project",
-                    "value": {
-                      "k": "var",
-                      "name": "state"
+                {
+                  "k": "var",
+                  "name": "transfer"
+                }
+              ]
+            },
+            "right": {
+              "k": "call",
+              "name": "Stitch.Custody::migrationAllowed",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "placement"
+                },
+                {
+                  "k": "call",
+                  "name": "Stitch.Custody::prepareCompletion",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "state"
+                      },
+                      "field": "placement"
                     },
-                    "field": "placement"
-                  },
-                  {
-                    "k": "var",
-                    "name": "transfer"
-                  },
-                  {
-                    "k": "var",
-                    "name": "receipt"
-                  },
-                  {
-                    "k": "var",
-                    "name": "fragment"
-                  },
-                  {
-                    "k": "var",
-                    "name": "integrity"
-                  },
-                  {
-                    "k": "var",
-                    "name": "now"
-                  }
-                ]
-              },
-              {
-                "k": "var",
-                "name": "now"
-              }
-            ]
+                    {
+                      "k": "var",
+                      "name": "transfer"
+                    },
+                    {
+                      "k": "var",
+                      "name": "receipt"
+                    },
+                    {
+                      "k": "var",
+                      "name": "fragment"
+                    },
+                    {
+                      "k": "var",
+                      "name": "integrity"
+                    },
+                    {
+                      "k": "var",
+                      "name": "now"
+                    }
+                  ]
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            }
           }
         }
       }
@@ -9567,6 +22049,422 @@ const definitions = {
       }
     }
   },
+  "Stitch.System.completionLedger": {
+    "module": "Stitch.System",
+    "name": "completionLedger",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Stitch.Budget::Ledger"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Stitch.Budget::Ledger"
+    },
+    "body": {
+      "k": "record",
+      "name": "Stitch.Budget::Ledger",
+      "values": {
+        "budget": {
+          "k": "call",
+          "name": "completionBudget",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "budget"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        "reservations": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "ledger"
+          },
+          "field": "reservations"
+        }
+      }
+    }
+  },
+  "Stitch.System.ledgerTime": {
+    "module": "Stitch.System",
+    "name": "ledgerTime",
+    "params": [
+      {
+        "name": "budget",
+        "type": {
+          "kind": "Stitch.Budget::Budget"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "start"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "last"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "last"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "budget"
+          },
+          "field": "end"
+        }
+      }
+    }
+  },
+  "Stitch.System.ledgerHistory": {
+    "module": "Stitch.System",
+    "name": "ledgerHistory",
+    "params": [
+      {
+        "name": "ledger",
+        "type": {
+          "kind": "Stitch.Budget::Ledger"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Budget::budgetValid",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "ledger"
+            },
+            "field": "budget"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "Stitch.Budget::reservationsValid",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "ledger"
+              },
+              "field": "reservations"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "ledger"
+                },
+                "field": "budget"
+              },
+              "field": "epoch"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "Stitch.Budget::sameResources",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "ledger"
+                  },
+                  "field": "budget"
+                },
+                "field": "spent"
+              },
+              {
+                "k": "call",
+                "name": "Stitch.Budget::spentTotal",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "reservations"
+                  }
+                ]
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "Stitch.Budget::sameResources",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "ledger"
+                  },
+                  "field": "budget"
+                },
+                "field": "reserved"
+              },
+              {
+                "k": "call",
+                "name": "Stitch.Budget::reservedTotal",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "ledger"
+                    },
+                    "field": "reservations"
+                  }
+                ]
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.System.choosePlacement": {
+    "module": "Stitch.System",
+    "name": "choosePlacement",
+    "params": [
+      {
+        "name": "selection",
+        "type": {
+          "kind": "Stitch.Budget::Selection"
+        }
+      },
+      {
+        "name": "whenTrue",
+        "type": {
+          "kind": "Stitch.Custody::Placement"
+        }
+      },
+      {
+        "name": "whenFalse",
+        "type": {
+          "kind": "Stitch.Custody::Placement"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Stitch.Custody::Placement"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "selection"
+      },
+      "branches": [
+        {
+          "constructor": "Stitch.Budget::Selection.Reject",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenFalse"
+          }
+        },
+        {
+          "constructor": "Stitch.Budget::Selection.Accept",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenTrue"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.System.migrationCandidateValidity": {
+    "module": "Stitch.System",
+    "name": "migrationCandidateValidity",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "transfer",
+        "type": {
+          "kind": "Stitch.Custody::Transfer"
+        }
+      },
+      {
+        "name": "receipt",
+        "type": {
+          "kind": "Stitch.Custody::Receipt"
+        }
+      },
+      {
+        "name": "fragment",
+        "type": {
+          "kind": "Stitch.Fragments::Fragment"
+        }
+      },
+      {
+        "name": "integrity",
+        "type": {
+          "kind": "Stitch.Custody::FragmentIntegrityObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "call",
+      "name": "ledgerPlacementValid",
+      "args": [
+        {
+          "k": "call",
+          "name": "completionLedger",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "ledger"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        {
+          "k": "call",
+          "name": "Stitch.Custody::migrate",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "placement"
+            },
+            {
+              "k": "call",
+              "name": "Stitch.Custody::prepareCompletion",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "placement"
+                },
+                {
+                  "k": "var",
+                  "name": "transfer"
+                },
+                {
+                  "k": "var",
+                  "name": "receipt"
+                },
+                {
+                  "k": "var",
+                  "name": "fragment"
+                },
+                {
+                  "k": "var",
+                  "name": "integrity"
+                },
+                {
+                  "k": "var",
+                  "name": "now"
+                }
+              ]
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        }
+      ]
+    }
+  },
   "Stitch.System.applyMigration": {
     "module": "Stitch.System",
     "name": "applyMigration",
@@ -9612,8 +22510,12 @@ const definitions = {
       "kind": "State"
     },
     "body": {
-      "k": "if",
-      "cond": {
+      "k": "let",
+      "name": "allowed",
+      "type": {
+        "kind": "Bool"
+      },
+      "value": {
         "k": "call",
         "name": "completeMigrationAllowed",
         "args": [
@@ -9643,7 +22545,7 @@ const definitions = {
           }
         ]
       },
-      "yes": {
+      "body": {
         "k": "let",
         "name": "completed",
         "type": {
@@ -9684,129 +22586,420 @@ const definitions = {
           ]
         },
         "body": {
-          "k": "record",
-          "name": "State",
-          "values": {
-            "objects": {
-              "k": "project",
-              "value": {
+          "k": "let",
+          "name": "selection",
+          "type": {
+            "kind": "Stitch.Budget::Selection"
+          },
+          "value": {
+            "k": "call",
+            "name": "Stitch.Budget::selectionFromBool",
+            "args": [
+              {
                 "k": "var",
-                "name": "state"
+                "name": "allowed"
+              }
+            ]
+          },
+          "body": {
+            "k": "record",
+            "name": "State",
+            "values": {
+              "objects": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "objects"
               },
-              "field": "objects"
-            },
-            "encodings": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
+              "encodings": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "encodings"
               },
-              "field": "encodings"
-            },
-            "placement": {
-              "k": "call",
-              "name": "Stitch.Custody::migrate",
-              "args": [
-                {
-                  "k": "project",
-                  "value": {
+              "placement": {
+                "k": "call",
+                "name": "choosePlacement",
+                "args": [
+                  {
                     "k": "var",
-                    "name": "state"
+                    "name": "selection"
                   },
-                  "field": "placement"
-                },
-                {
+                  {
+                    "k": "call",
+                    "name": "Stitch.Custody::migrate",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "placement"
+                      },
+                      {
+                        "k": "var",
+                        "name": "completed"
+                      },
+                      {
+                        "k": "var",
+                        "name": "now"
+                      }
+                    ]
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "state"
+                    },
+                    "field": "placement"
+                  }
+                ]
+              },
+              "peers": {
+                "k": "project",
+                "value": {
                   "k": "var",
-                  "name": "completed"
+                  "name": "state"
                 },
-                {
+                "field": "peers"
+              },
+              "pointers": {
+                "k": "project",
+                "value": {
                   "k": "var",
-                  "name": "now"
-                }
-              ]
-            },
-            "peers": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
+                  "name": "state"
+                },
+                "field": "pointers"
               },
-              "field": "peers"
-            },
-            "pointers": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
+              "jobs": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "jobs"
               },
-              "field": "pointers"
-            },
-            "jobs": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
+              "checkpoints": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "checkpoints"
               },
-              "field": "jobs"
-            },
-            "checkpoints": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
-              },
-              "field": "checkpoints"
-            },
-            "budget": {
-              "k": "call",
-              "name": "completionBudget",
-              "args": [
-                {
-                  "k": "project",
-                  "value": {
+              "ledger": {
+                "k": "call",
+                "name": "Stitch.Budget::selectLedger",
+                "args": [
+                  {
                     "k": "var",
-                    "name": "state"
+                    "name": "selection"
                   },
-                  "field": "budget"
-                },
-                {
-                  "k": "var",
-                  "name": "now"
-                }
-              ]
-            },
-            "evidence": {
-              "k": "project",
-              "value": {
-                "k": "var",
-                "name": "state"
+                  {
+                    "k": "call",
+                    "name": "completionLedger",
+                    "args": [
+                      {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "ledger"
+                      },
+                      {
+                        "k": "var",
+                        "name": "now"
+                      }
+                    ]
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "state"
+                    },
+                    "field": "ledger"
+                  }
+                ]
               },
-              "field": "evidence"
-            },
-            "transfers": {
-              "k": "call",
-              "name": "Stitch.Custody::recordCompletion",
-              "args": [
-                {
+              "evidence": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "evidence"
+              },
+              "transfers": {
+                "k": "if",
+                "cond": {
+                  "k": "var",
+                  "name": "allowed"
+                },
+                "yes": {
+                  "k": "call",
+                  "name": "Stitch.Custody::recordCompletion",
+                  "args": [
+                    {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "state"
+                      },
+                      "field": "transfers"
+                    },
+                    {
+                      "k": "var",
+                      "name": "completed"
+                    }
+                  ]
+                },
+                "no": {
                   "k": "project",
                   "value": {
                     "k": "var",
                     "name": "state"
                   },
                   "field": "transfers"
-                },
-                {
-                  "k": "var",
-                  "name": "completed"
                 }
-              ]
+              }
             }
           }
         }
+      }
+    }
+  },
+  "Stitch.System.settleActionAllowed": {
+    "module": "Stitch.System",
+    "name": "settleActionAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
       },
-      "no": {
-        "k": "var",
-        "name": "state"
+      {
+        "name": "observation",
+        "type": {
+          "kind": "Stitch.Budget::SettlementObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "Stitch.Custody::recoverableAt",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "placement"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "right": {
+        "k": "call",
+        "name": "Stitch.Budget::settleLedgerAllowed",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "ledger"
+          },
+          {
+            "k": "var",
+            "name": "observation"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      }
+    }
+  },
+  "Stitch.System.settleAction": {
+    "module": "Stitch.System",
+    "name": "settleAction",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "Stitch.Budget::SettlementObservation"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "State"
+    },
+    "body": {
+      "k": "record",
+      "name": "State",
+      "values": {
+        "objects": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "objects"
+        },
+        "encodings": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "encodings"
+        },
+        "placement": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "placement"
+        },
+        "peers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "peers"
+        },
+        "pointers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "pointers"
+        },
+        "jobs": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "jobs"
+        },
+        "checkpoints": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "checkpoints"
+        },
+        "ledger": {
+          "k": "if",
+          "cond": {
+            "k": "call",
+            "name": "settleActionAllowed",
+            "args": [
+              {
+                "k": "var",
+                "name": "state"
+              },
+              {
+                "k": "var",
+                "name": "observation"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "yes": {
+            "k": "call",
+            "name": "Stitch.Budget::settleLedger",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "ledger"
+              },
+              {
+                "k": "var",
+                "name": "observation"
+              },
+              {
+                "k": "var",
+                "name": "now"
+              }
+            ]
+          },
+          "no": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "ledger"
+          }
+        },
+        "evidence": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "evidence"
+        },
+        "transfers": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "transfers"
+        }
       }
     }
   }
@@ -9885,6 +23078,116 @@ const types = {
         "type": {
           "kind": "Resources"
         }
+      }
+    ]
+  },
+  "Stitch.Budget.Reservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "epoch",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "ceiling",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "actual",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "settled",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
+  "Stitch.Budget.Ledger": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "budget",
+        "type": {
+          "kind": "Budget"
+        }
+      },
+      {
+        "name": "reservations",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Reservation"
+          }
+        }
+      }
+    ]
+  },
+  "Stitch.Budget.SettlementOutcome": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Unknown",
+        "fields": []
+      },
+      {
+        "name": "Known",
+        "fields": []
+      }
+    ]
+  },
+  "Stitch.Budget.SettlementObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "epoch",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "actual",
+        "type": {
+          "kind": "Resources"
+        }
+      },
+      {
+        "name": "outcome",
+        "type": {
+          "kind": "SettlementOutcome"
+        }
+      }
+    ]
+  },
+  "Stitch.Budget.Selection": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Reject",
+        "fields": []
+      },
+      {
+        "name": "Accept",
+        "fields": []
       }
     ]
   },
@@ -10021,6 +23324,333 @@ const types = {
         "name": "value",
         "type": {
           "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.ProgramDigestInput": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "version",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "instructions",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Instruction"
+          }
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.ProgramDigestObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "input",
+        "type": {
+          "kind": "ProgramDigestInput"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Stitch.Identity::DigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.InputDigestInput": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "version",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.InputDigestObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "input",
+        "type": {
+          "kind": "InputDigestInput"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Stitch.Identity::DigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.JobDigestInput": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "version",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "programRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "inputRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "initialValue",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.JobDigestObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "input",
+        "type": {
+          "kind": "JobDigestInput"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Stitch.Identity::DigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.StateDigestInput": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "version",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "jobRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "programRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "inputRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "bits",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "step",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.StateDigestObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "input",
+        "type": {
+          "kind": "StateDigestInput"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Stitch.Identity::DigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.CheckpointDigestInput": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "version",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "jobRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "programRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "inputRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "step",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "priorRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "stateRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "value",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.CheckpointDigestObservation": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "input",
+        "type": {
+          "kind": "CheckpointDigestInput"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Stitch.Identity::DigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.JobCommitments": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "program",
+        "type": {
+          "kind": "ProgramDigestObservation"
+        }
+      },
+      {
+        "name": "input",
+        "type": {
+          "kind": "InputDigestObservation"
+        }
+      },
+      {
+        "name": "job",
+        "type": {
+          "kind": "JobDigestObservation"
+        }
+      }
+    ]
+  },
+  "Stitch.Compute.CheckpointCommitments": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "StateDigestObservation"
+        }
+      },
+      {
+        "name": "checkpoint",
+        "type": {
+          "kind": "CheckpointDigestObservation"
         }
       }
     ]
@@ -10212,6 +23842,24 @@ const types = {
         "type": {
           "kind": "Bool"
         }
+      },
+      {
+        "name": "receipt0",
+        "type": {
+          "kind": "Receipt"
+        }
+      },
+      {
+        "name": "receipt1",
+        "type": {
+          "kind": "Receipt"
+        }
+      },
+      {
+        "name": "receipt2",
+        "type": {
+          "kind": "Receipt"
+        }
       }
     ]
   },
@@ -10252,6 +23900,24 @@ const types = {
         "name": "externalRelay",
         "type": {
           "kind": "Bool"
+        }
+      },
+      {
+        "name": "manifestRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "fragmentRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "receipt",
+        "type": {
+          "kind": "Receipt"
         }
       }
     ]
@@ -10577,94 +24243,6 @@ const types = {
       }
     ]
   },
-  "Stitch.Evidence.Evidence": {
-    "kind": "structure",
-    "fields": [
-      {
-        "name": "claim",
-        "type": {
-          "kind": "ClaimKind"
-        }
-      },
-      {
-        "name": "kind",
-        "type": {
-          "kind": "EvidenceKind"
-        }
-      },
-      {
-        "name": "modelRoot",
-        "type": {
-          "kind": "Stitch.Identity::Digest"
-        }
-      },
-      {
-        "name": "artifactRoot",
-        "type": {
-          "kind": "Stitch.Identity::Digest"
-        }
-      },
-      {
-        "name": "subjectRoot",
-        "type": {
-          "kind": "Stitch.Identity::Digest"
-        }
-      },
-      {
-        "name": "assumptionsRoot",
-        "type": {
-          "kind": "Stitch.Identity::Digest"
-        }
-      },
-      {
-        "name": "observedAt",
-        "type": {
-          "kind": "Nat"
-        }
-      },
-      {
-        "name": "validUntil",
-        "type": {
-          "kind": "Nat"
-        }
-      },
-      {
-        "name": "horizon",
-        "type": {
-          "kind": "Nat"
-        }
-      },
-      {
-        "name": "failureBound",
-        "type": {
-          "kind": "Nat"
-        }
-      }
-    ]
-  },
-  "Stitch.Evidence.Scope": {
-    "kind": "structure",
-    "fields": [
-      {
-        "name": "horizon",
-        "type": {
-          "kind": "Nat"
-        }
-      },
-      {
-        "name": "failures",
-        "type": {
-          "kind": "Nat"
-        }
-      },
-      {
-        "name": "hostEffects",
-        "type": {
-          "kind": "Nat"
-        }
-      }
-    ]
-  },
   "Stitch.Evidence.HostAssumptions": {
     "kind": "structure",
     "fields": [
@@ -10714,6 +24292,184 @@ const types = {
         "name": "releasedRuntimeMatchesModel",
         "type": {
           "kind": "Bool"
+        }
+      }
+    ]
+  },
+  "Stitch.Evidence.Evidence": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "claim",
+        "type": {
+          "kind": "ClaimKind"
+        }
+      },
+      {
+        "name": "kind",
+        "type": {
+          "kind": "EvidenceKind"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "artifactRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "subjectRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "assumptionsRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "dependencyRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "assumptions",
+        "type": {
+          "kind": "HostAssumptions"
+        }
+      },
+      {
+        "name": "dependencies",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Stitch.Encoding::Dependency"
+          }
+        }
+      },
+      {
+        "name": "hostEffects",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "HostEffect"
+          }
+        }
+      },
+      {
+        "name": "observedAt",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "validUntil",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "horizon",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "failureBound",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Evidence.Scope": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "claim",
+        "type": {
+          "kind": "ClaimKind"
+        }
+      },
+      {
+        "name": "kind",
+        "type": {
+          "kind": "EvidenceKind"
+        }
+      },
+      {
+        "name": "modelRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "artifactRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "subjectRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "assumptionsRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "dependencyRoot",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
+      {
+        "name": "assumptions",
+        "type": {
+          "kind": "HostAssumptions"
+        }
+      },
+      {
+        "name": "dependencies",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "Stitch.Encoding::Dependency"
+          }
+        }
+      },
+      {
+        "name": "hostEffects",
+        "type": {
+          "kind": "List",
+          "element": {
+            "kind": "HostEffect"
+          }
+        }
+      },
+      {
+        "name": "horizon",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "failures",
+        "type": {
+          "kind": "Nat"
         }
       }
     ]
@@ -10796,6 +24552,19 @@ const types = {
       }
     ]
   },
+  "Stitch.Fragments.Bit": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Zero",
+        "fields": []
+      },
+      {
+        "name": "One",
+        "fields": []
+      }
+    ]
+  },
   "Stitch.Fragments.BitBlocks": {
     "kind": "inductive",
     "constructors": [
@@ -10807,10 +24576,10 @@ const types = {
         "name": "More",
         "fields": [
           {
-            "kind": "Bool"
+            "kind": "Bit"
           },
           {
-            "kind": "Bool"
+            "kind": "Bit"
           },
           {
             "kind": "BitBlocks"
@@ -11196,9 +24965,9 @@ const types = {
         }
       },
       {
-        "name": "budget",
+        "name": "ledger",
         "type": {
-          "kind": "Stitch.Budget::Budget"
+          "kind": "Stitch.Budget::Ledger"
         }
       },
       {
@@ -11224,6 +24993,12 @@ const types = {
   "Stitch.System.Action": {
     "kind": "structure",
     "fields": [
+      {
+        "name": "actionId",
+        "type": {
+          "kind": "Stitch.Identity::Digest"
+        }
+      },
       {
         "name": "kind",
         "type": {
@@ -11257,13 +25032,1259 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:7cd4f1b357746e49567fcbb9638d4d796a9c4a997b95ac6b8b1c8643394aad51";
+export const modelSourceDigest = "sha256:a75d7f66b6d6f7cb150e7c2c5cd3c8accfbe50f1b75f5b8dfa2aeb98bd2fb175";
+export const modelExecutionDigest = "sha256:39a7458de201afdca99cfbce80d618aa37b8b0fee68ccefb282f2be6656bedd3";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:7cd4f1b357746e49567fcbb9638d4d796a9c4a997b95ac6b8b1c8643394aad51",
-  "generatorSha256": "c158bc0e780f9641f9c8364c087628e65b0d8dd30dd577019de159458ccfbe46",
+  "sourceDigest": "sha256:a75d7f66b6d6f7cb150e7c2c5cd3c8accfbe50f1b75f5b8dfa2aeb98bd2fb175",
+  "executionDigest": "sha256:39a7458de201afdca99cfbce80d618aa37b8b0fee68ccefb282f2be6656bedd3",
+  "executionIdentity": {
+    "adapterSources": [
+      {
+        "path": "src/layer1-uor/contracts.js",
+        "sha256": "94c67e0811f78029b251c55edbf365b2335040106b8125fa5298e59315d2c2d3"
+      },
+      {
+        "path": "src/layer1-uor/custody.js",
+        "sha256": "013317a0800b44cfa7cadbbe0247262f7289fccbc3d597bfe5cd05df58b34b50"
+      },
+      {
+        "path": "src/layer1-uor/index.js",
+        "sha256": "7a5a9bfc8f9c8623be3d8983423ba62cff7b5e33340012dc1e0ffd19d710a0ab"
+      },
+      {
+        "path": "src/layer4-compute/replay.js",
+        "sha256": "9abda982b5a9fa0ede365212c7398e7d98ad4c380c561ed22b93b5384bf5ed5a"
+      }
+    ],
+    "definitions": {
+      "Stitch.Compute.checkpointLinkAllowed": {
+        "body": {
+          "k": "binary",
+          "left": {
+            "k": "var",
+            "name": "replayMatches"
+          },
+          "op": "&&",
+          "right": {
+            "k": "binary",
+            "left": {
+              "k": "var",
+              "name": "jobMatches"
+            },
+            "op": "&&",
+            "right": {
+              "k": "binary",
+              "left": {
+                "k": "var",
+                "name": "programMatches"
+              },
+              "op": "&&",
+              "right": {
+                "k": "binary",
+                "left": {
+                  "k": "var",
+                  "name": "inputMatches"
+                },
+                "op": "&&",
+                "right": {
+                  "k": "binary",
+                  "left": {
+                    "k": "var",
+                    "name": "modelMatches"
+                  },
+                  "op": "&&",
+                  "right": {
+                    "k": "binary",
+                    "left": {
+                      "k": "var",
+                      "name": "predecessorMatches"
+                    },
+                    "op": "&&",
+                    "right": {
+                      "k": "binary",
+                      "left": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "currentStep"
+                        },
+                        "op": "<?",
+                        "right": {
+                          "k": "var",
+                          "name": "nextStep"
+                        }
+                      },
+                      "op": "&&",
+                      "right": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "nextStep"
+                        },
+                        "op": "<=?",
+                        "right": {
+                          "k": "var",
+                          "name": "programLength"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "checkpointLinkAllowed",
+        "params": [
+          {
+            "name": "jobMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "programMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "inputMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "modelMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "predecessorMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "replayMatches",
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          {
+            "name": "currentStep",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "nextStep",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "programLength",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Bool"
+        }
+      },
+      "Stitch.Compute.natBitwise": {
+        "body": {
+          "branches": [
+            {
+              "binders": [],
+              "body": {
+                "k": "nat",
+                "value": "0"
+              },
+              "constructor": "Nat.zero"
+            },
+            {
+              "binders": [
+                "rest"
+              ],
+              "body": {
+                "cond": {
+                  "k": "binary",
+                  "left": {
+                    "k": "binary",
+                    "left": {
+                      "k": "var",
+                      "name": "left"
+                    },
+                    "op": "=?",
+                    "right": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  },
+                  "op": "&&",
+                  "right": {
+                    "k": "binary",
+                    "left": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "op": "=?",
+                    "right": {
+                      "k": "nat",
+                      "value": "0"
+                    }
+                  }
+                },
+                "k": "if",
+                "no": {
+                  "body": {
+                    "body": {
+                      "body": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "low"
+                        },
+                        "op": "+",
+                        "right": {
+                          "args": [
+                            {
+                              "k": "nat",
+                              "value": "2"
+                            },
+                            {
+                              "args": [
+                                {
+                                  "k": "var",
+                                  "name": "rest"
+                                },
+                                {
+                                  "k": "var",
+                                  "name": "opcode"
+                                },
+                                {
+                                  "args": [
+                                    {
+                                      "k": "var",
+                                      "name": "left"
+                                    },
+                                    {
+                                      "k": "nat",
+                                      "value": "2"
+                                    },
+                                    {
+                                      "k": "nat",
+                                      "value": "0"
+                                    }
+                                  ],
+                                  "k": "prim",
+                                  "operation": "quotient",
+                                  "type": {
+                                    "kind": "Nat"
+                                  }
+                                },
+                                {
+                                  "args": [
+                                    {
+                                      "k": "var",
+                                      "name": "right"
+                                    },
+                                    {
+                                      "k": "nat",
+                                      "value": "2"
+                                    },
+                                    {
+                                      "k": "nat",
+                                      "value": "0"
+                                    }
+                                  ],
+                                  "k": "prim",
+                                  "operation": "quotient",
+                                  "type": {
+                                    "kind": "Nat"
+                                  }
+                                }
+                              ],
+                              "k": "call",
+                              "name": "natBitwise"
+                            }
+                          ],
+                          "k": "prim",
+                          "operation": "multiply",
+                          "type": {
+                            "kind": "Nat"
+                          }
+                        }
+                      },
+                      "k": "let",
+                      "name": "low",
+                      "type": {
+                        "kind": "Nat"
+                      },
+                      "value": {
+                        "cond": {
+                          "k": "binary",
+                          "left": {
+                            "k": "var",
+                            "name": "opcode"
+                          },
+                          "op": "=?",
+                          "right": {
+                            "k": "nat",
+                            "value": "7"
+                          }
+                        },
+                        "k": "if",
+                        "no": {
+                          "cond": {
+                            "k": "binary",
+                            "left": {
+                              "k": "var",
+                              "name": "opcode"
+                            },
+                            "op": "=?",
+                            "right": {
+                              "k": "nat",
+                              "value": "8"
+                            }
+                          },
+                          "k": "if",
+                          "no": {
+                            "cond": {
+                              "k": "binary",
+                              "left": {
+                                "k": "binary",
+                                "left": {
+                                  "k": "var",
+                                  "name": "lowLeft"
+                                },
+                                "op": "+",
+                                "right": {
+                                  "k": "var",
+                                  "name": "lowRight"
+                                }
+                              },
+                              "op": "=?",
+                              "right": {
+                                "k": "nat",
+                                "value": "0"
+                              }
+                            },
+                            "k": "if",
+                            "no": {
+                              "k": "nat",
+                              "value": "1"
+                            },
+                            "yes": {
+                              "k": "nat",
+                              "value": "0"
+                            }
+                          },
+                          "yes": {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "lowLeft"
+                              },
+                              {
+                                "k": "var",
+                                "name": "lowRight"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "multiply",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          }
+                        },
+                        "yes": {
+                          "cond": {
+                            "k": "binary",
+                            "left": {
+                              "k": "var",
+                              "name": "lowLeft"
+                            },
+                            "op": "=?",
+                            "right": {
+                              "k": "var",
+                              "name": "lowRight"
+                            }
+                          },
+                          "k": "if",
+                          "no": {
+                            "k": "nat",
+                            "value": "1"
+                          },
+                          "yes": {
+                            "k": "nat",
+                            "value": "0"
+                          }
+                        }
+                      }
+                    },
+                    "k": "let",
+                    "name": "lowRight",
+                    "type": {
+                      "kind": "Nat"
+                    },
+                    "value": {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "right"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "2"
+                        },
+                        {
+                          "k": "nat",
+                          "value": "0"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "remainder",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    }
+                  },
+                  "k": "let",
+                  "name": "lowLeft",
+                  "type": {
+                    "kind": "Nat"
+                  },
+                  "value": {
+                    "args": [
+                      {
+                        "k": "var",
+                        "name": "left"
+                      },
+                      {
+                        "k": "nat",
+                        "value": "2"
+                      },
+                      {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    ],
+                    "k": "prim",
+                    "operation": "remainder",
+                    "type": {
+                      "kind": "Nat"
+                    }
+                  }
+                },
+                "yes": {
+                  "k": "nat",
+                  "value": "0"
+                }
+              },
+              "constructor": "Nat.succ"
+            }
+          ],
+          "k": "match",
+          "value": {
+            "k": "var",
+            "name": "fuel"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "natBitwise",
+        "params": [
+          {
+            "name": "fuel",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "opcode",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "left",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "right",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.normalize": {
+        "body": {
+          "args": [
+            {
+              "k": "var",
+              "name": "value"
+            },
+            {
+              "k": "var",
+              "name": "modulus"
+            },
+            {
+              "k": "nat",
+              "value": "0"
+            }
+          ],
+          "k": "prim",
+          "operation": "remainder",
+          "type": {
+            "kind": "Nat"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "normalize",
+        "params": [
+          {
+            "name": "value",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "modulus",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      },
+      "Stitch.Compute.ringStep": {
+        "body": {
+          "body": {
+            "body": {
+              "body": {
+                "args": [
+                  {
+                    "cond": {
+                      "k": "binary",
+                      "left": {
+                        "k": "var",
+                        "name": "op"
+                      },
+                      "op": "=?",
+                      "right": {
+                        "k": "nat",
+                        "value": "0"
+                      }
+                    },
+                    "k": "if",
+                    "no": {
+                      "cond": {
+                        "k": "binary",
+                        "left": {
+                          "k": "var",
+                          "name": "op"
+                        },
+                        "op": "=?",
+                        "right": {
+                          "k": "nat",
+                          "value": "1"
+                        }
+                      },
+                      "k": "if",
+                      "no": {
+                        "cond": {
+                          "k": "binary",
+                          "left": {
+                            "k": "var",
+                            "name": "op"
+                          },
+                          "op": "=?",
+                          "right": {
+                            "k": "nat",
+                            "value": "2"
+                          }
+                        },
+                        "k": "if",
+                        "no": {
+                          "cond": {
+                            "k": "binary",
+                            "left": {
+                              "k": "var",
+                              "name": "op"
+                            },
+                            "op": "=?",
+                            "right": {
+                              "k": "nat",
+                              "value": "3"
+                            }
+                          },
+                          "k": "if",
+                          "no": {
+                            "cond": {
+                              "k": "binary",
+                              "left": {
+                                "k": "var",
+                                "name": "op"
+                              },
+                              "op": "=?",
+                              "right": {
+                                "k": "nat",
+                                "value": "4"
+                              }
+                            },
+                            "k": "if",
+                            "no": {
+                              "cond": {
+                                "k": "binary",
+                                "left": {
+                                  "k": "var",
+                                  "name": "op"
+                                },
+                                "op": "=?",
+                                "right": {
+                                  "k": "nat",
+                                  "value": "5"
+                                }
+                              },
+                              "k": "if",
+                              "no": {
+                                "cond": {
+                                  "k": "binary",
+                                  "left": {
+                                    "k": "var",
+                                    "name": "op"
+                                  },
+                                  "op": "=?",
+                                  "right": {
+                                    "k": "nat",
+                                    "value": "6"
+                                  }
+                                },
+                                "k": "if",
+                                "no": {
+                                  "cond": {
+                                    "k": "binary",
+                                    "left": {
+                                      "k": "var",
+                                      "name": "op"
+                                    },
+                                    "op": "=?",
+                                    "right": {
+                                      "k": "nat",
+                                      "value": "7"
+                                    }
+                                  },
+                                  "k": "if",
+                                  "no": {
+                                    "cond": {
+                                      "k": "binary",
+                                      "left": {
+                                        "k": "var",
+                                        "name": "op"
+                                      },
+                                      "op": "=?",
+                                      "right": {
+                                        "k": "nat",
+                                        "value": "8"
+                                      }
+                                    },
+                                    "k": "if",
+                                    "no": {
+                                      "cond": {
+                                        "k": "binary",
+                                        "left": {
+                                          "k": "var",
+                                          "name": "op"
+                                        },
+                                        "op": "=?",
+                                        "right": {
+                                          "k": "nat",
+                                          "value": "9"
+                                        }
+                                      },
+                                      "k": "if",
+                                      "no": {
+                                        "cond": {
+                                          "k": "binary",
+                                          "left": {
+                                            "k": "var",
+                                            "name": "op"
+                                          },
+                                          "op": "=?",
+                                          "right": {
+                                            "k": "nat",
+                                            "value": "10"
+                                          }
+                                        },
+                                        "k": "if",
+                                        "no": {
+                                          "cond": {
+                                            "k": "binary",
+                                            "left": {
+                                              "k": "var",
+                                              "name": "op"
+                                            },
+                                            "op": "=?",
+                                            "right": {
+                                              "k": "nat",
+                                              "value": "11"
+                                            }
+                                          },
+                                          "k": "if",
+                                          "no": {
+                                            "cond": {
+                                              "k": "binary",
+                                              "left": {
+                                                "k": "var",
+                                                "name": "op"
+                                              },
+                                              "op": "=?",
+                                              "right": {
+                                                "k": "nat",
+                                                "value": "12"
+                                              }
+                                            },
+                                            "k": "if",
+                                            "no": {
+                                              "cond": {
+                                                "k": "binary",
+                                                "left": {
+                                                  "k": "var",
+                                                  "name": "op"
+                                                },
+                                                "op": "=?",
+                                                "right": {
+                                                  "k": "nat",
+                                                  "value": "13"
+                                                }
+                                              },
+                                              "k": "if",
+                                              "no": {
+                                                "cond": {
+                                                  "k": "binary",
+                                                  "left": {
+                                                    "k": "var",
+                                                    "name": "op"
+                                                  },
+                                                  "op": "=?",
+                                                  "right": {
+                                                    "k": "nat",
+                                                    "value": "15"
+                                                  }
+                                                },
+                                                "k": "if",
+                                                "no": {
+                                                  "cond": {
+                                                    "k": "binary",
+                                                    "left": {
+                                                      "k": "var",
+                                                      "name": "op"
+                                                    },
+                                                    "op": "=?",
+                                                    "right": {
+                                                      "k": "nat",
+                                                      "value": "16"
+                                                    }
+                                                  },
+                                                  "k": "if",
+                                                  "no": {
+                                                    "k": "var",
+                                                    "name": "x"
+                                                  },
+                                                  "yes": {
+                                                    "args": [
+                                                      {
+                                                        "k": "var",
+                                                        "name": "x"
+                                                      },
+                                                      {
+                                                        "k": "var",
+                                                        "name": "y"
+                                                      },
+                                                      {
+                                                        "k": "nat",
+                                                        "value": "0"
+                                                      }
+                                                    ],
+                                                    "k": "prim",
+                                                    "operation": "remainder",
+                                                    "type": {
+                                                      "kind": "Nat"
+                                                    }
+                                                  }
+                                                },
+                                                "yes": {
+                                                  "args": [
+                                                    {
+                                                      "k": "var",
+                                                      "name": "x"
+                                                    },
+                                                    {
+                                                      "k": "var",
+                                                      "name": "y"
+                                                    },
+                                                    {
+                                                      "k": "nat",
+                                                      "value": "0"
+                                                    }
+                                                  ],
+                                                  "k": "prim",
+                                                  "operation": "quotient",
+                                                  "type": {
+                                                    "kind": "Nat"
+                                                  }
+                                                }
+                                              },
+                                              "yes": {
+                                                "cond": {
+                                                  "k": "binary",
+                                                  "left": {
+                                                    "k": "var",
+                                                    "name": "y"
+                                                  },
+                                                  "op": "<?",
+                                                  "right": {
+                                                    "k": "var",
+                                                    "name": "x"
+                                                  }
+                                                },
+                                                "k": "if",
+                                                "no": {
+                                                  "k": "nat",
+                                                  "value": "0"
+                                                },
+                                                "yes": {
+                                                  "k": "nat",
+                                                  "value": "1"
+                                                }
+                                              }
+                                            },
+                                            "yes": {
+                                              "cond": {
+                                                "k": "binary",
+                                                "left": {
+                                                  "k": "var",
+                                                  "name": "y"
+                                                },
+                                                "op": "<=?",
+                                                "right": {
+                                                  "k": "var",
+                                                  "name": "x"
+                                                }
+                                              },
+                                              "k": "if",
+                                              "no": {
+                                                "k": "nat",
+                                                "value": "0"
+                                              },
+                                              "yes": {
+                                                "k": "nat",
+                                                "value": "1"
+                                              }
+                                            }
+                                          },
+                                          "yes": {
+                                            "cond": {
+                                              "k": "binary",
+                                              "left": {
+                                                "k": "var",
+                                                "name": "x"
+                                              },
+                                              "op": "<?",
+                                              "right": {
+                                                "k": "var",
+                                                "name": "y"
+                                              }
+                                            },
+                                            "k": "if",
+                                            "no": {
+                                              "k": "nat",
+                                              "value": "0"
+                                            },
+                                            "yes": {
+                                              "k": "nat",
+                                              "value": "1"
+                                            }
+                                          }
+                                        },
+                                        "yes": {
+                                          "cond": {
+                                            "k": "binary",
+                                            "left": {
+                                              "k": "var",
+                                              "name": "x"
+                                            },
+                                            "op": "<=?",
+                                            "right": {
+                                              "k": "var",
+                                              "name": "y"
+                                            }
+                                          },
+                                          "k": "if",
+                                          "no": {
+                                            "k": "nat",
+                                            "value": "0"
+                                          },
+                                          "yes": {
+                                            "k": "nat",
+                                            "value": "1"
+                                          }
+                                        }
+                                      },
+                                      "yes": {
+                                        "args": [
+                                          {
+                                            "k": "var",
+                                            "name": "modulus"
+                                          },
+                                          {
+                                            "k": "nat",
+                                            "value": "9"
+                                          },
+                                          {
+                                            "k": "var",
+                                            "name": "x"
+                                          },
+                                          {
+                                            "k": "var",
+                                            "name": "y"
+                                          }
+                                        ],
+                                        "k": "call",
+                                        "name": "natBitwise"
+                                      }
+                                    },
+                                    "yes": {
+                                      "args": [
+                                        {
+                                          "k": "var",
+                                          "name": "modulus"
+                                        },
+                                        {
+                                          "k": "nat",
+                                          "value": "8"
+                                        },
+                                        {
+                                          "k": "var",
+                                          "name": "x"
+                                        },
+                                        {
+                                          "k": "var",
+                                          "name": "y"
+                                        }
+                                      ],
+                                      "k": "call",
+                                      "name": "natBitwise"
+                                    }
+                                  },
+                                  "yes": {
+                                    "args": [
+                                      {
+                                        "k": "var",
+                                        "name": "modulus"
+                                      },
+                                      {
+                                        "k": "nat",
+                                        "value": "7"
+                                      },
+                                      {
+                                        "k": "var",
+                                        "name": "x"
+                                      },
+                                      {
+                                        "k": "var",
+                                        "name": "y"
+                                      }
+                                    ],
+                                    "k": "call",
+                                    "name": "natBitwise"
+                                  }
+                                },
+                                "yes": {
+                                  "args": [
+                                    {
+                                      "k": "var",
+                                      "name": "x"
+                                    },
+                                    {
+                                      "k": "var",
+                                      "name": "y"
+                                    }
+                                  ],
+                                  "k": "prim",
+                                  "operation": "multiply",
+                                  "type": {
+                                    "kind": "Nat"
+                                  }
+                                }
+                              },
+                              "yes": {
+                                "args": [
+                                  {
+                                    "k": "binary",
+                                    "left": {
+                                      "k": "var",
+                                      "name": "x"
+                                    },
+                                    "op": "+",
+                                    "right": {
+                                      "k": "var",
+                                      "name": "modulus"
+                                    }
+                                  },
+                                  {
+                                    "k": "var",
+                                    "name": "y"
+                                  }
+                                ],
+                                "k": "prim",
+                                "operation": "subtract",
+                                "type": {
+                                  "kind": "Nat"
+                                }
+                              }
+                            },
+                            "yes": {
+                              "k": "binary",
+                              "left": {
+                                "k": "var",
+                                "name": "x"
+                              },
+                              "op": "+",
+                              "right": {
+                                "k": "var",
+                                "name": "y"
+                              }
+                            }
+                          },
+                          "yes": {
+                            "args": [
+                              {
+                                "k": "binary",
+                                "left": {
+                                  "k": "var",
+                                  "name": "x"
+                                },
+                                "op": "+",
+                                "right": {
+                                  "k": "var",
+                                  "name": "modulus"
+                                }
+                              },
+                              {
+                                "k": "nat",
+                                "value": "1"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "subtract",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          }
+                        },
+                        "yes": {
+                          "k": "binary",
+                          "left": {
+                            "k": "var",
+                            "name": "x"
+                          },
+                          "op": "+",
+                          "right": {
+                            "k": "nat",
+                            "value": "1"
+                          }
+                        }
+                      },
+                      "yes": {
+                        "args": [
+                          {
+                            "args": [
+                              {
+                                "k": "var",
+                                "name": "modulus"
+                              },
+                              {
+                                "k": "nat",
+                                "value": "1"
+                              }
+                            ],
+                            "k": "prim",
+                            "operation": "subtract",
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          {
+                            "k": "var",
+                            "name": "x"
+                          }
+                        ],
+                        "k": "prim",
+                        "operation": "subtract",
+                        "type": {
+                          "kind": "Nat"
+                        }
+                      }
+                    },
+                    "yes": {
+                      "args": [
+                        {
+                          "k": "var",
+                          "name": "modulus"
+                        },
+                        {
+                          "k": "var",
+                          "name": "x"
+                        }
+                      ],
+                      "k": "prim",
+                      "operation": "subtract",
+                      "type": {
+                        "kind": "Nat"
+                      }
+                    }
+                  },
+                  {
+                    "k": "var",
+                    "name": "modulus"
+                  }
+                ],
+                "k": "call",
+                "name": "normalize"
+              },
+              "k": "let",
+              "name": "op",
+              "type": {
+                "kind": "Nat"
+              },
+              "value": {
+                "field": "opcode",
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "instruction"
+                }
+              }
+            },
+            "k": "let",
+            "name": "y",
+            "type": {
+              "kind": "Nat"
+            },
+            "value": {
+              "args": [
+                {
+                  "field": "argument",
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "instruction"
+                  }
+                },
+                {
+                  "k": "var",
+                  "name": "modulus"
+                }
+              ],
+              "k": "call",
+              "name": "normalize"
+            }
+          },
+          "k": "let",
+          "name": "x",
+          "type": {
+            "kind": "Nat"
+          },
+          "value": {
+            "args": [
+              {
+                "k": "var",
+                "name": "value"
+              },
+              {
+                "k": "var",
+                "name": "modulus"
+              }
+            ],
+            "k": "call",
+            "name": "normalize"
+          }
+        },
+        "module": "Stitch.Compute",
+        "name": "ringStep",
+        "params": [
+          {
+            "name": "instruction",
+            "type": {
+              "kind": "Instruction"
+            }
+          },
+          {
+            "name": "value",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "modulus",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "result": {
+          "kind": "Nat"
+        }
+      }
+    },
+    "interpreterSha256": "64b3309f0f0525a16807c9b20532c9dd08c632b0c6c62006b1c33fce343aad7a",
+    "roots": [
+      "Stitch.Compute.checkpointLinkAllowed",
+      "Stitch.Compute.ringStep"
+    ],
+    "schema": "stitch/execution-semantics/1",
+    "types": {
+      "Stitch.Compute.Instruction": {
+        "fields": [
+          {
+            "name": "opcode",
+            "type": {
+              "kind": "Nat"
+            }
+          },
+          {
+            "name": "argument",
+            "type": {
+              "kind": "Nat"
+            }
+          }
+        ],
+        "kind": "structure"
+      }
+    }
+  },
+  "generatorSha256": "6d7c181891b1e167d5deacf50d198b1590ffcf992a89f2ca3f186583dde6c295",
   "bindingSources": [
+    {
+      "path": "app/src/Foundation/Arch.lex.tex",
+      "sha256": "54fdc8eb15c46707e445ff99814d6cbd1731967f801bf064a6c1f4cc01c45394"
+    },
     {
       "path": "app/src/Foundation/Bytes.lex.tex",
       "sha256": "ce16e5b439128db3231979381f4599d3ff0617f62c2bf00c348bba35393abcd6"
@@ -11273,48 +26294,60 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "db124343ad8fe1295bc8eb305c7f59f83cf6ad76d46a5cabea500fe66f3ad5dc"
     },
     {
+      "path": "app/src/Product/Architecture.lex.tex",
+      "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
+    },
+    {
+      "path": "app/src/Product/Host.lex.tex",
+      "sha256": "60e8927f3f2c1cd499549545481a3e2dc234febf9439b3d95bb80f5c48a741ac"
+    },
+    {
+      "path": "app/src/Product/Model.lex.tex",
+      "sha256": "d2b3beb379082d364e006c67ca5e8c658de713ce97a5c6d65528ed464bad74f9"
+    },
+    {
       "path": "app/src/Stitch/Budget.lex.tex",
-      "sha256": "6dd5929d93582bdb79ef7a75ed75b7dca31fc63063b4c68433b61b3366bcfabd"
+      "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
-      "sha256": "39714c1143ebfc5cdf9986c1f1e94fcb207b9083b61e3705d299b6e5c883cd3b"
+      "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
-      "sha256": "060052435d2bb696f1f697dcdbe0b92c5754a31eab0114680f3336aa04338c1e"
+      "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
-      "sha256": "00fb8aade2a9b939445796ac71f374bbe228b9897e2a60af4d67c8f202ce806c"
+      "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
     },
     {
       "path": "app/src/Stitch/Evidence.lex.tex",
-      "sha256": "04e61df9f8567f614107651a995c1147be201aca06ee6a93a512af1697aa99d7"
+      "sha256": "39011e1cf70295427f716d328b1ab754242d3667f0e70a8a48dffa735465c79e"
     },
     {
       "path": "app/src/Stitch/Fragments.lex.tex",
-      "sha256": "0493de60e3eada0a4df8c3f4dcdacc8378a0bd5c5168102936a1036524899fd0"
+      "sha256": "5cd8d0602cbe501ae4ffc5c18dde17fc6e5766d930ac1d9277545d1ef8d88b83"
     },
     {
       "path": "app/src/Stitch/Identity.lex.tex",
-      "sha256": "91ac76398f1db8c546c727115d83173d26b2dab7da6f8269a471f742e23af535"
+      "sha256": "c4c159234e1623b8f339e86cf47da55c89d197bf21fe334bd893f575ba053870"
     },
     {
       "path": "app/src/Stitch/Observation.lex.tex",
-      "sha256": "b0774de40c102e7d5dfd3e8f4e5a27c69c24fe80b7da3c815e44bcd93fdc88ae"
+      "sha256": "fe3205a68576d8c7d82f86b45b78f8b6c8b49a873f00c448cccb2eb459749ae8"
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "fd114b1eecaf73b23aca9228fa0d91667881d18194fa9416930255a790edf8fa"
+      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
       "path": "app/src/Stitch/System.lex.tex",
-      "sha256": "a6cea3f896d85ea1b68d72592417d8b3d6ef055a2f22286ab0903381ecae3da6"
+      "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
-      "sha256": "f2ae0163b4b2948d0625d1c93b57eed5cd65abf0730aeea8983b438370b8684a"
+      "sha256": "ffd8a4b6b9072b27b06d67d61e1c11d085a6b82e84be4610f27f3805d87f675b"
     },
     {
       "path": "app/language/prism.arch/entries/arch-component-kind.toml",
@@ -11448,46 +26481,88 @@ export const MODEL_SOURCE = Object.freeze({
   "sources": [
     {
       "path": "app/src/Stitch/Budget.lex.tex",
-      "sha256": "6dd5929d93582bdb79ef7a75ed75b7dca31fc63063b4c68433b61b3366bcfabd"
+      "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
-      "sha256": "39714c1143ebfc5cdf9986c1f1e94fcb207b9083b61e3705d299b6e5c883cd3b"
+      "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
-      "sha256": "060052435d2bb696f1f697dcdbe0b92c5754a31eab0114680f3336aa04338c1e"
+      "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
-      "sha256": "00fb8aade2a9b939445796ac71f374bbe228b9897e2a60af4d67c8f202ce806c"
+      "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
     },
     {
       "path": "app/src/Stitch/Evidence.lex.tex",
-      "sha256": "04e61df9f8567f614107651a995c1147be201aca06ee6a93a512af1697aa99d7"
+      "sha256": "39011e1cf70295427f716d328b1ab754242d3667f0e70a8a48dffa735465c79e"
     },
     {
       "path": "app/src/Stitch/Fragments.lex.tex",
-      "sha256": "0493de60e3eada0a4df8c3f4dcdacc8378a0bd5c5168102936a1036524899fd0"
+      "sha256": "5cd8d0602cbe501ae4ffc5c18dde17fc6e5766d930ac1d9277545d1ef8d88b83"
     },
     {
       "path": "app/src/Stitch/Identity.lex.tex",
-      "sha256": "91ac76398f1db8c546c727115d83173d26b2dab7da6f8269a471f742e23af535"
+      "sha256": "c4c159234e1623b8f339e86cf47da55c89d197bf21fe334bd893f575ba053870"
     },
     {
       "path": "app/src/Stitch/Observation.lex.tex",
-      "sha256": "b0774de40c102e7d5dfd3e8f4e5a27c69c24fe80b7da3c815e44bcd93fdc88ae"
+      "sha256": "fe3205a68576d8c7d82f86b45b78f8b6c8b49a873f00c448cccb2eb459749ae8"
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "fd114b1eecaf73b23aca9228fa0d91667881d18194fa9416930255a790edf8fa"
+      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
       "path": "app/src/Stitch/System.lex.tex",
-      "sha256": "a6cea3f896d85ea1b68d72592417d8b3d6ef055a2f22286ab0903381ecae3da6"
+      "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     }
   ],
   "theorems": [
+    {
+      "id": "Stitch.Budget.boolAndFalse",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.boolFalseAnd",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.boolNotTrue",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chooseBoolTrue",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chooseBoolFalse",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chooseNatFalse",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chooseNatTrue",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
     {
       "id": "Stitch.Budget.reservationPreservesLimit",
       "proof": "linear_arithmetic",
@@ -11496,7 +26571,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "id": "Stitch.Budget.unknownSettlementRetainsReservation",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/Budget.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
@@ -11519,8 +26594,524 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
-      "id": "Stitch.Compute.semanticTamperingRefused",
+      "id": "Stitch.Budget.boolImpliesTruth",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedAdmissionSafety",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectionValueFromBool",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectBoolFromValue",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.unknownOutcomeRetainsLedger",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.staleEpochCannotSettle",
       "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementClockRollbackRefused",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.recordedIdCannotBeReservedAgain",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settledHeadCannotBeChargedAgain",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.ledgerValiditySelect",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationValidityOrder",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationLedgerParts",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationConjunctionClosure",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationTrueAnd",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationEpochReflexive",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationFreshCostValidity",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationListAdmissionFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationCandidateListGuarantee",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationCandidateNumericGuarantee",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationCandidateGuarantee",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationSelectedSafety",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reserveLedgerPreservesValidity",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reserveLedgerPreservesValidityFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationLedgerClockSelect",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationSelectedClockFact",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reservationCandidateClock",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.reserveLedgerClockFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordId",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordEpoch",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordCeiling",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordCostValidity",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectBoolFromBool",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementFromPreservesUnusedIds",
+      "proof": "induction",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementPreservesUnusedIds",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectNatFromBool",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordCharge",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarAccountingStep",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarAccounting",
+      "proof": "induction",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementValidityStep",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementFromPreservesReservationValidity",
+      "proof": "induction",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementReservationValidityFact",
+      "proof": "apply",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementPreservesReservationValidity",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarBoundToBool",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarBoolToBound",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settledSelectionChargeStep",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarChargeRejected",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarAdditionMonotone",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarFreshChargeGate",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarSameConsequent",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarTrueConsequentObserved",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarAdditionCancellation",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarCheckComparisonCongruence",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarCheckReflected",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarCheckAdditionCancellation",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.resourceAtChargeConstraint",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.resourceAtBound",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarTrueConsequent",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarStepChargeGuarantee",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarConsChargeCheck",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.selectedRecordChargeExpanded",
+      "proof": "cases",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarSettlementSafety",
+      "proof": "induction",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarChargeObservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.scalarSettlementFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chargeComparisonObserved",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.chargeFourConjunctionFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCannotIncreaseLedgerCharge",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCannotIncreaseLedgerChargeFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementValidityProjection",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementOldReservationsFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementListGateFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementNumericGateFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateNumericTransferFact",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateClock",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settleLedgerClockFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementImplicationObserved",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementListGateBooleanFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementNumericGateBooleanFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementListDomainGate",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementNumericDomainGate",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateListBoolean",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateNumericBoolean",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateListGuarantee",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateNumericGuarantee",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settlementCandidateGuarantee",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settleLedgerPreservesValidity",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Budget.settleLedgerPreservesValidityFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Budget.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.semanticTamperingRefused",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/Compute.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
@@ -11543,14 +27134,38 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
-      "id": "Stitch.Custody.unacknowledgedCannotCommit",
+      "id": "Stitch.Compute.committedCheckpointReplays",
       "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.mismatchedStateValueRejected",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.unsupportedWidthCannotCommit",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Compute.checkpointTransitionNeverRollsBack",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Compute.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.unacknowledgedCannotCommit",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.Custody.uncommittedCannotRetire",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
@@ -11561,25 +27176,229 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Custody.conjunctionPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.booleanSelfPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.activeFirstPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.activeRetirementPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.activeIndexedPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.distinctFirstPreservationFact",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Custody.committedMigrationPreservesRecovery",
-      "proof": "linear_arithmetic",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.committedMigrationPreservesRecoveryFact",
+      "proof": "simplify",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.Custody.retirementPreservesRecovery",
-      "proof": "linear_arithmetic",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.retirementPreservesRecoveryFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.distinctIndexedPreservationFact",
+      "proof": "constructor",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.Custody.indexedMigrationPreservesRecovery",
-      "proof": "linear_arithmetic",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.indexedMigrationPreservesRecoveryFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.indexedCopyLiveZero",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.indexedCopyLiveOne",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.indexedCopyLiveTwo",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.recoveryOfChoice",
+      "proof": "cases",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveRecoveryOfChoice",
+      "proof": "cases",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.recoveryOfSelection",
+      "proof": "apply",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveRecoveryOfSelection",
+      "proof": "apply",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.fallbackPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticGate0Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveGate0Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticMigrationGate0Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveMigrationGate0Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticGate1Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveGate1Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticMigrationGate1Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveMigrationGate1Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticGate2Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveGate2Preservation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.staticMigrationGate2Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.liveMigrationGate2Fact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.typedMigrationPreservesRecoveryFact",
+      "proof": "simplify",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.Custody.typedMigrationPreservesRecovery",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.typedMigrationPreservesLiveRecoveryAtObservationTimeFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.typedMigrationPreservesLiveRecoveryAtObservationTime",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.expiredReceiptDoesNotCountAsLive",
       "proof": "linear_arithmetic",
       "source": "app/src/Stitch/Custody.lex.tex",
       "status": "source-obligation-not-kernel-checked"
@@ -11598,6 +27417,12 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "id": "Stitch.Evidence.cannotExtendEvidenceHorizon",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Evidence.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Evidence.expiredEvidenceCannotBeReused",
       "proof": "linear_arithmetic",
       "source": "app/src/Stitch/Evidence.lex.tex",
       "status": "source-obligation-not-kernel-checked"
@@ -11651,6 +27476,18 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Observation.futureObservationRejected",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Observation.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Observation.acceptedObservationIsFresh",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Observation.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Pointer.successorStrictlyAdvances",
       "proof": "linear_arithmetic",
       "source": "app/src/Stitch/Pointer.lex.tex",
@@ -11658,7 +27495,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "id": "Stitch.Pointer.wrongAuthorityRefused",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/Pointer.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
@@ -11670,83 +27507,275 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "id": "Stitch.System.requestDoesNotChangeObjectCustody",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.System.requestDoesNotCreateEvidence",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.clockViewGrouping",
+      "proof": "decide",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.ledgerClockView",
+      "proof": "simplify",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.completionHistory",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.completionTime",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.clockAdvanceFact",
+      "proof": "constructor",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.historyPreservedFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.completionLedgerValidityFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.ledgerPlacementValiditySelect",
+      "proof": "cases",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.productValiditySelect",
+      "proof": "cases",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.completionSelectionReserved",
+      "proof": "cases",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.reservationClock",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.completionClock",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.guardedProductPreservationFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.requestAdmissionProductFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.weakenAdmissionFact",
+      "proof": "decide",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.requestMigrationCandidateValidityFact",
+      "proof": "simplify",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.migrationCandidateValidityFact",
+      "proof": "simplify",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.System.migrationRequestDoesNotEstablishCustody",
-      "proof": "linear_arithmetic",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.migrationRequestPreservesProductInvariantFact",
+      "proof": "simplify",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.System.migrationRequestPreservesProductInvariant",
-      "proof": "linear_arithmetic",
+      "proof": "simplify",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.migrationPreservesProductInvariantFact",
+      "proof": "simplify",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.System.migrationPreservesProductInvariant",
-      "proof": "linear_arithmetic",
+      "proof": "simplify",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
       "id": "Stitch.System.migrationCompletionDoesNotRefundBudget",
-      "proof": "linear_arithmetic",
+      "proof": "apply",
+      "source": "app/src/Stitch/System.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.System.settlementDoesNotEstablishCustody",
+      "proof": "reflexivity",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     }
   ],
   "definitions": [
+    "Stitch.Budget.addResources",
     "Stitch.Budget.admitAction",
     "Stitch.Budget.budgetValid",
+    "Stitch.Budget.chargedAt",
+    "Stitch.Budget.chooseBool",
+    "Stitch.Budget.chooseNat",
+    "Stitch.Budget.headChargedAt",
+    "Stitch.Budget.ledgerBudget",
+    "Stitch.Budget.ledgerValid",
+    "Stitch.Budget.outcomeKnown",
+    "Stitch.Budget.recordSettlement",
+    "Stitch.Budget.recordSettlementFrom",
+    "Stitch.Budget.reservationCandidate",
+    "Stitch.Budget.reservationCostValid",
+    "Stitch.Budget.reservationNumericValidity",
+    "Stitch.Budget.reservationSelectNat",
+    "Stitch.Budget.reservationUnused",
+    "Stitch.Budget.reservationsValid",
     "Stitch.Budget.reserveAction",
     "Stitch.Budget.reserveAllowed",
     "Stitch.Budget.reserveAmount",
+    "Stitch.Budget.reserveLedger",
+    "Stitch.Budget.reserveLedgerAllowed",
+    "Stitch.Budget.reservedAt",
+    "Stitch.Budget.reservedTotal",
+    "Stitch.Budget.resourceAt",
+    "Stitch.Budget.resourcesAtMost",
     "Stitch.Budget.resourcesWithin",
+    "Stitch.Budget.sameResources",
+    "Stitch.Budget.scalarChargeSafe",
+    "Stitch.Budget.scalarFreshChargeCheck",
+    "Stitch.Budget.scalarStepChargeSafe",
+    "Stitch.Budget.selectBool",
+    "Stitch.Budget.selectBoth",
+    "Stitch.Budget.selectLedger",
+    "Stitch.Budget.selectNat",
+    "Stitch.Budget.selectRemaining",
+    "Stitch.Budget.selectedSettlementRecord",
+    "Stitch.Budget.selectionFromBool",
+    "Stitch.Budget.selectionValue",
+    "Stitch.Budget.settleLedger",
+    "Stitch.Budget.settleLedgerAllowed",
     "Stitch.Budget.settleReserved",
     "Stitch.Budget.settleSpent",
     "Stitch.Budget.settlementAllowed",
+    "Stitch.Budget.settlementCandidate",
+    "Stitch.Budget.settlementImplies",
+    "Stitch.Budget.settlementRecorded",
+    "Stitch.Budget.spentAt",
+    "Stitch.Budget.spentTotal",
+    "Stitch.Budget.updateSettlementRecord",
+    "Stitch.Budget.zeroResources",
+    "Stitch.Compute.advanceCheckpoint",
     "Stitch.Compute.appendProgram",
+    "Stitch.Compute.checkpointCommitted",
     "Stitch.Compute.checkpointLinkAllowed",
     "Stitch.Compute.checkpointMatchesJob",
     "Stitch.Compute.checkpointSuccessor",
+    "Stitch.Compute.committedCheckpointAllowed",
+    "Stitch.Compute.committedCheckpointSuccessor",
     "Stitch.Compute.execute",
+    "Stitch.Compute.inputCommitted",
     "Stitch.Compute.instructionAllowed",
     "Stitch.Compute.instructionCount",
+    "Stitch.Compute.instructionWellFormed",
     "Stitch.Compute.instructionsAllowed",
+    "Stitch.Compute.instructionsWellFormed",
     "Stitch.Compute.jobAllowed",
+    "Stitch.Compute.jobCommitted",
+    "Stitch.Compute.natBitwise",
     "Stitch.Compute.normalize",
     "Stitch.Compute.programAllowed",
+    "Stitch.Compute.programCommitted",
     "Stitch.Compute.replayedValue",
     "Stitch.Compute.ringModulus",
     "Stitch.Compute.ringStep",
+    "Stitch.Compute.sameInstruction",
+    "Stitch.Compute.sameInstructions",
+    "Stitch.Compute.stateCommitted",
     "Stitch.Compute.supportedWidth",
     "Stitch.Compute.takeSteps",
     "Stitch.Custody.acknowledgeTransfer",
     "Stitch.Custody.activeCount",
+    "Stitch.Custody.activeThreshold",
+    "Stitch.Custody.choosePlacement",
+    "Stitch.Custody.chooseTruth",
     "Stitch.Custody.commitAllowed",
     "Stitch.Custody.commitTransfer",
     "Stitch.Custody.committedPhase",
+    "Stitch.Custody.committedPlacement0",
+    "Stitch.Custody.committedPlacement1",
+    "Stitch.Custody.committedPlacement2",
     "Stitch.Custody.distinctHolders",
     "Stitch.Custody.failTransfer",
     "Stitch.Custody.fragmentBound",
     "Stitch.Custody.fragmentIntegrityAccepted",
+    "Stitch.Custody.indexedCopyLive",
+    "Stitch.Custody.installReceipt",
+    "Stitch.Custody.liveCount",
     "Stitch.Custody.migrate",
     "Stitch.Custody.migrationAllowed",
+    "Stitch.Custody.migrationBase",
+    "Stitch.Custody.migrationGate0",
+    "Stitch.Custody.migrationGate1",
+    "Stitch.Custody.migrationGate2",
     "Stitch.Custody.physicalBytes",
+    "Stitch.Custody.physicalCopyLive",
     "Stitch.Custody.prepareCompletion",
     "Stitch.Custody.receiptBound",
+    "Stitch.Custody.receiptLive",
     "Stitch.Custody.recordCompletion",
     "Stitch.Custody.recoverable",
+    "Stitch.Custody.recoverableAt",
     "Stitch.Custody.replaceFirst",
     "Stitch.Custody.replaceIndex",
     "Stitch.Custody.requestRecorded",
@@ -11756,13 +27785,27 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Custody.retireAllowed",
     "Stitch.Custody.retireFirst",
     "Stitch.Custody.sameRequest",
+    "Stitch.Custody.selectPlacement",
+    "Stitch.Custody.selectTruth",
+    "Stitch.Custody.selectionOfTruth",
+    "Stitch.Custody.sourceLive",
     "Stitch.Custody.sourcePlaced",
     "Stitch.Encoding.dependenciesReady",
     "Stitch.Encoding.exactRecovery",
     "Stitch.Encoding.rawDecode",
     "Stitch.Encoding.selfContainedBytes",
     "Stitch.Encoding.totalRecoveryBytes",
+    "Stitch.Evidence.claimCode",
+    "Stitch.Evidence.dependenciesUnchanged",
+    "Stitch.Evidence.dependencyKindCode",
+    "Stitch.Evidence.effectCode",
+    "Stitch.Evidence.effectMember",
+    "Stitch.Evidence.effectsCovered",
+    "Stitch.Evidence.kindCode",
+    "Stitch.Evidence.positiveEvidenceKind",
     "Stitch.Evidence.pureEffectAllowed",
+    "Stitch.Evidence.sameAssumptions",
+    "Stitch.Evidence.sameDependency",
     "Stitch.Evidence.scopeReusable",
     "Stitch.Fragments.decodePair",
     "Stitch.Fragments.encodeForPair",
@@ -11779,16 +27822,29 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Identity.sameDigest",
     "Stitch.Observation.acceptObservation",
     "Stitch.Observation.observationFresh",
+    "Stitch.Observation.reachableObservation",
+    "Stitch.Observation.updateObservation",
     "Stitch.Pointer.acceptPointer",
     "Stitch.Pointer.successorAllowed",
-    "Stitch.System.admit",
+    "Stitch.System.admitAction",
     "Stitch.System.applyMigration",
+    "Stitch.System.choosePlacement",
     "Stitch.System.completeMigrationAllowed",
     "Stitch.System.completionBudget",
+    "Stitch.System.completionLedger",
+    "Stitch.System.completionSafetyGuard",
+    "Stitch.System.ledgerHistory",
+    "Stitch.System.ledgerPlacementValid",
+    "Stitch.System.ledgerTime",
+    "Stitch.System.migrationCandidateValidity",
     "Stitch.System.requestAction",
     "Stitch.System.requestMigration",
     "Stitch.System.requestMigrationAllowed",
-    "Stitch.System.valid"
+    "Stitch.System.reservationActive",
+    "Stitch.System.settleAction",
+    "Stitch.System.settleActionAllowed",
+    "Stitch.System.valid",
+    "Stitch.System.validAt"
   ],
   "aliases": {
     "budgetReserveAllowed": "Stitch.Budget.reserveAllowed",
@@ -11848,13 +27904,14 @@ function evaluate(ast,env,module) {
     }
     case 'prim': {
       const a=ast.args.map(x=>evaluate(x,env,module));
-      switch(ast.operation){case 'subtract':return a[0]>=a[1]?a[0]-a[1]:0n;case 'multiply':return a[0]*a[1];case 'quotient':return a[1]===0n?a[2]:a[0]/a[1];case 'remainder':return a[1]===0n?a[2]:a[0]%a[1];case 'shift_left':return a[0]<<a[1];case 'bit_xor':return a[0]^a[1];case 'bit_and':return a[0]&a[1];case 'bit_or':return a[0]|a[1];case 'equal':return a[0].length===a[1].length&&a[0].every((x,i)=>x===a[1][i]);default:throw Error('unsupported model primitive');}
+      switch(ast.operation){case 'subtract':return a[0]>=a[1]?a[0]-a[1]:0n;case 'multiply':return a[0]*a[1];case 'quotient':return a[1]===0n?a[2]:a[0]/a[1];case 'remainder':return a[1]===0n?a[2]:a[0]%a[1];case 'equal':return a[0].length===a[1].length&&a[0].every((x,i)=>x===a[1][i]);default:throw Error('unsupported model primitive');}
     }
     default:throw Error('unsupported model node '+ast.k);
   }
 }
 function invoke(id,args) {const d=definitions[id];if(!d||d.params.length!==args.length)throw Error('unknown model function/arity '+id);return evaluate(d.body,Object.fromEntries(d.params.map((p,i)=>[p.name,args[i]])),d.module);}
 export const model=Object.freeze(Object.fromEntries(Object.entries(definitions).map(([id,d])=>[id,(...args)=>{if(args.length!==d.params.length)throw new TypeError('model arity '+id);return invoke(id,args.map((v,i)=>coerce(v,d.params[i].type,d.module)));}])));
+
 export const budgetReserveAllowed = model["Stitch.Budget.reserveAllowed"];
 export const budgetSettlementAllowed = model["Stitch.Budget.settlementAllowed"];
 export const pointerSuccessorAllowed = model["Stitch.Pointer.successorAllowed"];

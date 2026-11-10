@@ -17,71 +17,154 @@ inductive{
   name: ActionKind,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: Place, fields: []}, {name: Repair, fields: []}, {name: Refresh, fields: []}, {name: Checkpoint, fields: []}, {name: Reencode, fields: []}, {name: PublishPointer, fields: []}]
+  constructors: [
+    {name: Place, fields: []},
+    {name: Repair, fields: []},
+    {name: Refresh, fields: []},
+    {name: Checkpoint, fields: []},
+    {name: Reencode, fields: []},
+    {name: PublishPointer, fields: []}
+  ]
 }
+
 structure{
   name: State,
   type_parameters: [],
   parameters: [],
-  fields: [{name: objects, type: (List Stitch.Identity::Object)}, {name: encodings, type: (List Stitch.Encoding::Encoding)}, {name: placement, type: Stitch.Custody::Placement}, {name: peers, type: (List Stitch.Observation::PeerObservation)}, {name: pointers, type: (List Stitch.Pointer::Pointer)}, {name: jobs, type: (List Stitch.Compute::Job)}, {name: checkpoints, type: (List Stitch.Compute::Checkpoint)}, {name: budget, type: Stitch.Budget::Budget}, {name: evidence, type: (List Stitch.Evidence::Evidence)}, {name: transfers, type: (List Stitch.Custody::Transfer)}]
+  fields: [
+    {name: objects, type: (List Stitch.Identity::Object)},
+    {name: encodings, type: (List Stitch.Encoding::Encoding)},
+    {name: placement, type: Stitch.Custody::Placement},
+    {name: peers, type: (List Stitch.Observation::PeerObservation)},
+    {name: pointers, type: (List Stitch.Pointer::Pointer)},
+    {name: jobs, type: (List Stitch.Compute::Job)},
+    {name: checkpoints, type: (List Stitch.Compute::Checkpoint)},
+    {name: ledger, type: Stitch.Budget::Ledger},
+    {name: evidence, type: (List Stitch.Evidence::Evidence)},
+    {name: transfers, type: (List Stitch.Custody::Transfer)}
+  ]
 }
+
 structure{
   name: Action,
   type_parameters: [],
   parameters: [],
-  fields: [{name: kind, type: ActionKind}, {name: cost, type: Stitch.Budget::Resources}, {name: preconditionsChecked, type: Bool}, {name: dependenciesPresent, type: Bool}, {name: authorizationChecked, type: Bool}]
+  fields: [
+    {name: actionId, type: Stitch.Identity::Digest},
+    {name: kind, type: ActionKind},
+    {name: cost, type: Stitch.Budget::Resources},
+    {name: preconditionsChecked, type: Bool},
+    {name: dependenciesPresent, type: Bool},
+    {name: authorizationChecked, type: Bool}
+  ]
 }
+
 definition{
-  name: admit,
+  name: admitAction,
   parameters: [state : State, action : Action, now : Nat],
   result: Bool,
-  body: ((Stitch.Budget::admitAction (project state budget) (project action cost) now) && ((project action preconditionsChecked) && ((project action dependenciesPresent) && (project action authorizationChecked))))
+  body: ((Stitch.Custody::recoverableAt (project state placement) now) && ((Stitch.Budget::reserveLedgerAllowed (project state ledger) (project action actionId) (project action cost) now) && ((project action preconditionsChecked) && ((project action dependenciesPresent) && (project action authorizationChecked)))))
 }
+
 definition{
   name: requestAction,
   parameters: [state : State, action : Action, now : Nat],
   result: State,
-  body: (if (admit state action now) then (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), evidence := (project state evidence), transfers := (project state transfers), budget := (Stitch.Budget::reserveAction (project state budget) (project action cost) now)}) else state)
+  body: (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), ledger := (if (admitAction state action now) then (Stitch.Budget::reserveLedger (project state ledger) (project action actionId) (project action cost) now) else (project state ledger)), evidence := (project state evidence), transfers := (project state transfers)})
 }
+
 theorem{
   name: requestDoesNotChangeObjectCustody,
   parameters: [state : State, action : Action, now : Nat],
   statement: ((project (requestAction state action now) placement) = (project state placement)),
-  proof: linear_arithmetic{definitions: [admit, requestAction]}
+  proof: reflexivity{}
 }
+
 theorem{
   name: requestDoesNotCreateEvidence,
   parameters: [state : State, action : Action, now : Nat],
   statement: ((project (requestAction state action now) evidence) = (project state evidence)),
-  proof: linear_arithmetic{definitions: [admit, requestAction]}
+  proof: reflexivity{}
+}
+
+definition{
+  name: ledgerPlacementValid,
+  parameters: [ledger : Stitch.Budget::Ledger, placement : Stitch.Custody::Placement],
+  result: Bool,
+  body: ((Stitch.Budget::ledgerValid ledger) && (Stitch.Custody::recoverableAt placement (project (project ledger budget) last)))
 }
 
 definition{
   name: valid,
   parameters: [state : State],
   result: Bool,
-  body: ((Stitch.Budget::budgetValid (project state budget)) && (Stitch.Custody::recoverable (project state placement)))
+  body: (ledgerPlacementValid (project state ledger) (project state placement))
+}
+
+definition{
+  name: validAt,
+  parameters: [state : State, now : Nat],
+  result: Bool,
+  body: ((Stitch.Budget::ledgerValid (project state ledger)) && (Stitch.Custody::recoverableAt (project state placement) now))
 }
 
 definition{
   name: requestMigrationAllowed,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
   result: Bool,
-  body: ((Stitch.Budget::admitAction (project state budget) cost now) && ((Stitch.Custody::requestWellFormed transfer) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestUnused (project state transfers) (project transfer requestRoot)) && (Stitch.Custody::sourcePlaced (project state placement) transfer)))))
+  body: ((Stitch.Custody::recoverableAt (project state placement) now) && ((Stitch.Budget::reserveLedgerAllowed (project state ledger) (project transfer requestRoot) cost now) && ((Stitch.Custody::requestWellFormed transfer) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestUnused (project state transfers) (project transfer requestRoot)) && (Stitch.Custody::sourceLive (project state placement) transfer now))))))
 }
 
 definition{
   name: requestMigration,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
   result: State,
-  body: (if (requestMigrationAllowed state transfer cost now) then (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), budget := (Stitch.Budget::reserveAction (project state budget) cost now), evidence := (project state evidence), transfers := (cons transfer (project state transfers))}) else state)
+  body: (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), ledger := (Stitch.Budget::selectLedger (Stitch.Budget::selectionFromBool (requestMigrationAllowed state transfer cost now)) (Stitch.Budget::reservationCandidate (project state ledger) (project transfer requestRoot) cost now) (project state ledger)), evidence := (project state evidence), transfers := (if (requestMigrationAllowed state transfer cost now) then (cons transfer (project state transfers)) else (project state transfers))})
+}
+
+definition{
+  name: reservationActive,
+  parameters: [
+    reservations : (List Stitch.Budget::Reservation),
+    actionId : Stitch.Identity::Digest,
+    epoch : Nat
+  ],
+  result: Bool,
+  body: (match reservations
+    | List.nil => false
+    | List.cons head tail => (if (Stitch.Identity::sameDigest (project head actionId) actionId) then (((project head epoch) =? epoch) && (not (project head settled))) else (reservationActive tail actionId epoch))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: completionSafetyGuard,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  result: Bool,
+  body: ((Stitch.Budget::ledgerValid ledger) && (((project (project ledger budget) last) <=? now) && (now <? (project (project ledger budget) end))))
 }
 
 definition{
   name: completeMigrationAllowed,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
   result: Bool,
-  body: (((project (project state budget) last) <=? now) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestRecorded (project state transfers) transfer) && (Stitch.Custody::migrationAllowed (project state placement) (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now) now))))
+  body: (((completionSafetyGuard (project state ledger) now) && (Stitch.Custody::recoverableAt (project state placement) now)) && ((reservationActive (project (project state ledger) reservations) (project transfer requestRoot) (project (project (project state ledger) budget) epoch)) && ((Stitch.Custody::requestedPhase transfer) && ((Stitch.Custody::requestRecorded (project state transfers) transfer) && (Stitch.Custody::migrationAllowed (project state placement) (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now) now)))))
 }
 
 definition{
@@ -92,39 +175,394 @@ definition{
 }
 
 definition{
+  name: completionLedger,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  result: Stitch.Budget::Ledger,
+  body: (record Stitch.Budget::Ledger {budget := (completionBudget (project ledger budget) now), reservations := (project ledger reservations)})
+}
+
+definition{
+  name: ledgerTime,
+  parameters: [budget : Stitch.Budget::Budget],
+  result: Bool,
+  body: (((project budget start) <=? (project budget last)) && ((project budget last) <? (project budget end)))
+}
+
+definition{
+  name: ledgerHistory,
+  parameters: [ledger : Stitch.Budget::Ledger],
+  result: Bool,
+  body: ((Stitch.Budget::budgetValid (project ledger budget)) && ((Stitch.Budget::reservationsValid (project ledger reservations) (project (project ledger budget) epoch)) && ((Stitch.Budget::sameResources (project (project ledger budget) spent) (Stitch.Budget::spentTotal (project ledger reservations))) && (Stitch.Budget::sameResources (project (project ledger budget) reserved) (Stitch.Budget::reservedTotal (project ledger reservations))))))
+}
+
+theorem{
+  name: clockViewGrouping,
+  parameters: [],
+  statement: (forall (a : Bool), (forall (b : Bool), (forall (c : Bool), (forall (d : Bool), (((a && (b && (c && d))) = ((b && c) && (a && d))) <-> (0 = 0)))))),
+  proof: decide{}
+}
+
+theorem{
+  name: ledgerClockView,
+  parameters: [ledger : Stitch.Budget::Ledger],
+  statement: ((Stitch.Budget::ledgerValid ledger) = ((ledgerTime (project ledger budget)) && (ledgerHistory ledger))),
+  proof: simplify{
+    definitions: [clockViewGrouping, ledgerHistory, ledgerTime, Stitch.Budget::ledgerValid]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: completionHistory,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((ledgerHistory (completionLedger ledger now)) = (ledgerHistory ledger)),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: completionTime,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((ledgerTime (project (completionLedger ledger now) budget)) = (((project (project ledger budget) start) <=? now) && (now <? (project (project ledger budget) end)))),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: clockAdvanceFact,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((((ledgerTime (project ledger budget)) = true) -> (((((project (project ledger budget) last) <=? now) && (now <? (project (project ledger budget) end))) = true) -> ((ledgerTime (project (completionLedger ledger now) budget)) = true))) <-> (0 = 0)),
+  proof: constructor{
+    branches: [
+      linear_arithmetic{},
+      linear_arithmetic{definitions: [completionBudget, completionLedger, ledgerTime]}
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: historyPreservedFact,
+  parameters: [],
+  statement: (forall (oldTime : Bool), (forall (newTime : Bool), (forall (history : Bool), (forall (extra : Bool), (((oldTime = true) -> ((extra = true) -> (newTime = true))) -> (((((oldTime && history) && extra) = true) -> ((newTime && history) = true)) <-> (0 = 0))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: completionLedgerValidityFact,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((((completionSafetyGuard ledger now) = true) -> ((Stitch.Budget::ledgerValid (completionLedger ledger now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      clockAdvanceFact,
+      completionHistory,
+      completionSafetyGuard,
+      historyPreservedFact,
+      ledgerClockView
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: choosePlacement,
+  parameters: [
+    selection : Stitch.Budget::Selection,
+    whenTrue : Stitch.Custody::Placement,
+    whenFalse : Stitch.Custody::Placement
+  ],
+  result: Stitch.Custody::Placement,
+  body: (match selection
+    | Stitch.Budget::Selection.Reject => whenFalse
+    | Stitch.Budget::Selection.Accept => whenTrue)
+}
+
+theorem{
+  name: ledgerPlacementValiditySelect,
+  parameters: [
+    selection : Stitch.Budget::Selection,
+    whenTrue : Stitch.Budget::Ledger,
+    whenFalse : Stitch.Budget::Ledger,
+    placement : Stitch.Custody::Placement
+  ],
+  statement: ((ledgerPlacementValid (Stitch.Budget::selectLedger selection whenTrue whenFalse) placement) = (Stitch.Budget::selectBool selection (ledgerPlacementValid whenTrue placement) (ledgerPlacementValid whenFalse placement))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: productValiditySelect,
+  parameters: [
+    selection : Stitch.Budget::Selection,
+    trueLedger : Stitch.Budget::Ledger,
+    falseLedger : Stitch.Budget::Ledger,
+    truePlacement : Stitch.Custody::Placement,
+    falsePlacement : Stitch.Custody::Placement
+  ],
+  statement: ((ledgerPlacementValid (Stitch.Budget::selectLedger selection trueLedger falseLedger) (choosePlacement selection truePlacement falsePlacement)) = (Stitch.Budget::selectBool selection (ledgerPlacementValid trueLedger truePlacement) (ledgerPlacementValid falseLedger falsePlacement))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: completionSelectionReserved,
+  parameters: [selection : Stitch.Budget::Selection, ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((project (project (Stitch.Budget::selectLedger selection (completionLedger ledger now) ledger) budget) reserved) = (project (project ledger budget) reserved)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: reservationClock,
+  parameters: [
+    ledger : Stitch.Budget::Ledger,
+    actionId : Stitch.Identity::Digest,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
+  statement: ((project (project (Stitch.Budget::reservationCandidate ledger actionId cost now) budget) last) = now),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: completionClock,
+  parameters: [ledger : Stitch.Budget::Ledger, now : Nat],
+  statement: ((project (project (completionLedger ledger now) budget) last) = now),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: guardedProductPreservationFact,
+  parameters: [],
+  statement: (forall (before : Bool), (forall (guard : Bool), (forall (candidate : Bool), (((guard = true) -> (candidate = true)) -> (((before = true) -> ((Stitch.Budget::selectBool (Stitch.Budget::selectionFromBool guard) candidate before) = true)) <-> (0 = 0)))))),
+  proof: decide{}
+}
+
+theorem{
+  name: requestAdmissionProductFact,
+  parameters: [],
+  statement: (forall (live : Bool), (forall (reserve : Bool), (forall (rest : Bool), (forall (next : Bool), (((reserve = true) -> (next = true)) -> ((((live && (reserve && rest)) = true) -> ((next && live) = true)) <-> (0 = 0))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: weakenAdmissionFact,
+  parameters: [],
+  statement: (forall (before : Bool), (forall (after : Bool), (forall (extra : Bool), (((before = true) -> (after = true)) -> ((((before && extra) = true) -> (after = true)) <-> (0 = 0)))))),
+  proof: decide{}
+}
+
+theorem{
+  name: requestMigrationCandidateValidityFact,
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
+  statement: ((((requestMigrationAllowed state transfer cost now) = true) -> ((ledgerPlacementValid (Stitch.Budget::reservationCandidate (project state ledger) (project transfer requestRoot) cost now) (project state placement)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      ledgerPlacementValid,
+      requestAdmissionProductFact,
+      requestMigrationAllowed,
+      reservationClock,
+      Stitch.Budget::reservationCandidateGuarantee
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: migrationCandidateValidity,
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
+  result: Bool,
+  body: (ledgerPlacementValid (completionLedger (project state ledger) now) (Stitch.Custody::migrate (project state placement) (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now) now))
+}
+
+theorem{
+  name: migrationCandidateValidityFact,
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
+  statement: ((((completeMigrationAllowed state transfer receipt fragment integrity now) = true) -> ((ledgerPlacementValid (completionLedger (project state ledger) now) (Stitch.Custody::migrate (project state placement) (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now) now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      completeMigrationAllowed,
+      completionClock,
+      completionLedgerValidityFact,
+      ledgerPlacementValid,
+      weakenAdmissionFact,
+      Stitch.Custody::conjunctionPreservationFact,
+      Stitch.Custody::typedMigrationPreservesLiveRecoveryAtObservationTimeFact
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
   name: applyMigration,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
   result: State,
-  body: (if (completeMigrationAllowed state transfer receipt fragment integrity now) then (let completed : Stitch.Custody::Transfer := (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now); (record State {objects := (project state objects), encodings := (project state encodings), placement := (Stitch.Custody::migrate (project state placement) completed now), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), budget := (completionBudget (project state budget) now), evidence := (project state evidence), transfers := (Stitch.Custody::recordCompletion (project state transfers) completed)})) else state)
+  body: (let allowed : Bool := (completeMigrationAllowed state transfer receipt fragment integrity now); (let completed : Stitch.Custody::Transfer := (Stitch.Custody::prepareCompletion (project state placement) transfer receipt fragment integrity now); (let selection : Stitch.Budget::Selection := (Stitch.Budget::selectionFromBool allowed); (record State {objects := (project state objects), encodings := (project state encodings), placement := (choosePlacement selection (Stitch.Custody::migrate (project state placement) completed now) (project state placement)), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), ledger := (Stitch.Budget::selectLedger selection (completionLedger (project state ledger) now) (project state ledger)), evidence := (project state evidence), transfers := (if allowed then (Stitch.Custody::recordCompletion (project state transfers) completed) else (project state transfers))}))))
 }
 
 theorem{
   name: migrationRequestDoesNotEstablishCustody,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
   statement: ((project (requestMigration state transfer cost now) placement) = (project state placement)),
-  proof: linear_arithmetic{definitions: [requestMigration, requestMigrationAllowed]}
+  proof: reflexivity{}
+}
+
+theorem{
+  name: migrationRequestPreservesProductInvariantFact,
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
+  statement: ((((valid state) = true) -> ((valid (requestMigration state transfer cost now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      guardedProductPreservationFact,
+      ledgerPlacementValiditySelect,
+      requestMigration,
+      requestMigrationCandidateValidityFact,
+      valid
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 
 theorem{
   name: migrationRequestPreservesProductInvariant,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, cost : Stitch.Budget::Resources, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    cost : Stitch.Budget::Resources,
+    now : Nat
+  ],
   statement: (((valid state) = true) -> ((valid (requestMigration state transfer cost now)) = true)),
-  proof: linear_arithmetic{definitions: [Stitch.Budget::admitAction, Stitch.Budget::budgetValid, Stitch.Budget::reserveAction, Stitch.Budget::resourcesWithin, requestMigration, requestMigrationAllowed, valid]}
+  proof: simplify{definitions: [migrationRequestPreservesProductInvariantFact]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: migrationPreservesProductInvariantFact,
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
+  statement: ((((valid state) = true) -> ((valid (applyMigration state transfer receipt fragment integrity now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      applyMigration,
+      guardedProductPreservationFact,
+      migrationCandidateValidityFact,
+      productValiditySelect,
+      valid
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 
 theorem{
   name: migrationPreservesProductInvariant,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
   statement: (((valid state) = true) -> ((valid (applyMigration state transfer receipt fragment integrity now)) = true)),
-  proof: linear_arithmetic{definitions: [Stitch.Budget::budgetValid, Stitch.Budget::resourcesWithin, Stitch.Custody::activeCount, Stitch.Custody::distinctHolders, Stitch.Custody::migrationAllowed, Stitch.Custody::replaceIndex, Stitch.Custody::migrate, Stitch.Custody::recoverable, applyMigration, completeMigrationAllowed, completionBudget, valid]}
+  proof: simplify{definitions: [migrationPreservesProductInvariantFact]},
+  axioms: [Classical.choice, Quot.sound, propext]
 }
 
 theorem{
   name: migrationCompletionDoesNotRefundBudget,
-  parameters: [state : State, transfer : Stitch.Custody::Transfer, receipt : Stitch.Custody::Receipt, fragment : Stitch.Fragments::Fragment, integrity : Stitch.Custody::FragmentIntegrityObservation, now : Nat],
-  statement: ((project (project (applyMigration state transfer receipt fragment integrity now) budget) reserved) = (project (project state budget) reserved)),
-  proof: linear_arithmetic{definitions: [applyMigration, completeMigrationAllowed, completionBudget]}
+  parameters: [
+    state : State,
+    transfer : Stitch.Custody::Transfer,
+    receipt : Stitch.Custody::Receipt,
+    fragment : Stitch.Fragments::Fragment,
+    integrity : Stitch.Custody::FragmentIntegrityObservation,
+    now : Nat
+  ],
+  statement: ((project (project (project (applyMigration state transfer receipt fragment integrity now) ledger) budget) reserved) = (project (project (project state ledger) budget) reserved)),
+  proof: apply{
+    arguments: [
+      (Stitch.Budget::selectionFromBool (completeMigrationAllowed state transfer receipt fragment integrity now)),
+      (project state ledger),
+      now
+    ],
+    theorem: completionSelectionReserved
+  }
 }
 
+definition{
+  name: settleActionAllowed,
+  parameters: [state : State, observation : Stitch.Budget::SettlementObservation, now : Nat],
+  result: Bool,
+  body: ((Stitch.Custody::recoverableAt (project state placement) now) && (Stitch.Budget::settleLedgerAllowed (project state ledger) observation now))
+}
+
+definition{
+  name: settleAction,
+  parameters: [state : State, observation : Stitch.Budget::SettlementObservation, now : Nat],
+  result: State,
+  body: (record State {objects := (project state objects), encodings := (project state encodings), placement := (project state placement), peers := (project state peers), pointers := (project state pointers), jobs := (project state jobs), checkpoints := (project state checkpoints), ledger := (if (settleActionAllowed state observation now) then (Stitch.Budget::settleLedger (project state ledger) observation now) else (project state ledger)), evidence := (project state evidence), transfers := (project state transfers)})
+}
+
+theorem{
+  name: settlementDoesNotEstablishCustody,
+  parameters: [state : State, observation : Stitch.Budget::SettlementObservation, now : Nat],
+  statement: ((project (settleAction state observation now) placement) = (project state placement)),
+  proof: reflexivity{}
+}
 \end{semanticmodule}
 \end{lexlean}

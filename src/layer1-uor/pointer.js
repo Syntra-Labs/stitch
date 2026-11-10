@@ -96,3 +96,77 @@ export function parsePointerDnsText(text) {
   if (!chunks || chunks.join(' ') !== text.trim()) refuse('invalid-pointer-dns');
   return JSON.parse(chunks.map(part => JSON.parse(part)).join(''));
 }
+
+/** Session-local DNS publication state, scoped to destination and pinned authority.
+ * Reconciliation observes the provider; it is neither atomic CAS nor global order.
+ * Credentials are used for this call only and never retained in publication state.
+ */
+export class PointerPublisher {
+  #states = new Map();
+  #busy = new Set();
+  constructor({ resolver, clock = Date.now }) { this.resolver = resolver; this.clock = clock; }
+  pending({ zoneId, name, trustedAuthorityKey }) {
+    const state = this.#states.get(JSON.stringify([String(zoneId).toLowerCase(), name, trustedAuthorityKey]));
+    return state?.outcome === 'unknown' ? structuredClone(state.candidate) : null;
+  }
+  async publish({ zoneId, apiToken, name, trustedAuthorityKey, candidate }) {
+    // Snapshot all caller-controlled data before the first await.
+    candidate = snapshot(candidate);
+    if (typeof zoneId !== 'string' || !/^[a-f0-9]{32}$/i.test(zoneId)
+      || typeof apiToken !== 'string' || !apiToken) refuse('invalid-dns-destination');
+    zoneId = zoneId.toLowerCase();
+    identifier(name); unhex(trustedAuthorityKey, 32);
+    const scope = JSON.stringify([zoneId, name, trustedAuthorityKey]);
+    if (this.#busy.has(scope)) refuse('dns-publication-in-flight');
+    this.#busy.add(scope);
+    try {
+      await verifyPointer(candidate, trustedAuthorityKey);
+      if (candidate.name !== name) refuse('pointer-name');
+      const previous = this.#states.get(scope);
+      if (previous?.outcome === 'unknown' && previous.pointerDigest !== candidate.pointerDigest) refuse('dns-publication-unresolved');
+      // Reserve retained publication-state capacity before any provider effect,
+      // so a successful/uncertain write cannot outlive an admission refusal.
+      this.resolver.admission?.reserve('refresh', { storageBytes: canonicalBytes(candidate).length + canonicalBytes(scope).length });
+      let records;
+      try { records = await this.resolver.listCloudflareRecords({ zoneId, apiToken, name }); }
+      catch (error) {
+        if (previous?.outcome === 'unknown') return { outcome: 'unknown', reason: 'Provider reconciliation failed; retry a read without repeating the write.' };
+        throw error;
+      }
+      // Defense in depth for adapters: never overwrite ambiguous or foreign rows.
+      if (!Array.isArray(records) || records.length > 1) refuse('dns-record-conflict');
+      const remote = records[0];
+      let recordId = null;
+      if (remote) {
+        if (remote.name !== name || remote.type !== 'TXT' || typeof remote.id !== 'string'
+          || !/^[A-Za-z0-9_-]{1,128}$/.test(remote.id)) refuse('dns-record-conflict');
+        const pointer = parsePointerDnsText(remote.content);
+        await verifyPointer(pointer, trustedAuthorityKey);
+        if (pointer.name !== name || (previous?.recordId && previous.recordId !== remote.id)) refuse('dns-record-conflict');
+        recordId = remote.id;
+        if (pointer.pointerDigest === candidate.pointerDigest) {
+          this.#states.set(scope, { outcome: 'published', pointerDigest: candidate.pointerDigest, recordId });
+          return { outcome: 'published', recordId, reconciled: true };
+        }
+        if (pointer.pointerDigest !== candidate.previousDigest || pointer.revision + 1 !== candidate.revision) refuse('dns-record-conflict');
+      }
+      if (previous?.outcome === 'unknown') {
+        return { outcome: 'unknown', reason: 'The earlier write may have completed. Provider has not shown the exact candidate; retry reconciliation, not publication.' };
+      }
+      if (!remote && previous?.recordId) refuse('dns-record-missing');
+      const now = this.clock();
+      if (!(candidate.validFromMs <= now && now < candidate.validUntilMs)) refuse('pointer-expired');
+      const result = await this.resolver.writeCloudflareRecord({ zoneId, apiToken, recordId, type: 'TXT', name,
+        content: pointerDnsText(candidate), ttl: 60 });
+      const outcome = result.outcome === 'refused' ? 'refused'
+        : result.ok === true && result.outcome === 'published' && typeof result.id === 'string' ? 'published' : 'unknown';
+      this.#states.set(scope, { outcome, pointerDigest: candidate.pointerDigest, candidate: outcome === 'unknown' ? candidate : undefined, recordId: outcome === 'published' ? result.id : recordId });
+      return { outcome, recordId: outcome === 'published' ? result.id : recordId,
+        reason: outcome === 'unknown' ? 'Publication completion is unknown. Retry to read the provider without repeating this write.' : undefined };
+    } catch (error) {
+      if (this.#states.get(scope)?.outcome === 'unknown') return { outcome: 'unknown',
+        reason: 'The earlier write is unresolved and this read could not safely reconcile it. Check the provider record, then retry reconciliation; no write was repeated.' };
+      throw error;
+    } finally { this.#busy.delete(scope); }
+  }
+}

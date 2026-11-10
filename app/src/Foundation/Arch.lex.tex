@@ -1,0 +1,112 @@
+\begin{lexlean}{Foundation.Arch}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{prism.arch@1.0.0}
+\title{architectural component}
+\begin{semanticmodule}
+structure{
+  name: StandardReference,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: standardIndex, type: Nat},
+    {name: editionIndex, type: Nat},
+    {name: standardId, type: String},
+    {name: edition, type: String}
+  ]
+}
+
+inductive{
+  name: ComponentKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: service, fields: []},
+    {name: database, fields: []},
+    {name: externalSystem, fields: []},
+    {name: cliAdapter, fields: []},
+    {name: staticSite, fields: []},
+    {name: releaseBinary, fields: []}
+  ]
+}
+
+inductive{
+  name: EdgeKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: dataFlow, fields: []}, {name: controlFlow, fields: []}]
+}
+
+inductive{
+  name: ModelKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: componentModel, fields: []},
+    {name: securityModel, fields: []},
+    {name: qualityModel, fields: []}
+  ]
+}
+
+structure{
+  name: Component,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: index, type: Nat},
+    {name: kind, type: ComponentKind},
+    {name: name, type: String},
+    {name: text, type: String}
+  ]
+}
+
+structure{
+  name: Edge,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: index, type: Nat},
+    {name: fromIndex, type: Nat},
+    {name: toIndex, type: Nat},
+    {name: kind, type: EdgeKind}
+  ]
+}
+
+structure{
+  name: Stakeholder,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: index, type: Nat}, {name: name, type: String}, {name: text, type: String}]
+}
+
+structure{
+  name: Concern,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: index, type: Nat}, {name: name, type: String}, {name: text, type: String}]
+}
+
+structure{
+  name: Viewpoint,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: index, type: Nat},
+    {name: stakeholderIndex, type: Nat},
+    {name: concernIndex, type: Nat},
+    {name: modelKindIndex, type: Nat}
+  ]
+}
+
+structure{
+  name: View,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: index, type: Nat},
+    {name: viewpointIndex, type: Nat},
+    {name: modelKindIndex, type: Nat}
+  ]
+}
+\end{semanticmodule}
+\end{lexlean}

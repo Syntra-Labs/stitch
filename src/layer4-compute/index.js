@@ -254,74 +254,101 @@ export function benchmarkComputeStrategies({
  *   3. Shell task execution producing UOR-addressed output artifacts
  */
 export class LinuxVmNode {
-  constructor({ transport, screenContainer, onStatus = () => {} }) {
+  constructor({ transport, screenContainer, onStatus = () => {}, bootTimeoutMs = 60000 }) {
+    if (!Number.isFinite(bootTimeoutMs) || bootTimeoutMs <= 0 || bootTimeoutMs > 2147483647) throw new Error('Invalid VM boot timeout');
     this.transport = transport;
     this.screenContainer = screenContainer;
     this.onStatus = onStatus;
     this.v86 = null;
     this.booted = false;
     this.booting = false;
+    this.bootTimeoutMs = bootTimeoutMs;
+    this.bootGeneration = 0;
+    this.bootPoll = null;
+    this.bootDeadline = null;
     this.ethFramesSent = 0;
     this.ethFramesReceived = 0;
     this.ipAddress = `10.42.0.${(parseInt(this.transport.peerId.slice(-4), 36) % 250) + 2}`;
   }
 
+  clearBootTimers() {
+    if (this.bootPoll !== null) clearInterval(this.bootPoll);
+    if (this.bootDeadline !== null) clearTimeout(this.bootDeadline);
+    this.bootPoll = null;
+    this.bootDeadline = null;
+  }
+
+  failBoot(generation, message) {
+    if (generation !== this.bootGeneration || !this.booting) return;
+    // Invalidate listeners before cleanup, which may dispatch synchronous events.
+    this.bootGeneration++;
+    this.clearBootTimers();
+    const failed = this.v86;
+    this.v86 = null;
+    this.booted = false;
+    this.booting = false;
+    try { Promise.resolve(failed?.destroy?.()).catch(() => {}); } catch {}
+    this.onStatus({ state: 'error', message });
+  }
+
   boot() {
     if (this.v86 || this.booting) return;
+    const generation = ++this.bootGeneration;
+    this.booting = true;
     const V86Ctor = globalThis.V86 || globalThis.V86Starter;
     if (!V86Ctor) {
-      this.onStatus({ state: 'error', message: 'libv86.js not loaded' });
+      this.failBoot(generation, 'libv86.js not loaded; retry Boot after the asset is available.');
       return;
     }
 
-    this.booting = true;
     this.onStatus({ state: 'booting', ip: this.ipAddress });
-
-    this.v86 = new V86Ctor({
-      wasm_path: './v86/v86.wasm',
-      memory_size: 64 * 1024 * 1024,
-      vga_memory_size: 2 * 1024 * 1024,
-      screen_container: this.screenContainer,
-      bios: { url: './v86/seabios.bin' },
-      vga_bios: { url: './v86/vgabios.bin' },
-      bzimage: { url: './images/buildroot-bzimage.bin' },
-      cmdline: 'tsc=reliable mitigations=off random.trust_cpu=on',
-      filesystem: {},
-      net_device: { type: 'ne2k' },
-      autostart: true
-    });
-
-    // Bridge outgoing Layer-2 Ethernet frames from Linux eth0 over WebRTC DataChannels
-    this.v86.add_listener('net0-send', frameBytes => {
-      this.ethFramesSent++;
-      this.transport.broadcast({
-        type: 'eth_frame',
-        from: this.transport.peerId,
-        frame: Array.from(frameBytes)
+    try {
+      const vm = new V86Ctor({
+        wasm_path: './v86/v86.wasm',
+        memory_size: 64 * 1024 * 1024,
+        vga_memory_size: 2 * 1024 * 1024,
+        screen_container: this.screenContainer,
+        bios: { url: './v86/seabios.bin' },
+        vga_bios: { url: './v86/vgabios.bin' },
+        bzimage: { url: './images/buildroot-bzimage.bin' },
+        cmdline: 'tsc=reliable mitigations=off random.trust_cpu=on',
+        filesystem: {},
+        net_device: { type: 'ne2k' },
+        autostart: true
       });
-    });
-
-    const checkInterval = setInterval(() => {
-      if (!this.v86) {
-        clearInterval(checkInterval);
-        return;
-      }
-      const text = Array.from(this.screenContainer.querySelectorAll('span'))
-        .map(s => s.innerText)
-        .join('')
-        .replace(/[\s\u00a0]+/g, ' ')
-        .trim();
-
-      if (text.includes('~%') || text.includes('# ')) {
-        clearInterval(checkInterval);
-        this.booted = true;
-        this.booting = false;
-        // Configure virtual Ethernet interface eth0 inside the Linux VM
-        const netInit = `ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up 2>/dev/null\n`;
-        this.v86.keyboard_send_text(netInit, 10);
-        this.onStatus({ state: 'online', ip: this.ipAddress });
-      }
-    }, 250);
+      this.v86 = vm;
+      const current = () => generation === this.bootGeneration && this.v86 === vm;
+      vm.add_listener('download-error', () => {
+        if (current()) this.failBoot(generation, 'VM asset download failed; retry Boot when assets are available.');
+      });
+      vm.add_listener('net0-send', frameBytes => {
+        if (!current()) return;
+        this.ethFramesSent++;
+        this.transport.broadcast({ type: 'eth_frame', from: this.transport.peerId, frame: Array.from(frameBytes) });
+      });
+      this.bootDeadline = setTimeout(() => {
+        if (current()) this.failBoot(generation, `VM readiness was not observed within ${this.bootTimeoutMs}ms; retry Boot explicitly.`);
+      }, this.bootTimeoutMs);
+      this.bootPoll = setInterval(() => {
+        if (!current() || !this.booting) return;
+        try {
+          const text = Array.from(this.screenContainer.querySelectorAll('span'))
+            .map(s => s.innerText).join('').replace(/[\s\u00a0]+/g, ' ').trim();
+          if (text.includes('~%') || /#(?:\s|$)/.test(text)) {
+            // Readiness is a host observation, not a proof of guest correctness.
+            vm.keyboard_send_text(`ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up 2>/dev/null\n`, 10);
+            this.clearBootTimers();
+            this.booted = true;
+            this.booting = false;
+            this.onStatus({ state: 'online', ip: this.ipAddress });
+          }
+        } catch (error) {
+          this.failBoot(generation, `VM boot failed: ${error.message}`);
+        }
+      }, 250);
+    } catch (error) {
+      this.failBoot(generation, `VM boot failed: ${error.message}`);
+    }
   }
 
   handleIncomingEthFrame(frameArray) {
@@ -331,16 +358,19 @@ export class LinuxVmNode {
   }
 
   async mountUorObject(addressHex, bytes, label = '') {
-    if (!this.v86) return false;
+    const vm = this.v86, generation = this.bootGeneration;
+    if (!vm) return false;
+    const current = () => this.v86 === vm && this.bootGeneration === generation;
     const shortId = addressHex.replace('uor:ca:', '').slice(0, 12);
     const filename = `uor_${shortId}.bin`;
     try {
-      await this.v86.create_file(filename, new Uint8Array(bytes));
+      await vm.create_file(filename, new Uint8Array(bytes));
+      if (!current()) return false;
       if (label) {
         const safeLabel = label.replace(/[^a-zA-Z0-9._-]/g, '_');
-        await this.v86.create_file(safeLabel, new Uint8Array(bytes));
+        await vm.create_file(safeLabel, new Uint8Array(bytes));
       }
-      return true;
+      return current();
     } catch {
       return false;
     }
@@ -374,7 +404,7 @@ export class LinuxVmNode {
       } catch {}
       await new Promise(r => setTimeout(r, 200));
     }
-    throw new Error(`VM command timed out after ${timeoutMs}ms`);
+    throw new Error(`VM command timed out after ${timeoutMs}ms; completion is unknown and the guest command was not cancelled.`);
   }
 }
 

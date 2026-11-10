@@ -12,86 +12,123 @@ structure{
   parameters: [],
   fields: [{name: left, type: Nat}, {name: right, type: Nat}]
 }
+
 inductive{
   name: Blocks,
   type_parameters: [],
   parameters: [],
   constructors: [{name: End, fields: []}, {name: More, fields: [BitPair, Blocks]}]
 }
+
 structure{
   name: Fragment,
   type_parameters: [],
   parameters: [],
-  fields: [{name: manifestRoot, type: Stitch.Identity::Digest}, {name: encodingRoot, type: Stitch.Identity::Digest}, {name: index, type: Nat}, {name: payloadRoot, type: Stitch.Identity::Digest}, {name: payload, type: Bytes}, {name: byteLength, type: Nat}]
+  fields: [
+    {name: manifestRoot, type: Stitch.Identity::Digest},
+    {name: encodingRoot, type: Stitch.Identity::Digest},
+    {name: index, type: Nat},
+    {name: payloadRoot, type: Stitch.Identity::Digest},
+    {name: payload, type: Bytes},
+    {name: byteLength, type: Nat}
+  ]
 }
+
 definition{
   name: xorBit,
   parameters: [left : Nat, right : Nat],
   result: Nat,
   body: (if (left =? right) then 0 else 1)
 }
-definition{
-  name: encodePair,
-  parameters: [pair : BitPair],
-  result: BitPair,
-  body: pair
-}
+
+definition{name: encodePair, parameters: [pair : BitPair], result: BitPair, body: pair}
+
 definition{
   name: recoverLeftParity,
   parameters: [pair : BitPair],
   result: BitPair,
   body: (record BitPair {left := (project pair left), right := (xorBit (project pair left) (xorBit (project pair left) (project pair right)))})
 }
+
 definition{
   name: recoverRightParity,
   parameters: [pair : BitPair],
   result: BitPair,
   body: (record BitPair {left := (xorBit (xorBit (project pair left) (project pair right)) (project pair right)), right := (project pair right)})
 }
+
 theorem{
   name: leftParityBitExact,
   parameters: [left : Nat, right : Nat],
   statement: ((left <= 1) -> ((right <= 1) -> ((xorBit left (xorBit left right)) = right))),
-  proof: linear_arithmetic{definitions: [xorBit]}
+  proof: linear_arithmetic{definitions: [xorBit]},
+  axioms: [Quot.sound, propext]
 }
+
 theorem{
   name: rightParityBitExact,
   parameters: [left : Nat, right : Nat],
   statement: ((left <= 1) -> ((right <= 1) -> ((xorBit (xorBit left right) right) = left))),
-  proof: linear_arithmetic{definitions: [xorBit]}
+  proof: linear_arithmetic{definitions: [xorBit]},
+  axioms: [Quot.sound, propext]
 }
+
 definition{
   name: pairAllowed,
-  parameters: [leftIndex : Nat, rightIndex : Nat, manifestMatches : Bool, fragmentsValid : Bool, dependenciesPresent : Bool],
+  parameters: [
+    leftIndex : Nat,
+    rightIndex : Nat,
+    manifestMatches : Bool,
+    fragmentsValid : Bool,
+    dependenciesPresent : Bool
+  ],
   result: Bool,
-  body: ((leftIndex <? 3) && ((rightIndex <? 3) && ((not (leftIndex =? rightIndex)) && (manifestMatches && (fragmentsValid && dependenciesPresent)))))
+  body: ((leftIndex <? 3) && ((rightIndex <? 3) && (((leftIndex <? rightIndex) || (rightIndex <? leftIndex)) && (manifestMatches && (fragmentsValid && dependenciesPresent)))))
 }
+
 theorem{
   name: duplicateIndexCannotRecover,
-  parameters: [index : Nat, manifestMatches : Bool, fragmentsValid : Bool, dependenciesPresent : Bool],
+  parameters: [
+    index : Nat,
+    manifestMatches : Bool,
+    fragmentsValid : Bool,
+    dependenciesPresent : Bool
+  ],
   statement: ((pairAllowed index index manifestMatches fragmentsValid dependenciesPresent) = false),
-  proof: linear_arithmetic{definitions: [pairAllowed]}
+  proof: linear_arithmetic{definitions: [pairAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+inductive{
+  name: Bit,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Zero, fields: []}, {name: One, fields: []}]
 }
 
 inductive{
   name: BitBlocks,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: End, fields: []}, {name: More, fields: [Bool, Bool, BitBlocks]}]
+  constructors: [{name: End, fields: []}, {name: More, fields: [Bit, Bit, BitBlocks]}]
 }
 
 definition{
   name: xorCell,
-  parameters: [left : Bool, right : Bool],
-  result: Bool,
-  body: (if left then (not right) else right)
+  parameters: [left : Bit, right : Bit],
+  result: Bit,
+  body: (match left
+    | Bit.Zero => right
+    | Bit.One => (match right | Bit.Zero => (ctor Bit.One) | Bit.One => (ctor Bit.Zero)))
 }
 
 definition{
   name: leftParity,
   parameters: [blocks : BitBlocks],
   result: BitBlocks,
-  body: (match blocks | BitBlocks.End => (ctor BitBlocks.End) | BitBlocks.More left right tail => (ctor BitBlocks.More left (xorCell left right) (leftParity tail))),
+  body: (match blocks
+    | BitBlocks.End => (ctor BitBlocks.End)
+    | BitBlocks.More left right tail => (ctor BitBlocks.More left (xorCell left right) (leftParity tail))),
   recursive_argument: blocks
 }
 
@@ -99,7 +136,9 @@ definition{
   name: rightParity,
   parameters: [blocks : BitBlocks],
   result: BitBlocks,
-  body: (match blocks | BitBlocks.End => (ctor BitBlocks.End) | BitBlocks.More left right tail => (ctor BitBlocks.More (xorCell left right) right (rightParity tail))),
+  body: (match blocks
+    | BitBlocks.End => (ctor BitBlocks.End)
+    | BitBlocks.More left right tail => (ctor BitBlocks.More (xorCell left right) right (rightParity tail))),
   recursive_argument: blocks
 }
 
@@ -113,25 +152,54 @@ theorem{
       {
         proof: cases{
           branches: [
-            {proof: simplify{definitions: [hypothesis, leftParity, xorCell]}, binders: [], constructor: false},
             {
               proof: cases{
                 branches: [
-                  {proof: simplify{definitions: [hypothesis, leftParity, xorCell]}, binders: [], constructor: false},
-                  {proof: simplify{definitions: [hypothesis, leftParity, xorCell]}, binders: [], constructor: true}
+                  {
+                    proof: simplify{definitions: [hypothesis, leftParity, xorCell]},
+                    binders: [],
+                    constructor: Zero
+                  },
+                  {
+                    proof: simplify{definitions: [hypothesis, leftParity, xorCell]},
+                    binders: [],
+                    constructor: One
+                  }
                 ],
                 scrutinee: right
               },
-              binders: [], constructor: true
+              binders: [],
+              constructor: Zero
+            },
+            {
+              proof: cases{
+                branches: [
+                  {
+                    proof: simplify{definitions: [hypothesis, leftParity, xorCell]},
+                    binders: [],
+                    constructor: Zero
+                  },
+                  {
+                    proof: simplify{definitions: [hypothesis, leftParity, xorCell]},
+                    binders: [],
+                    constructor: One
+                  }
+                ],
+                scrutinee: right
+              },
+              binders: [],
+              constructor: One
             }
           ],
           scrutinee: left
         },
-        binders: [left, right, tail, hypothesis], constructor: More
+        binders: [left, right, tail, hypothesis],
+        constructor: More
       }
     ],
     scrutinee: blocks
-  }
+  },
+  axioms: [propext]
 }
 
 theorem{
@@ -144,47 +212,85 @@ theorem{
       {
         proof: cases{
           branches: [
-            {proof: simplify{definitions: [hypothesis, rightParity, xorCell]}, binders: [], constructor: false},
             {
               proof: cases{
                 branches: [
-                  {proof: simplify{definitions: [hypothesis, rightParity, xorCell]}, binders: [], constructor: false},
-                  {proof: simplify{definitions: [hypothesis, rightParity, xorCell]}, binders: [], constructor: true}
+                  {
+                    proof: simplify{definitions: [hypothesis, rightParity, xorCell]},
+                    binders: [],
+                    constructor: Zero
+                  },
+                  {
+                    proof: simplify{definitions: [hypothesis, rightParity, xorCell]},
+                    binders: [],
+                    constructor: One
+                  }
                 ],
-                scrutinee: left
+                scrutinee: right
               },
-              binders: [], constructor: true
+              binders: [],
+              constructor: Zero
+            },
+            {
+              proof: cases{
+                branches: [
+                  {
+                    proof: simplify{definitions: [hypothesis, rightParity, xorCell]},
+                    binders: [],
+                    constructor: Zero
+                  },
+                  {
+                    proof: simplify{definitions: [hypothesis, rightParity, xorCell]},
+                    binders: [],
+                    constructor: One
+                  }
+                ],
+                scrutinee: right
+              },
+              binders: [],
+              constructor: One
             }
           ],
-          scrutinee: right
+          scrutinee: left
         },
-        binders: [left, right, tail, hypothesis], constructor: More
+        binders: [left, right, tail, hypothesis],
+        constructor: More
       }
     ],
     scrutinee: blocks
-  }
+  },
+  axioms: [propext]
 }
-
 
 inductive{
   name: PairSelection,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: Systematic, fields: []}, {name: LeftParity, fields: []}, {name: RightParity, fields: []}]
+  constructors: [
+    {name: Systematic, fields: []},
+    {name: LeftParity, fields: []},
+    {name: RightParity, fields: []}
+  ]
 }
 
 definition{
   name: encodeForPair,
   parameters: [blocks : BitBlocks, selection : PairSelection],
   result: BitBlocks,
-  body: (match selection | PairSelection.Systematic => blocks | PairSelection.LeftParity => (leftParity blocks) | PairSelection.RightParity => (rightParity blocks))
+  body: (match selection
+    | PairSelection.Systematic => blocks
+    | PairSelection.LeftParity => (leftParity blocks)
+    | PairSelection.RightParity => (rightParity blocks))
 }
 
 definition{
   name: decodePair,
   parameters: [available : BitBlocks, selection : PairSelection],
   result: BitBlocks,
-  body: (match selection | PairSelection.Systematic => available | PairSelection.LeftParity => (leftParity available) | PairSelection.RightParity => (rightParity available))
+  body: (match selection
+    | PairSelection.Systematic => available
+    | PairSelection.LeftParity => (leftParity available)
+    | PairSelection.RightParity => (rightParity available))
 }
 
 theorem{
@@ -193,13 +299,25 @@ theorem{
   statement: ((decodePair (encodeForPair blocks selection) selection) = blocks),
   proof: cases{
     branches: [
-      {proof: simplify{definitions: [decodePair, encodeForPair]}, binders: [], constructor: Systematic},
-      {proof: simplify{definitions: [decodePair, encodeForPair, leftParityInvolutive]}, binders: [], constructor: LeftParity},
-      {proof: simplify{definitions: [decodePair, encodeForPair, rightParityInvolutive]}, binders: [], constructor: RightParity}
+      {
+        proof: simplify{definitions: [decodePair, encodeForPair]},
+        binders: [],
+        constructor: Systematic
+      },
+      {
+        proof: simplify{definitions: [decodePair, encodeForPair, leftParityInvolutive]},
+        binders: [],
+        constructor: LeftParity
+      },
+      {
+        proof: simplify{definitions: [decodePair, encodeForPair, rightParityInvolutive]},
+        binders: [],
+        constructor: RightParity
+      }
     ],
     scrutinee: selection
-  }
+  },
+  axioms: [propext]
 }
-
 \end{semanticmodule}
 \end{lexlean}

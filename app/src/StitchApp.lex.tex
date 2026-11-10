@@ -5,6 +5,11 @@
 \useglossary{stitch.domain@1.0.0}
 \importmodule{Foundation.Bytes}
 \importmodule{Foundation.View.Text.V1.Model}
+\importmodule{Stitch.Budget}
+\importmodule{Stitch.Compute}
+\importmodule{Stitch.Custody}
+\importmodule{Stitch.Fragments}
+\importmodule{Stitch.Pointer}
 \importmodule{Stitch.System}
 \title{Stitch recoverable service model}
 \begin{semanticmodule}
@@ -12,14 +17,20 @@ definition{
   name: byteNat,
   parameters: [request : Bytes, offset : Nat],
   result: Nat,
-  body: (match (Foundation.Bytes::byteAt request offset) | Option.none => 0 | Option.some byte => (prim to_nat byte : Nat))
+  body: (match (Foundation.Bytes::byteAt request offset)
+    | Option.none => 0
+    | Option.some byte => (prim to_nat byte : Nat)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: unsignedBE,
   parameters: [request : Bytes, offset : Nat, remaining : Nat, accumulated : Nat],
   result: Nat,
-  body: (match remaining | Nat.zero => accumulated | Nat.succ rest => (unsignedBE request (offset + 1) rest ((prim multiply accumulated 256 : Nat) + (byteNat request offset)))),
+  body: (match remaining
+    | Nat.zero => accumulated
+    | Nat.succ rest => (unsignedBE request (offset + 1) rest ((prim multiply accumulated 256 : Nat) + (byteNat request offset)))),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
 
@@ -27,18 +38,20 @@ definition{
   name: flag,
   parameters: [request : Bytes, offset : Nat],
   result: Bool,
-  body: ((byteNat request offset) =? 1)
+  body: ((byteNat request offset) =? 1),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: flagsCanonical,
   parameters: [request : Bytes, offset : Nat, remaining : Nat],
   result: Bool,
-  body: (match remaining | Nat.zero => true | Nat.succ rest => (((byteNat request offset) <=? 1) && (flagsCanonical request (offset + 1) rest))),
+  body: (match remaining
+    | Nat.zero => true
+    | Nat.succ rest => (((byteNat request offset) <=? 1) && (flagsCanonical request (offset + 1) rest))),
+  axioms: [Quot.sound, propext],
   recursive_argument: remaining
 }
-
-
 
 definition{
   name: verdict,
@@ -48,45 +61,68 @@ definition{
 }
 
 definition{
+  name: decimalDigit,
+  parameters: [value : Nat],
+  result: Bytes,
+  body: (if (value =? 0) then 0x30 else (if (value =? 1) then 0x31 else (if (value =? 2) then 0x32 else (if (value =? 3) then 0x33 else (if (value =? 4) then 0x34 else (if (value =? 5) then 0x35 else (if (value =? 6) then 0x36 else (if (value =? 7) then 0x37 else (if (value =? 8) then 0x38 else 0x39)))))))))
+}
+
+definition{
+  name: decimalBytes,
+  parameters: [value : Nat, remaining : Nat],
+  result: Bytes,
+  body: (match remaining
+    | Nat.zero => 0x
+    | Nat.succ rest => (if (value <? 10) then (decimalDigit value) else (prim append (decimalBytes (prim quotient value 10 0 : Nat) rest) (decimalDigit (prim remainder value 10 0 : Nat)) : Bytes))),
+  recursive_argument: remaining
+}
+
+definition{
   name: ringProbe,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if ((Foundation.Bytes::byteLength request) =? 36) then (if (Stitch.Compute::supportedWidth (byteNat request 2)) then (if (Stitch.Compute::instructionAllowed (byteNat request 3)) then (prim utf8_encode (prim format_decimal (Stitch.Compute::ringStep (record Stitch.Compute::Instruction {opcode := (byteNat request 3), argument := (unsignedBE request 20 16 0)}) (unsignedBE request 4 16 0) (Stitch.Compute::ringModulus (byteNat request 2))) : String) : Bytes) else (prim utf8_encode "unsupported operation" : Bytes)) else (prim utf8_encode "unsupported width" : Bytes)) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if ((Foundation.Bytes::byteLength request) =? 36) then (if (Stitch.Compute::supportedWidth (byteNat request 2)) then (if (Stitch.Compute::instructionAllowed (byteNat request 3)) then (decimalBytes (Stitch.Compute::ringStep (record Stitch.Compute::Instruction {opcode := (byteNat request 3), argument := (unsignedBE request 20 16 0)}) (unsignedBE request 4 16 0) (Stitch.Compute::ringModulus (byteNat request 2))) 40) else (prim utf8_encode "unsupported operation" : Bytes)) else (prim utf8_encode "unsupported width" : Bytes)) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: budgetProbe,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if ((Foundation.Bytes::byteLength request) =? 58) then (verdict (Stitch.Budget::reserveAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (unsignedBE request 18 8 0) (unsignedBE request 26 8 0) (unsignedBE request 34 8 0) (unsignedBE request 42 8 0) (unsignedBE request 50 8 0))) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if ((Foundation.Bytes::byteLength request) =? 58) then (verdict (Stitch.Budget::reserveAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (unsignedBE request 18 8 0) (unsignedBE request 26 8 0) (unsignedBE request 34 8 0) (unsignedBE request 42 8 0) (unsignedBE request 50 8 0))) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: pointerProbe,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if (((Foundation.Bytes::byteLength request) =? 45) && (flagsCanonical request 18 3)) then (verdict (Stitch.Pointer::successorAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (flag request 18) (flag request 19) (flag request 20) (unsignedBE request 21 8 0) (unsignedBE request 29 8 0) (unsignedBE request 37 8 0))) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if (((Foundation.Bytes::byteLength request) =? 45) && (flagsCanonical request 18 3)) then (verdict (Stitch.Pointer::successorAllowed (unsignedBE request 2 8 0) (unsignedBE request 10 8 0) (flag request 18) (flag request 19) (flag request 20) (unsignedBE request 21 8 0) (unsignedBE request 29 8 0) (unsignedBE request 37 8 0))) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: custodyProbe,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if (((Foundation.Bytes::byteLength request) =? 10) && (flagsCanonical request 2 8)) then (verdict (Stitch.Custody::commitAllowed (flag request 2) (flag request 3) (flag request 4) (flag request 5) (flag request 6) (flag request 7) (flag request 8) (flag request 9))) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if (((Foundation.Bytes::byteLength request) =? 10) && (flagsCanonical request 2 8)) then (verdict (Stitch.Custody::commitAllowed (flag request 2) (flag request 3) (flag request 4) (flag request 5) (flag request 6) (flag request 7) (flag request 8) (flag request 9))) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: pairProbe,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if (((Foundation.Bytes::byteLength request) =? 7) && (flagsCanonical request 4 3)) then (verdict (Stitch.Fragments::pairAllowed (byteNat request 2) (byteNat request 3) (flag request 4) (flag request 5) (flag request 6))) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if (((Foundation.Bytes::byteLength request) =? 7) && (flagsCanonical request 4 3)) then (verdict (Stitch.Fragments::pairAllowed (byteNat request 2) (byteNat request 3) (flag request 4) (flag request 5) (flag request 6))) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{
   name: dispatch,
   parameters: [request : Bytes],
   result: Bytes,
-  body: (if ((2 <=? (Foundation.Bytes::byteLength request)) && ((Foundation.Bytes::byteLength request) <=? 58)) then (if ((byteNat request 0) =? 1) then (let operation : Nat := (byteNat request 1); (if (operation =? 0) then (ringProbe request) else (if (operation =? 1) then (budgetProbe request) else (if (operation =? 2) then (pointerProbe request) else (if (operation =? 3) then (custodyProbe request) else (if (operation =? 4) then (pairProbe request) else (prim utf8_encode "unsupported request" : Bytes))))))) else (prim utf8_encode "unsupported version" : Bytes)) else (prim utf8_encode "invalid request" : Bytes))
+  body: (if ((2 <=? (Foundation.Bytes::byteLength request)) && ((Foundation.Bytes::byteLength request) <=? 58)) then (if ((byteNat request 0) =? 1) then (let operation : Nat := (byteNat request 1); (if (operation =? 0) then (ringProbe request) else (if (operation =? 1) then (budgetProbe request) else (if (operation =? 2) then (pointerProbe request) else (if (operation =? 3) then (custodyProbe request) else (if (operation =? 4) then (pairProbe request) else (prim utf8_encode "unsupported request" : Bytes))))))) else (prim utf8_encode "unsupported version" : Bytes)) else (prim utf8_encode "invalid request" : Bytes)),
+  axioms: [Quot.sound, propext]
 }
 
 definition{

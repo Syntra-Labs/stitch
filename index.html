@@ -166,6 +166,28 @@
     </div>
   </header>
 
+  <section class="stratum" style="margin-bottom: 12px;">
+    <details id="budgetPolicyPanel">
+      <summary><strong>Application resource policy</strong> (operational demo configuration)</summary>
+      <p class="muted">These are configurable operating allowances, not semantic limits. An expired epoch or exhausted allowance refuses further effects. Choose a new epoch to continue; previous charges are retained, including failed or uncertain effects. Existing objects, jobs and pointer heads stay in this tab.</p>
+      <div class="controls">
+        <label>Epoch minutes <input type="number" id="budgetMinutesInput" min="0.001" step="any" style="width: 80px;" /></label>
+        <label>Requests <input type="number" id="budgetRequestsInput" min="0" step="1" style="width: 100px;" /></label>
+        <label>Application transfer bytes <input type="number" id="budgetTransferInput" min="0" step="1" style="width: 130px;" /></label>
+        <label>New cache allocation bytes <input type="number" id="budgetStorageInput" min="0" step="1" style="width: 130px;" /></label>
+        <label>Replayed ring steps <input type="number" id="budgetComputeInput" min="0" step="1" style="width: 120px;" /></label>
+        <label>Reservation log entries <input type="number" id="budgetActionsInput" min="1" max="65536" step="1" style="width: 100px;" /></label>
+        <label>Discovery refreshes <input type="number" id="budgetRefreshInput" min="0" step="1" style="width: 80px;" /></label>
+        <button id="renewBudgetBtn">Start New Epoch with These Limits</button>
+        <button id="exportBudgetHistoryBtn" class="secondary">Export Policy History</button>
+      </div>
+      <p class="muted">Transfer allowances include reserved relay/DNS response ceilings. Cache allowances count new allocations in each epoch, not total browser memory. TLS, ICE/STUN, VM work and host overhead are outside this accounting. History is kept in this tab until exported. Renewal does not retry failed effects; use the relevant sync or resume control.</p>
+      <div class="mono-out" id="budgetUsageBox" style="max-height: 100px;"></div>
+      <div class="mono-out" id="budgetHistoryBox" style="max-height: 140px;">No prior epochs.</div>
+    </details>
+    <div id="budgetStatus" role="status" aria-live="polite"></div>
+  </section>
+
   <!-- EXTERNAL INFRASTRUCTURE PROOF BANNER (PROVES EXECUTION OUTSIDE BROWSER MEMORY) -->
   <section class="stratum" style="margin-bottom: 12px;">
     <div class="stratum-head">
@@ -227,7 +249,7 @@
         <label class="muted">Step Delay (ms):</label>
         <input type="number" id="jobDelayInput" value="800" min="100" max="3000" style="width: 75px;" />
         <button id="startJobBtn">Start Distributed UOR Job</button>
-        <button id="takeoverJobsBtn" class="secondary">Scan & Take Over Stalled Jobs</button>
+        <button id="takeoverJobsBtn" class="secondary">Scan & Resume Unfinished Jobs</button>
       </div>
 
       <table>
@@ -384,9 +406,29 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     } from './src/layer5-transport/index.js';
 
     import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
-    import { generateAuthority, signPointer, PointerObserver, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
+    import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
 
-    const admission = new ResourceAdmission();
+    // One stable handle is shared by every adapter. Only the explicit renewal
+    // control replaces the underlying epoch. Prior ledgers stay retained.
+    let activeAdmission = new ResourceAdmission();
+    let policyEpoch = 1;
+    let lastPolicyRefusal = null;
+    const policyHistory = [];
+    const admission = {
+      get state() { return activeAdmission.state; },
+      reserve(kind, cost) {
+        try { return activeAdmission.reserve(kind, cost); }
+        catch (error) {
+          if (['epoch-expired', 'budget-exhausted', 'action-capacity', 'clock-regression'].includes(error.code)) {
+            lastPolicyRefusal = error.code;
+            document.getElementById('budgetPolicyPanel').open = true;
+            renderBudgetPolicy();
+          }
+          throw error;
+        }
+      },
+      run(kind, cost, effect) { this.reserve(kind, cost); return effect(); }
+    };
     const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.0.0' });
     const authorityReady = generateAuthority();
     const pointerObservers = new Map();
@@ -431,7 +473,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       });
 
     // 1. Layer-2 Budget-Paced Survival Scheduler driving live refreshes (C3 compliant)
-    const scheduler = new BudgetPacedSurvivalScheduler({
+    let scheduler = new BudgetPacedSurvivalScheduler({
       ttlSeconds: 60,
       durationSeconds: 600,
       maxRefreshBudget: 30,
@@ -608,7 +650,14 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     document.getElementById('takeoverJobsBtn').addEventListener('click', async () => {
       const resumed = await computeCoord.syncAndTakeOverJobs('30m');
-      logWire('TAKEOVER', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No stalled jobs found.');
+      for (const job of computeCoord.jobs.values()) {
+        if (job.status === 'running' && job.ownerPeerId === transport.peerId && !computeCoord.running.has(job.jobId)) {
+          resumed.push(job.jobId);
+          computeCoord.startOrResumeJob({ jobId: job.jobId, stepDelayMs: 0 }).catch(error =>
+            logWire('COMPUTE-REFUSED', error.code || error.message));
+        }
+      }
+      logWire('RESUME', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No unfinished jobs ready to resume.');
     });
 
     document.getElementById('bootVmBtn').addEventListener('click', () => {
@@ -629,8 +678,85 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
+    const policyFields = {
+      requests: 'budgetRequestsInput', transferBytes: 'budgetTransferInput',
+      storageBytes: 'budgetStorageInput', computeSteps: 'budgetComputeInput'
+    };
+    const initialPolicy = admission.state;
+    for (const [measure, id] of Object.entries(policyFields)) document.getElementById(id).value = String(initialPolicy.limit[measure]);
+    document.getElementById('budgetMinutesInput').value = String((initialPolicy.endMs - initialPolicy.startMs) / 60000);
+    document.getElementById('budgetActionsInput').value = String(activeAdmission.maxActions);
+    document.getElementById('budgetRefreshInput').value = String(scheduler.maxRefreshBudget);
+
+    function renderBudgetPolicy() {
+      const budget = admission.state;
+      const expired = activeAdmission.clock() >= budget.endMs;
+      const reached = Object.keys(budget.limit).filter(k => budget.spent[k] >= budget.limit[k]);
+      const actionsFull = budget.reservations.length >= activeAdmission.maxActions;
+      const refreshesUsed = Math.max(0, scheduler.refreshCount - 1);
+      const refreshesFull = refreshesUsed >= scheduler.maxRefreshBudget;
+      const remainingSeconds = Math.max(0, Math.ceil((budget.endMs - activeAdmission.clock()) / 1000));
+      document.getElementById('budgetLabel').textContent = `epoch ${policyEpoch}: ${budget.spent.requests}/${budget.limit.requests} requests, ${budget.spent.transferBytes}/${budget.limit.transferBytes} application bytes, ${remainingSeconds}s left`;
+      const status = document.getElementById('budgetStatus');
+      const reason = expired ? 'Epoch expired.' : actionsFull ? 'Reservation log allowance reached.'
+        : refreshesFull ? 'Discovery refresh allowance reached.' : lastPolicyRefusal ? `An effect was refused (${lastPolicyRefusal}).` : reached.length ? `Allowance reached: ${reached.join(', ')}.` : '';
+      status.textContent = reason ? `${reason} Review Application resource policy and choose Start New Epoch to grant another bounded allowance. Previous charges stay retained.`
+        : `Epoch ${policyEpoch} active. Edit the operational allowances above and choose Start New Epoch only when you want a new allowance.`;
+      status.style.color = reason ? '#f5b66b' : '';
+      document.getElementById('budgetUsageBox').textContent = `Current epoch ${policyEpoch}: ${JSON.stringify(budget.spent)} / limits ${JSON.stringify(budget.limit)}; ${budget.reservations.length}/${activeAdmission.maxActions} reservation entries; ${refreshesUsed}/${scheduler.maxRefreshBudget} discovery refreshes.`;
+      document.getElementById('budgetHistoryBox').textContent = policyHistory.length
+        ? policyHistory.map(entry => `Epoch ${entry.epoch}: ${JSON.stringify(entry.budget.spent)}; ${entry.budget.reservations.length} reservations retained; ${entry.refreshesUsed} discovery refreshes.`).join('\n')
+        : 'No prior epochs. Current charges remain in the active ledger.';
+    }
+
+    document.getElementById('renewBudgetBtn').addEventListener('click', () => {
+      try {
+        const integerInput = (id, minimum = 0) => {
+          const raw = document.getElementById(id).value.trim();
+          const value = Number(raw);
+          if (!raw || !Number.isSafeInteger(value) || value < minimum) throw Error('Policy limits must be nonnegative safe integers.');
+          return value;
+        };
+        const minutesText = document.getElementById('budgetMinutesInput').value.trim();
+        const durationMs = Number(minutesText) * 60000;
+        if (!minutesText || !Number.isSafeInteger(durationMs) || durationMs <= 0) throw Error('Choose a positive epoch duration representable in whole milliseconds.');
+        const limit = Object.fromEntries(Object.entries(policyFields).map(([measure, id]) => [measure, integerInput(id)]));
+        const maxActions = integerInput('budgetActionsInput', 1);
+        const refreshLimit = integerInput('budgetRefreshInput');
+        const next = new ResourceAdmission({ durationMs, limit, maxActions });
+        const nextScheduler = new BudgetPacedSurvivalScheduler({ ttlSeconds: scheduler.ttlSeconds,
+          durationSeconds: durationMs / 1000, maxRefreshBudget: refreshLimit, minFloorSeconds: scheduler.minFloorSeconds });
+        nextScheduler.failureTimestamps = [...scheduler.failureTimestamps];
+        nextScheduler.markRefreshed(nowSec());
+        // No old reservation is settled/refunded, and no data or authority state is cleared.
+        policyHistory.push({ epoch: policyEpoch, budget: activeAdmission.state, maxActions: activeAdmission.maxActions,
+          refreshesUsed: Math.max(0, scheduler.refreshCount - 1), refreshLimit: scheduler.maxRefreshBudget });
+        activeAdmission = next;
+        policyEpoch++;
+        scheduler = nextScheduler;
+        liveDb.scheduler = scheduler;
+        lastPolicyRefusal = null;
+        renderBudgetPolicy();
+        logWire('POLICY', `Started epoch ${policyEpoch} by explicit choice. Previous charges retained; pending work was not automatically retried.`);
+      } catch (error) {
+        document.getElementById('budgetStatus').textContent = `Policy unchanged: ${error.code || error.message}`;
+        logWire('POLICY-REFUSED', error.code || error.message);
+      }
+    });
+
+    document.getElementById('exportBudgetHistoryBtn').addEventListener('click', () => {
+      const entries = [...policyHistory, { epoch: policyEpoch, budget: activeAdmission.state, maxActions: activeAdmission.maxActions,
+        refreshesUsed: Math.max(0, scheduler.refreshCount - 1), refreshLimit: scheduler.maxRefreshBudget }];
+      const blob = new Blob([JSON.stringify({ version: 1, accounting: 'application resource ceilings, not host or network measurements', epochs: entries }, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url; link.download = `stitch-policy-history-${Date.now()}.json`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+
     // DNS DoH & DuckDNS TXT Controls
     const doh = new DohResolver({ admission });
+    const pointerPublisher = new PointerPublisher({ resolver: doh });
     document.getElementById('resolveSrvBtn').addEventListener('click', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
@@ -688,17 +814,17 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       pointerWriteInFlight = true;
       try {
         const observer = pointerObserver();
+        const zoneId = document.getElementById('cfZoneInput').value.trim();
+        const apiToken = document.getElementById('cfTokenInput').value.trim();
+        const objectRoot = Array.from(liveDb.objects.values()).filter(e => e.verified).at(-1)?.manifest.object.contentDigest;
         const authority = await authorityReady;
         if (observer.trustedAuthorityKey !== authority.publicKey) throw Error('This session does not hold the private key for the pinned authority.');
-        const objectRoot = Array.from(liveDb.objects.values()).filter(e => e.verified).at(-1)?.manifest.object.contentDigest;
-        if (!objectRoot) throw Error('Store or recover a verified object before creating a pointer.');
-        let candidate = unpublishedPointers.get(observer) ?? null;
-        if (candidate && candidate.pointerDigest === observer.head?.pointerDigest
-          && (candidate.objectRoot !== objectRoot || candidate.validUntilMs <= Date.now())) {
-          throw Error('An unpublished local head is pending. Publish or explicitly reconcile that head before advancing.');
-        }
-        if (!candidate || candidate.pointerDigest !== observer.head?.pointerDigest || candidate.objectRoot !== objectRoot
-          || candidate.validUntilMs <= Date.now() || candidate.name !== observer.name) {
+        const unresolved = pointerPublisher.pending({ zoneId, name: observer.name, trustedAuthorityKey: observer.trustedAuthorityKey });
+        let candidate = unresolved ?? unpublishedPointers.get(observer) ?? null;
+        // An unresolved candidate remains the reconciliation target even if the
+        // latest object or its validity interval changed while publication awaited.
+        if (!unresolved && (!candidate || candidate.pointerDigest !== observer.head?.pointerDigest)) {
+          if (!objectRoot) throw Error('Store or recover a verified object before creating a pointer.');
           const current = observer.head;
           const nowMs = Date.now();
           candidate = await signPointer({ version: 1, name: observer.name, authorityKey: authority.publicKey,
@@ -713,17 +839,23 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
         const txt = pointerDnsText(candidate);
         trialLogger.logTrial('ST-POINTER', { revision: candidate.revision, byte_length: new TextEncoder().encode(txt).length,
           authority: 'explicit-session-pin', admission: 'observer-local', published: false });
-        const zoneId = document.getElementById('cfZoneInput').value.trim();
-        const apiToken = document.getElementById('cfTokenInput').value.trim();
         if (!zoneId || !apiToken) {
           logWire('POINTER-LOCAL', `Admitted revision ${candidate.revision} locally; not published. Full signed JSON is above.`);
           return;
         }
         if (!/^[a-f0-9]{32}$/i.test(zoneId)) throw Error('Full signed pointers require Cloudflare multipart TXT; this is not a 255-byte DuckDNS payload.');
-        const result = await doh.writeCloudflareRecord({ zoneId, apiToken, type: 'TXT', name: observer.name, content: txt, ttl: 60 });
-        if (!result.ok) throw Error(`DNS publication failed: ${JSON.stringify(result.errors)}`);
-        unpublishedPointers.delete(observer);
-        logWire('CF-DNS', `Published admitted revision ${candidate.revision} at ${observer.name}; local head is not global ordering.`);
+        const result = await pointerPublisher.publish({ zoneId, apiToken, name: observer.name,
+          trustedAuthorityKey: observer.trustedAuthorityKey, candidate });
+        if (result.outcome === 'unknown') {
+          logWire('POINTER-UNKNOWN', result.reason);
+          return;
+        }
+        if (result.outcome === 'refused') {
+          logWire('DNS-REFUSED', 'The provider rejected this publication. Local head retained; retry checks the provider before writing.');
+          return;
+        }
+        if (unpublishedPointers.get(observer)?.pointerDigest === candidate.pointerDigest) unpublishedPointers.delete(observer);
+        logWire('CF-DNS', `${result.reconciled ? 'Reconciled' : 'Published'} admitted revision ${candidate.revision} at ${observer.name}; provider record ${result.recordId}. Observer-local only, not atomic DNS ordering.`);
       } catch (error) {
         logWire('POINTER-REFUSED', error.code || error.message);
       } finally { pointerWriteInFlight = false; }
@@ -742,8 +874,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
     setInterval(() => {
       const st = scheduler.evaluate(nowSec());
-      const budget = admission.state;
-      document.getElementById('budgetLabel').textContent = `${budget.spent.requests}/${budget.limit.requests} requests, ${budget.spent.transferBytes}/${budget.limit.transferBytes} application bytes (10-minute epoch)`;
+      renderBudgetPolicy();
       document.getElementById('schedLambdaLabel').textContent = `${st.lambda.toFixed(3)}/s`;
       document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
       document.getElementById('schedEntropyLabel').textContent = `${st.entropyBits.toFixed(3)} bit`;
@@ -780,6 +911,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     document.getElementById('runAllBenchBtn').addEventListener('click', runAllBenchmarks);
 
+    renderBudgetPolicy();
     runAllBenchmarks();
     joinAndSync();
   </script>

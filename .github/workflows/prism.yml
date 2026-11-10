@@ -40,6 +40,10 @@ jobs:
       - name: Load the exact SDK identity
         run: |
           node -e 'const fs=require("fs");const x=JSON.parse(fs.readFileSync("prismpm.lock"));if(!/^ghcr\.io\/uor-foundation\/[a-z0-9-]+@sha256:[0-9a-f]{64}$/.test(x.sdk_image))throw Error("unpinned SDK");fs.appendFileSync(process.env.GITHUB_ENV,`SDK_IMAGE=${x.sdk_image}\n`)'
+      - name: Require committed authoring inputs before downloading the SDK
+        run: |
+          test -f app/lexlean.lock
+          test -n "$(git ls-files app/lexlean.lock)"
       - name: Prepare SDK runner
         run: |
           docker pull "$SDK_IMAGE"
@@ -56,19 +60,9 @@ jobs:
             "$SDK_IMAGE" "$@"
           SH
           chmod +x "$RUNNER_TEMP/run-sdk"
-      - name: Retain pinned compiler for inexpensive local source diagnostics
+      - name: Record pinned SDK versions
         run: |
-          "$RUNNER_TEMP/run-sdk" sh -c 'cp "$(command -v lexlean)" verification-output/lexlean; sha256sum verification-output/lexlean; ldd verification-output/lexlean' | tee verification-output/compiler-identity.log
-      - name: Generate initial lock and observed axiom policies when absent
-        if: ${{ hashFiles('app/lexlean.lock') == '' }}
-        run: |
-          set -o pipefail
-          "$RUNNER_TEMP/run-sdk" sh scripts/check-model-sdk.sh --prepare 2>&1 | tee verification-output/prepare.log
-          node node_modules/prism-code/bin/prism-code.mjs axioms --write --project app 2>&1 | tee verification-output/axioms.log
-          node scripts/check-model.mjs --write
-          echo 'Initial SDK-authored source/lock must be reviewed and committed before this gate can pass.'
-          git diff --exit-code
-          test -n "$(git ls-files app/lexlean.lock)"
+          "$RUNNER_TEMP/run-sdk" sh -c 'lexlean --version; lean --version; prismpm --version' | tee verification-output/compiler-identity.log
       - name: Verify exact canonical source, Lean proofs and Prism artifact
         run: |
           set -o pipefail

@@ -224,6 +224,26 @@ export class DohResolver {
     return { ok: text === 'OK', response: text, fqdn: `${subdomain}.duckdns.org` };
   }
 
+  /** Exact scoped lookup. An incomplete listing is never evidence of absence. */
+  async listCloudflareRecords({ zoneId, apiToken, name, apiBase = 'https://api.cloudflare.com/client/v4' }) {
+    if (!this.fetchImpl) throw new Error('fetch unavailable');
+    const url = `${apiBase}/zones/${encodeURIComponent(zoneId)}/dns_records?type=TXT&name=${encodeURIComponent(name)}&match=all&page=1&per_page=100`;
+    this.admission.reserve('retrieve', { requests: 1, transferBytes: wireBytes(url) + this.maxResponseBytes });
+    const res = await this.fetchImpl(url, { headers: { authorization: `Bearer ${apiToken}` } });
+    const json = JSON.parse(await readBoundedText(res, this.maxResponseBytes));
+    if (!res.ok || json?.success !== true || !Array.isArray(json.result)) refuse('dns-lookup-failed');
+    const info = json.result_info;
+    if (!info || info.page !== 1 || !Number.isSafeInteger(info.total_count) || info.total_count < 0
+      || !Number.isSafeInteger(info.total_pages) || info.total_pages < 0 || info.total_pages > 1
+      || info.count !== json.result.length || info.total_count !== json.result.length) refuse('dns-listing-incomplete');
+    if (json.result.length > 1) refuse('dns-record-conflict');
+    for (const record of json.result) {
+      if (record.type !== 'TXT' || record.name !== name || typeof record.content !== 'string'
+        || typeof record.id !== 'string' || !/^[A-Za-z0-9_-]{1,128}$/.test(record.id)) refuse('dns-record-conflict');
+    }
+    return json.result.map(({ id, name, type, content }) => ({ id, name, type, content }));
+  }
+
   /**
    * Objective O2 & Claim C2: Publish or update a low-TTL Cloudflare DNS SRV or TXT record
    * (supports epoch-prefixed subdomains `<epoch>._stitch._udp.<zone>` to bypass local cache opacity).
@@ -269,24 +289,24 @@ export class DohResolver {
       body.content = String(content);
     }
     this.admission.reserve('refresh', { requests: 1, transferBytes: wireBytes(url) + wireBytes(body) + this.maxResponseBytes });
-    const res = await this.fetchImpl(url, {
-      method: recordId ? 'PUT' : 'POST',
-      headers: {
-        authorization: `Bearer ${apiToken}`,
-        'content-type': 'application/json'
-      },
-      body: JSON.stringify(body)
-    });
-    const json = res.body?.getReader || res.text
-      ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
-    return {
-      ok: Boolean(json?.success),
-      id: json?.result?.id || recordId,
-      name,
-      type,
-      ttl: body.ttl,
-      errors: json?.errors || []
-    };
+    // Only pre-dispatch validation/admission errors throw. Once attempted, a lost
+    // or malformed response is uncertainty, never evidence that no write occurred.
+    try {
+      const res = await this.fetchImpl(url, {
+        method: recordId ? 'PUT' : 'POST',
+        headers: { authorization: `Bearer ${apiToken}`, 'content-type': 'application/json' },
+        body: JSON.stringify(body)
+      });
+      const json = res.body?.getReader || res.text
+        ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
+      if (json?.success === false) return { ok: false, outcome: 'refused', errors: json.errors || [] };
+      if (!res.ok || json?.success !== true || typeof json?.result?.id !== 'string'
+        || !/^[A-Za-z0-9_-]{1,128}$/.test(json.result.id)
+        || (recordId && json.result.id !== recordId)) return { ok: false, outcome: 'unknown' };
+      return { ok: true, outcome: 'published', id: json.result.id, name, type, ttl: body.ttl, errors: [] };
+    } catch {
+      return { ok: false, outcome: 'unknown' };
+    }
   }
 
   /**
@@ -405,6 +425,8 @@ export class WebRtcTransportNode {
 
     /** @type {Map<string, { pc: RTCPeerConnection, dc: RTCDataChannel | null, rttMs: number | null, lastSeenSec: number, startedAtMs: number, iceSetupSec: number | null, usedTurn: boolean, heartbeatsPassed: number, c1Logged: boolean }>} */
     this.peers = new Map();
+    this.generation = 0;
+    this.closed = false;
     this.bc = null;
     this.ws = null;
     this.hbTimer = null;
@@ -443,6 +465,7 @@ export class WebRtcTransportNode {
   }
 
   getOrCreatePeer(remoteId, initiator = false) {
+    if (this.closed) refuse('transport-closed');
     let entry = this.peers.get(remoteId);
     if (entry && entry.pc && entry.pc.connectionState !== 'closed' && entry.pc.connectionState !== 'failed') {
       return entry;
@@ -463,8 +486,11 @@ export class WebRtcTransportNode {
       c1Logged: false
     };
     this.peers.set(remoteId, entry);
+    const generation = this.generation;
+    const current = () => !this.closed && this.generation === generation && this.peers.get(remoteId) === entry;
 
     pc.onicecandidate = e => {
+      if (!current()) return;
       if (e.candidate) {
         const raw = e.candidate.candidate || '';
         const candidateType = raw.includes(' typ relay ')
@@ -474,11 +500,13 @@ export class WebRtcTransportNode {
           : 'host';
         if (candidateType === 'relay') entry.usedTurn = true;
         this.emit('ice_candidate', { remoteId, candidateType });
+        if (!current()) return;
         this.sendSignal({ kind: 'ice', to: remoteId, candidate: e.candidate });
       }
     };
 
     pc.oniceconnectionstatechange = () => {
+      if (!current()) return;
       const state = pc.iceConnectionState || 'closed';
       this.emit('ice_state', { remoteId, state });
       if (state === 'disconnected' || state === 'failed' || state === 'closed') {
@@ -500,6 +528,7 @@ export class WebRtcTransportNode {
     };
 
     pc.ondatachannel = e => {
+      if (!current()) { e.channel.close(); return; }
       this.bindDataChannel(remoteId, e.channel);
     };
 
@@ -513,22 +542,29 @@ export class WebRtcTransportNode {
 
   bindDataChannel(remoteId, channel) {
     const entry = this.peers.get(remoteId);
-    if (entry) entry.dc = channel;
+    if (!entry || this.closed) { channel.close(); return; }
+    entry.dc = channel;
+    const generation = this.generation;
+    const current = () => !this.closed && this.generation === generation
+      && this.peers.get(remoteId) === entry && entry.dc === channel;
 
     channel.onopen = () => {
+      if (!current()) return;
       if (entry && entry.iceSetupSec === null) {
         entry.iceSetupSec = Number(((performance.now() - entry.startedAtMs) / 1000).toFixed(2));
       }
       this.emit('channel_open', { remoteId, label: channel.label, iceSetupSec: entry?.iceSetupSec ?? 0 });
-      this.startHeartbeat();
+      if (current()) this.startHeartbeat();
     };
 
     channel.onclose = () => {
+      if (!current()) return;
       this.peers.delete(remoteId);
       this.emit('channel_close', { remoteId });
     };
 
     channel.onmessage = e => {
+      if (!current()) return;
       const rawLen = typeof e.data === 'string' ? e.data.length : (e.data?.byteLength || 0);
       this.bytesReceived += rawLen;
       try {
@@ -594,8 +630,10 @@ export class WebRtcTransportNode {
   }
 
   startHeartbeat() {
-    if (this.hbTimer) return;
+    if (this.closed || this.hbTimer) return;
+    const generation = this.generation;
     this.hbTimer = setInterval(() => {
+      if (this.closed || this.generation !== generation) return;
       this.seq++;
       const now = Date.now();
       this.broadcast({ type: 'ping', seq: this.seq, sentAtMs: now, from: this.peerId });
@@ -683,19 +721,24 @@ export class WebRtcTransportNode {
   }
 
   connect(channelKey = this.channelKey) {
-    if (channelKey !== this.channelKey) {
-      // A new mesh must not keep sending object/VM bytes to the old mesh.
-      for (const { pc, dc } of [...this.peers.values()]) { dc?.close(); pc?.close(); }
-      this.peers.clear(); this.stopHeartbeat();
-    }
+    // Invalidate callbacks before closing: close events may run synchronously.
+    // Rejoining the same topic is also a new signaling session.
+    this.close();
+    this.closed = false;
     this.channelKey = channelKey;
-    if (this.bc) this.bc.close();
-    if (this.ws) this.ws.close();
+    const generation = this.generation;
+    const current = () => !this.closed && this.generation === generation;
+    const receive = msg => {
+      if (!current()) return;
+      this.handleSignal(msg).catch(error => {
+        if (current()) this.emit('signal_error', { code: error.code || 'signaling-failed' });
+      });
+    };
 
     if (typeof BroadcastChannel !== 'undefined') {
       this.bc = new BroadcastChannel(`uor:${this.channelKey}`);
       this.bc.onmessage = e => {
-        if (e.data && e.data.from !== this.peerId) this.handleSignal(e.data);
+        if (current() && e.data && e.data.from !== this.peerId) receive(e.data);
       };
     }
 
@@ -705,16 +748,19 @@ export class WebRtcTransportNode {
         this.admission.reserve('refresh', { requests: 1 });
         this.ws = new WebSocket(`wss://ntfy.sh/${topic}/ws`);
         this.ws.onopen = () => {
+          if (!current()) return;
           this.emit('signaling_ready', { topic, channelKey: this.channelKey });
+          if (!current()) return;
           this.sendSignal({ kind: 'announce' });
         };
         this.ws.onmessage = e => {
+          if (!current()) return;
           try {
             if (typeof e.data !== 'string' || e.data.length > this.maxDataMessageBytes) return;
             const env = JSON.parse(e.data);
             if (env.event !== 'message' || !env.message) return;
             const msg = JSON.parse(env.message);
-            if (msg && msg.from !== this.peerId) this.handleSignal(msg);
+            if (msg && msg.from !== this.peerId) receive(msg);
           } catch {}
         };
       } catch {
@@ -726,6 +772,7 @@ export class WebRtcTransportNode {
   }
 
   sendSignal(payload) {
+    if (this.closed) return false;
     const frame = { ...payload, from: this.peerId, channelKey: this.channelKey };
     try { reserveNetwork(this.admission, 'refresh', frame, (this.bc ? 1 : 0) + (typeof fetch !== 'undefined' ? 1 : 0)); }
     catch (error) { this.emit('policy_refused', { code: error.code || 'budget-exhausted' }); return false; }
@@ -739,6 +786,10 @@ export class WebRtcTransportNode {
   }
 
   async handleSignal(msg) {
+    if (this.closed || !msg || msg.channelKey !== this.channelKey) return;
+    const generation = this.generation;
+    const current = entry => !this.closed && this.generation === generation
+      && this.peers.get(msg.from) === entry;
     if (msg.to && msg.to !== this.peerId) return;
     const remoteId = msg.from;
     if (!remoteId || remoteId === this.peerId) return;
@@ -751,7 +802,9 @@ export class WebRtcTransportNode {
     if (msg.kind === 'announce') {
       const entry = this.getOrCreatePeer(remoteId, true);
       const offer = await entry.pc.createOffer();
+      if (!current(entry)) return;
       await entry.pc.setLocalDescription(offer);
+      if (!current(entry)) return;
       this.sendSignal({ kind: 'offer', to: remoteId, sdp: entry.pc.localDescription });
     } else if (msg.kind === 'offer') {
       if (existing && existing.pc.signalingState === 'have-local-offer' && this.peerId < remoteId) {
@@ -759,8 +812,11 @@ export class WebRtcTransportNode {
       }
       const entry = this.getOrCreatePeer(remoteId, false);
       await entry.pc.setRemoteDescription(new RTCSessionDescription(msg.sdp));
+      if (!current(entry)) return;
       const answer = await entry.pc.createAnswer();
+      if (!current(entry)) return;
       await entry.pc.setLocalDescription(answer);
+      if (!current(entry)) return;
       this.sendSignal({ kind: 'answer', to: remoteId, sdp: entry.pc.localDescription });
     } else if (msg.kind === 'answer') {
       if (existing && existing.pc.signalingState === 'have-local-offer') {
@@ -776,13 +832,19 @@ export class WebRtcTransportNode {
   }
 
   close() {
+    this.closed = true;
+    this.generation++;
     this.stopHeartbeat();
-    for (const { dc, pc } of this.peers.values()) {
+    const peers = [...this.peers.values()];
+    this.peers.clear();
+    for (const { dc, pc } of peers) {
       if (dc) dc.close();
       if (pc) pc.close();
     }
     this.peers.clear();
     if (this.bc) this.bc.close();
     if (this.ws) this.ws.close();
+    this.bc = null;
+    this.ws = null;
   }
 }

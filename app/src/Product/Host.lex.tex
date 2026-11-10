@@ -1,0 +1,322 @@
+\begin{lexlean}{Product.Host}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\importmodule{Stitch.Budget}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+inductive{
+  name: Capability,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Dom, fields: []},
+    {name: Cryptography, fields: []},
+    {name: MonotonicClock, fields: []},
+    {name: WallClock, fields: []},
+    {name: SessionStorage, fields: []},
+    {name: PeerChannel, fields: []},
+    {name: LocalBroadcast, fields: []},
+    {name: PublicSignaling, fields: []},
+    {name: DnsRead, fields: []},
+    {name: DnsWrite, fields: []},
+    {name: PublicRelay, fields: []},
+    {name: VirtualMachine, fields: []},
+    {name: ArtifactFetch, fields: []},
+    {name: NativeRouting, fields: []}
+  ]
+}
+
+inductive{
+  name: Outcome,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Pending, fields: []},
+    {name: Succeeded, fields: []},
+    {name: Failed, fields: []},
+    {name: Unknown, fields: []}
+  ]
+}
+
+structure{
+  name: Grant,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: capability, type: Capability},
+    {name: destinationRoot, type: Stitch.Identity::Digest},
+    {name: subjectRoot, type: Stitch.Identity::Digest},
+    {name: session, type: Nat},
+    {name: validFrom, type: Nat},
+    {name: validUntil, type: Nat},
+    {name: authorized, type: Bool},
+    {name: disclosureAccepted, type: Bool}
+  ]
+}
+
+structure{
+  name: Request,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: actionId, type: Stitch.Identity::Digest},
+    {name: capability, type: Capability},
+    {name: destinationRoot, type: Stitch.Identity::Digest},
+    {name: subjectRoot, type: Stitch.Identity::Digest},
+    {name: session, type: Nat},
+    {name: cost, type: Stitch.Budget::Resources}
+  ]
+}
+
+structure{
+  name: Effect,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: request, type: Request},
+    {name: requestedAt, type: Nat},
+    {name: outcome, type: Outcome}
+  ]
+}
+
+structure{
+  name: Observation,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: actionId, type: Stitch.Identity::Digest},
+    {name: capability, type: Capability},
+    {name: destinationRoot, type: Stitch.Identity::Digest},
+    {name: subjectRoot, type: Stitch.Identity::Digest},
+    {name: session, type: Nat},
+    {name: observedAt, type: Nat},
+    {name: outcome, type: Outcome}
+  ]
+}
+
+structure{
+  name: State,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: ledger, type: Stitch.Budget::Ledger},
+    {name: session, type: Nat},
+    {name: effects, type: (List Effect)},
+    {name: observations, type: (List Observation)}
+  ]
+}
+
+definition{
+  name: capabilityCode,
+  parameters: [capability : Capability],
+  result: Nat,
+  body: (match capability
+    | Capability.Dom => 0
+    | Capability.Cryptography => 1
+    | Capability.MonotonicClock => 2
+    | Capability.WallClock => 3
+    | Capability.SessionStorage => 4
+    | Capability.PeerChannel => 5
+    | Capability.LocalBroadcast => 6
+    | Capability.PublicSignaling => 7
+    | Capability.DnsRead => 8
+    | Capability.DnsWrite => 9
+    | Capability.PublicRelay => 10
+    | Capability.VirtualMachine => 11
+    | Capability.ArtifactFetch => 12
+    | Capability.NativeRouting => 13)
+}
+
+definition{
+  name: outcomeCode,
+  parameters: [outcome : Outcome],
+  result: Nat,
+  body: (match outcome
+    | Outcome.Pending => 0
+    | Outcome.Succeeded => 1
+    | Outcome.Failed => 2
+    | Outcome.Unknown => 3)
+}
+
+definition{
+  name: requiresDisclosure,
+  parameters: [capability : Capability],
+  result: Bool,
+  body: (((capabilityCode capability) =? 7) || (((capabilityCode capability) =? 9) || ((capabilityCode capability) =? 10)))
+}
+
+definition{
+  name: browserSupported,
+  parameters: [capability : Capability],
+  result: Bool,
+  body: (not ((capabilityCode capability) =? 13))
+}
+
+definition{
+  name: requestAllowed,
+  parameters: [state : State, request : Request, grant : Grant, now : Nat],
+  result: Bool,
+  body: ((browserSupported (project request capability)) && ((project grant authorized) && (((project request session) =? (project state session)) && (((project grant session) =? (project state session)) && (((capabilityCode (project request capability)) =? (capabilityCode (project grant capability))) && ((Stitch.Identity::digestWellFormed (project request destinationRoot)) && ((Stitch.Identity::digestWellFormed (project request subjectRoot)) && ((Stitch.Identity::sameDigest (project request destinationRoot) (project grant destinationRoot)) && ((Stitch.Identity::sameDigest (project request subjectRoot) (project grant subjectRoot)) && (((project grant validFrom) <=? now) && ((now <? (project grant validUntil)) && ((if (requiresDisclosure (project request capability)) then (project grant disclosureAccepted) else true) && (Stitch.Budget::reserveLedgerAllowed (project state ledger) (project request actionId) (project request cost) now)))))))))))))
+}
+
+definition{
+  name: reserve,
+  parameters: [state : State, request : Request, grant : Grant, now : Nat],
+  result: State,
+  body: (record State {ledger := (if (requestAllowed state request grant now) then (Stitch.Budget::reserveLedger (project state ledger) (project request actionId) (project request cost) now) else (project state ledger)), session := (project state session), effects := (if (requestAllowed state request grant now) then (cons (record Effect {request := request, requestedAt := now, outcome := (ctor Outcome.Pending)}) (project state effects)) else (project state effects)), observations := (project state observations)})
+}
+
+definition{
+  name: observationMatches,
+  parameters: [effect : Effect, observation : Observation],
+  result: Bool,
+  body: (((outcomeCode (project effect outcome)) =? 0) && ((not ((outcomeCode (project observation outcome)) =? 0)) && ((Stitch.Identity::sameDigest (project (project effect request) actionId) (project observation actionId)) && ((Stitch.Identity::sameDigest (project (project effect request) destinationRoot) (project observation destinationRoot)) && ((Stitch.Identity::sameDigest (project (project effect request) subjectRoot) (project observation subjectRoot)) && (((capabilityCode (project (project effect request) capability)) =? (capabilityCode (project observation capability))) && (((project (project effect request) session) =? (project observation session)) && ((project effect requestedAt) <=? (project observation observedAt)))))))))
+}
+
+definition{
+  name: pendingMatches,
+  parameters: [effects : (List Effect), observation : Observation],
+  result: Bool,
+  body: (match effects
+    | List.nil => false
+    | List.cons head tail => ((observationMatches head observation) || (pendingMatches tail observation))),
+  recursive_argument: effects
+}
+
+definition{
+  name: finish,
+  parameters: [effects : (List Effect), observation : Observation],
+  result: (List Effect),
+  body: (match effects
+    | List.nil => (nil Effect)
+    | List.cons head tail => (if (observationMatches head observation) then (cons (record Effect {request := (project head request), requestedAt := (project head requestedAt), outcome := (project observation outcome)}) tail) else (cons head (finish tail observation)))),
+  recursive_argument: effects
+}
+
+definition{
+  name: sessionFilter,
+  parameters: [difference : Nat, whenEqual : State, whenDifferent : State],
+  result: State,
+  body: (match difference | Nat.zero => whenEqual | Nat.succ rest => whenDifferent)
+}
+
+definition{
+  name: ledgerFilter,
+  parameters: [
+    difference : Nat,
+    whenEqual : Stitch.Budget::Ledger,
+    whenDifferent : Stitch.Budget::Ledger
+  ],
+  result: Stitch.Budget::Ledger,
+  body: (match difference | Nat.zero => whenEqual | Nat.succ rest => whenDifferent)
+}
+
+theorem{
+  name: sessionFilterLedger,
+  parameters: [difference : Nat, whenEqual : State, whenDifferent : State],
+  statement: ((project (sessionFilter difference whenEqual whenDifferent) ledger) = (ledgerFilter difference (project whenEqual ledger) (project whenDifferent ledger))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: zero},
+      {proof: reflexivity{}, binders: [rest], constructor: succ}
+    ],
+    scrutinee: difference
+  }
+}
+
+theorem{
+  name: ledgerFilterSame,
+  parameters: [difference : Nat, ledger : Stitch.Budget::Ledger],
+  statement: ((ledgerFilter difference ledger ledger) = ledger),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: zero},
+      {proof: reflexivity{}, binders: [rest], constructor: succ}
+    ],
+    scrutinee: difference
+  }
+}
+
+theorem{
+  name: positiveSessionFilterFact,
+  parameters: [difference : Nat, whenEqual : State, whenDifferent : State],
+  statement: (((0 < difference) -> ((sessionFilter difference whenEqual whenDifferent) = whenDifferent)) <-> (0 = 0)),
+  proof: cases{
+    branches: [
+      {
+        proof: constructor{
+          branches: [linear_arithmetic{}, linear_arithmetic{definitions: [sessionFilter]}]
+        },
+        binders: [],
+        constructor: zero
+      },
+      {
+        proof: constructor{
+          branches: [linear_arithmetic{}, linear_arithmetic{definitions: [sessionFilter]}]
+        },
+        binders: [rest],
+        constructor: succ
+      }
+    ],
+    scrutinee: difference
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: sessionLessThanDifference,
+  parameters: [state : State, observation : Observation],
+  statement: (((project observation session) < (project state session)) <-> (0 < (prim subtract (project state session) (project observation session) : Nat))),
+  proof: constructor{branches: [linear_arithmetic{}, linear_arithmetic{}]},
+  axioms: [Quot.sound, propext]
+}
+
+definition{
+  name: observationCandidate,
+  parameters: [state : State, observation : Observation],
+  result: State,
+  body: (record State {ledger := (project state ledger), session := (project state session), effects := (if (pendingMatches (project state effects) observation) then (finish (project state effects) observation) else (project state effects)), observations := (if (pendingMatches (project state effects) observation) then (cons observation (project state observations)) else (project state observations))})
+}
+
+definition{
+  name: observe,
+  parameters: [state : State, observation : Observation],
+  result: State,
+  body: (sessionFilter (prim subtract (project state session) (project observation session) : Nat) (sessionFilter (prim subtract (project observation session) (project state session) : Nat) (observationCandidate state observation) state) state)
+}
+
+theorem{
+  name: requestDoesNotCreateObservation,
+  parameters: [state : State, request : Request, grant : Grant, now : Nat],
+  statement: ((project (reserve state request grant now) observations) = (project state observations)),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: observationCannotRefundLedger,
+  parameters: [state : State, observation : Observation],
+  statement: ((project (observe state observation) ledger) = (project state ledger)),
+  proof: simplify{
+    definitions: [ledgerFilterSame, observationCandidate, observe, sessionFilterLedger]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: staleSessionCannotComplete,
+  parameters: [state : State, observation : Observation],
+  statement: (((project observation session) < (project state session)) -> ((observe state observation) = state)),
+  proof: simplify{definitions: [observe, positiveSessionFilterFact, sessionLessThanDifference]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: nativeRoutingRefused,
+  parameters: [],
+  statement: ((browserSupported (ctor Capability.NativeRouting)) = false),
+  proof: decide{}
+}
+\end{semanticmodule}
+\end{lexlean}

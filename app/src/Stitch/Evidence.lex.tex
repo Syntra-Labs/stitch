@@ -3,63 +3,251 @@
 \useglossary{lexlean.std.nat@1.2.0}
 \useglossary{stitch.domain@1.0.0}
 \importmodule{Stitch.Identity}
+\importmodule{Stitch.Encoding}
 \title{Stitch recoverable service model}
 \begin{semanticmodule}
 inductive{
   name: ClaimKind,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: Integrity, fields: []}, {name: Authorization, fields: []}, {name: Reconstruction, fields: []}, {name: PureExecution, fields: []}, {name: Availability, fields: []}, {name: Durability, fields: []}, {name: Confidentiality, fields: []}]
+  constructors: [
+    {name: Integrity, fields: []},
+    {name: Authorization, fields: []},
+    {name: Reconstruction, fields: []},
+    {name: PureExecution, fields: []},
+    {name: Availability, fields: []},
+    {name: Durability, fields: []},
+    {name: Confidentiality, fields: []}
+  ]
 }
+
 inductive{
   name: EvidenceKind,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: Specified, fields: []}, {name: KernelChecked, fields: []}, {name: ImplementationTested, fields: []}, {name: IndependentlyReplayed, fields: []}, {name: FieldMeasured, fields: []}, {name: Refuted, fields: []}, {name: Untested, fields: []}]
+  constructors: [
+    {name: Specified, fields: []},
+    {name: KernelChecked, fields: []},
+    {name: ImplementationTested, fields: []},
+    {name: IndependentlyReplayed, fields: []},
+    {name: FieldMeasured, fields: []},
+    {name: Refuted, fields: []},
+    {name: Untested, fields: []}
+  ]
 }
+
 inductive{
   name: HostEffect,
   type_parameters: [],
   parameters: [],
-  constructors: [{name: ReadClock, fields: []}, {name: SendFragment, fields: []}, {name: PersistFragment, fields: []}, {name: ReadDNS, fields: []}, {name: WriteDNS, fields: []}, {name: ReceivePeer, fields: []}, {name: RunVM, fields: []}, {name: FetchDependency, fields: []}, {name: VerifySignature, fields: []}, {name: HashBytes, fields: []}]
-}
-structure{
-  name: Evidence,
-  type_parameters: [],
-  parameters: [],
-  fields: [{name: claim, type: ClaimKind}, {name: kind, type: EvidenceKind}, {name: modelRoot, type: Stitch.Identity::Digest}, {name: artifactRoot, type: Stitch.Identity::Digest}, {name: subjectRoot, type: Stitch.Identity::Digest}, {name: assumptionsRoot, type: Stitch.Identity::Digest}, {name: observedAt, type: Nat}, {name: validUntil, type: Nat}, {name: horizon, type: Nat}, {name: failureBound, type: Nat}]
-}
-structure{
-  name: Scope,
-  type_parameters: [],
-  parameters: [],
-  fields: [{name: horizon, type: Nat}, {name: failures, type: Nat}, {name: hostEffects, type: Nat}]
-}
-definition{
-  name: scopeReusable,
-  parameters: [provedHorizon : Nat, requestedHorizon : Nat, provedFailures : Nat, requestedFailures : Nat, bindingsMatch : Bool, assumptionsMatch : Bool, dependencyClosureUnchanged : Bool],
-  result: Bool,
-  body: ((requestedHorizon <=? provedHorizon) && ((requestedFailures <=? provedFailures) && (bindingsMatch && (assumptionsMatch && dependencyClosureUnchanged))))
-}
-definition{
-  name: pureEffectAllowed,
-  parameters: [effect : HostEffect],
-  result: Bool,
-  body: false
-}
-theorem{
-  name: cannotExtendEvidenceHorizon,
-  parameters: [provedHorizon : Nat, requestedHorizon : Nat, provedFailures : Nat, requestedFailures : Nat, bindingsMatch : Bool, assumptionsMatch : Bool, dependencyClosureUnchanged : Bool],
-  statement: ((provedHorizon < requestedHorizon) -> ((scopeReusable provedHorizon requestedHorizon provedFailures requestedFailures bindingsMatch assumptionsMatch dependencyClosureUnchanged) = false)),
-  proof: linear_arithmetic{definitions: [scopeReusable]}
+  constructors: [
+    {name: ReadClock, fields: []},
+    {name: SendFragment, fields: []},
+    {name: PersistFragment, fields: []},
+    {name: ReadDNS, fields: []},
+    {name: WriteDNS, fields: []},
+    {name: ReceivePeer, fields: []},
+    {name: RunVM, fields: []},
+    {name: FetchDependency, fields: []},
+    {name: VerifySignature, fields: []},
+    {name: HashBytes, fields: []}
+  ]
 }
 
 structure{
   name: HostAssumptions,
   type_parameters: [],
   parameters: [],
-  fields: [{name: digestCollisionResistance, type: Bool}, {name: signatureUnforgeability, type: Bool}, {name: authorizedKeyBinding, type: Bool}, {name: receiptAuthentication, type: Bool}, {name: storageRetentionForLease, type: Bool}, {name: independentFailureDomains, type: Bool}, {name: monotonicElapsedClock, type: Bool}, {name: releasedRuntimeMatchesModel, type: Bool}]
+  fields: [
+    {name: digestCollisionResistance, type: Bool},
+    {name: signatureUnforgeability, type: Bool},
+    {name: authorizedKeyBinding, type: Bool},
+    {name: receiptAuthentication, type: Bool},
+    {name: storageRetentionForLease, type: Bool},
+    {name: independentFailureDomains, type: Bool},
+    {name: monotonicElapsedClock, type: Bool},
+    {name: releasedRuntimeMatchesModel, type: Bool}
+  ]
 }
 
+structure{
+  name: Evidence,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: claim, type: ClaimKind},
+    {name: kind, type: EvidenceKind},
+    {name: modelRoot, type: Stitch.Identity::Digest},
+    {name: artifactRoot, type: Stitch.Identity::Digest},
+    {name: subjectRoot, type: Stitch.Identity::Digest},
+    {name: assumptionsRoot, type: Stitch.Identity::Digest},
+    {name: dependencyRoot, type: Stitch.Identity::Digest},
+    {name: assumptions, type: HostAssumptions},
+    {name: dependencies, type: (List Stitch.Encoding::Dependency)},
+    {name: hostEffects, type: (List HostEffect)},
+    {name: observedAt, type: Nat},
+    {name: validUntil, type: Nat},
+    {name: horizon, type: Nat},
+    {name: failureBound, type: Nat}
+  ]
+}
+
+structure{
+  name: Scope,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: claim, type: ClaimKind},
+    {name: kind, type: EvidenceKind},
+    {name: modelRoot, type: Stitch.Identity::Digest},
+    {name: artifactRoot, type: Stitch.Identity::Digest},
+    {name: subjectRoot, type: Stitch.Identity::Digest},
+    {name: assumptionsRoot, type: Stitch.Identity::Digest},
+    {name: dependencyRoot, type: Stitch.Identity::Digest},
+    {name: assumptions, type: HostAssumptions},
+    {name: dependencies, type: (List Stitch.Encoding::Dependency)},
+    {name: hostEffects, type: (List HostEffect)},
+    {name: horizon, type: Nat},
+    {name: failures, type: Nat}
+  ]
+}
+
+definition{
+  name: claimCode,
+  parameters: [value : ClaimKind],
+  result: Nat,
+  body: (match value
+    | ClaimKind.Integrity => 0
+    | ClaimKind.Authorization => 1
+    | ClaimKind.Reconstruction => 2
+    | ClaimKind.PureExecution => 3
+    | ClaimKind.Availability => 4
+    | ClaimKind.Durability => 5
+    | ClaimKind.Confidentiality => 6)
+}
+
+definition{
+  name: kindCode,
+  parameters: [value : EvidenceKind],
+  result: Nat,
+  body: (match value
+    | EvidenceKind.Specified => 0
+    | EvidenceKind.KernelChecked => 1
+    | EvidenceKind.ImplementationTested => 2
+    | EvidenceKind.IndependentlyReplayed => 3
+    | EvidenceKind.FieldMeasured => 4
+    | EvidenceKind.Refuted => 5
+    | EvidenceKind.Untested => 6)
+}
+
+definition{
+  name: effectCode,
+  parameters: [value : HostEffect],
+  result: Nat,
+  body: (match value
+    | HostEffect.ReadClock => 0
+    | HostEffect.SendFragment => 1
+    | HostEffect.PersistFragment => 2
+    | HostEffect.ReadDNS => 3
+    | HostEffect.WriteDNS => 4
+    | HostEffect.ReceivePeer => 5
+    | HostEffect.RunVM => 6
+    | HostEffect.FetchDependency => 7
+    | HostEffect.VerifySignature => 8
+    | HostEffect.HashBytes => 9)
+}
+
+definition{
+  name: dependencyKindCode,
+  parameters: [value : Stitch.Encoding::DependencyKind],
+  result: Nat,
+  body: (match value
+    | Stitch.Encoding::DependencyKind.Decoder => 0
+    | Stitch.Encoding::DependencyKind.Parameters => 1
+    | Stitch.Encoding::DependencyKind.Basis => 2
+    | Stitch.Encoding::DependencyKind.Residual => 3
+    | Stitch.Encoding::DependencyKind.Framing => 4)
+}
+
+definition{
+  name: sameAssumptions,
+  parameters: [left : HostAssumptions, right : HostAssumptions],
+  result: Bool,
+  body: (((if (project left digestCollisionResistance) then 1 else 0) =? (if (project right digestCollisionResistance) then 1 else 0)) && (((if (project left signatureUnforgeability) then 1 else 0) =? (if (project right signatureUnforgeability) then 1 else 0)) && (((if (project left authorizedKeyBinding) then 1 else 0) =? (if (project right authorizedKeyBinding) then 1 else 0)) && (((if (project left receiptAuthentication) then 1 else 0) =? (if (project right receiptAuthentication) then 1 else 0)) && (((if (project left storageRetentionForLease) then 1 else 0) =? (if (project right storageRetentionForLease) then 1 else 0)) && (((if (project left independentFailureDomains) then 1 else 0) =? (if (project right independentFailureDomains) then 1 else 0)) && (((if (project left monotonicElapsedClock) then 1 else 0) =? (if (project right monotonicElapsedClock) then 1 else 0)) && ((if (project left releasedRuntimeMatchesModel) then 1 else 0) =? (if (project right releasedRuntimeMatchesModel) then 1 else 0)))))))))
+}
+
+definition{
+  name: sameDependency,
+  parameters: [left : Stitch.Encoding::Dependency, right : Stitch.Encoding::Dependency],
+  result: Bool,
+  body: ((Stitch.Identity::sameDigest (project left root) (project right root)) && (((dependencyKindCode (project left kind)) =? (dependencyKindCode (project right kind))) && (((project left byteLength) =? (project right byteLength)) && ((Stitch.Identity::digestWellFormed (project left root)) && ((project left present) && ((project right present) && ((project left integrityChecked) && (project right integrityChecked))))))))
+}
+
+definition{
+  name: dependenciesUnchanged,
+  parameters: [
+    left : (List Stitch.Encoding::Dependency),
+    right : (List Stitch.Encoding::Dependency)
+  ],
+  result: Bool,
+  body: (match left
+    | List.nil => (match right | List.nil => true | List.cons other rest => false)
+    | List.cons head tail => (match right
+      | List.nil => false
+      | List.cons other rest => ((sameDependency head other) && (dependenciesUnchanged tail rest)))),
+  recursive_argument: left
+}
+
+definition{
+  name: effectMember,
+  parameters: [effect : HostEffect, effects : (List HostEffect)],
+  result: Bool,
+  body: (match effects
+    | List.nil => false
+    | List.cons head tail => (((effectCode effect) =? (effectCode head)) || (effectMember effect tail))),
+  recursive_argument: effects
+}
+
+definition{
+  name: effectsCovered,
+  parameters: [requested : (List HostEffect), allowed : (List HostEffect)],
+  result: Bool,
+  body: (match requested
+    | List.nil => true
+    | List.cons head tail => ((effectMember head allowed) && (effectsCovered tail allowed))),
+  recursive_argument: requested
+}
+
+definition{
+  name: positiveEvidenceKind,
+  parameters: [kind : EvidenceKind],
+  result: Bool,
+  body: ((1 <=? (kindCode kind)) && ((kindCode kind) <=? 4))
+}
+
+definition{
+  name: scopeReusable,
+  parameters: [evidence : Evidence, requested : Scope, now : Nat],
+  result: Bool,
+  body: (((claimCode (project evidence claim)) =? (claimCode (project requested claim))) && (((kindCode (project evidence kind)) =? (kindCode (project requested kind))) && ((positiveEvidenceKind (project evidence kind)) && ((Stitch.Identity::digestWellFormed (project evidence modelRoot)) && ((Stitch.Identity::sameDigest (project evidence modelRoot) (project requested modelRoot)) && ((Stitch.Identity::digestWellFormed (project evidence artifactRoot)) && ((Stitch.Identity::sameDigest (project evidence artifactRoot) (project requested artifactRoot)) && ((Stitch.Identity::digestWellFormed (project evidence subjectRoot)) && ((Stitch.Identity::sameDigest (project evidence subjectRoot) (project requested subjectRoot)) && ((Stitch.Identity::digestWellFormed (project evidence assumptionsRoot)) && ((Stitch.Identity::sameDigest (project evidence assumptionsRoot) (project requested assumptionsRoot)) && ((Stitch.Identity::digestWellFormed (project evidence dependencyRoot)) && ((Stitch.Identity::sameDigest (project evidence dependencyRoot) (project requested dependencyRoot)) && ((sameAssumptions (project evidence assumptions) (project requested assumptions)) && ((dependenciesUnchanged (project evidence dependencies) (project requested dependencies)) && ((effectsCovered (project requested hostEffects) (project evidence hostEffects)) && (((project evidence observedAt) <=? now) && ((now <? (project evidence validUntil)) && (((now + (project requested horizon)) <=? (project evidence validUntil)) && (((now + (project requested horizon)) <=? ((project evidence observedAt) + (project evidence horizon))) && ((project requested failures) <=? (project evidence failureBound))))))))))))))))))))))
+}
+
+definition{name: pureEffectAllowed, parameters: [effect : HostEffect], result: Bool, body: false}
+
+theorem{
+  name: cannotExtendEvidenceHorizon,
+  parameters: [evidence : Evidence, requested : Scope, now : Nat],
+  statement: ((((project evidence observedAt) + (project evidence horizon)) < (now + (project requested horizon))) -> ((scopeReusable evidence requested now) = false)),
+  proof: linear_arithmetic{definitions: [scopeReusable]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: expiredEvidenceCannotBeReused,
+  parameters: [evidence : Evidence, requested : Scope, now : Nat],
+  statement: (((project evidence validUntil) <= now) -> ((scopeReusable evidence requested now) = false)),
+  proof: linear_arithmetic{definitions: [scopeReusable]},
+  axioms: [Quot.sound, propext]
+}
 \end{semanticmodule}
 \end{lexlean}

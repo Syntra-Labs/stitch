@@ -94,12 +94,15 @@ Authoring, inside that SDK:
    canonicalization/auditing. Review and commit the canonical source, actual
    lock, exact axiom policies and generated bindings together.
 4. `sh scripts/check-model-sdk.sh --check` is read-only: SDK lock/standards,
-   binding freshness, canonical source, source lock, LexLean check, Lean and
-   leanchecker verification, then the full PrismPM build/vector verification.
+   binding freshness, canonical source and source lock, then the full PrismPM
+   verification, which owns LexLean checking, Lean and leanchecker verification,
+   native build and acceptance vectors. No separate proof build repeats it.
 
-Initial prepare output is an authoring artifact, not a release. A source lock
-is deliberately not forged on a machine without LexLean. The gate must refuse
-an absent/stale lock and any unreviewed source changes.
+Prepare output is an authoring artifact, not a release. The source lock is
+produced by the actual pinned LexLean compiler. CI refuses absent committed
+authoring inputs before downloading the SDK; it never rewrites source or axiom
+policies to make a submission pass. The gate refuses stale locks and unreviewed
+source changes.
 
 The hosted LexLean service receives publicly unlisted source. This project does
 not send the user's private architecture input or invoke that service without

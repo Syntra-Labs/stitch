@@ -5,11 +5,13 @@
   "type": "module",
   "main": "src/layer1-uor/index.js",
   "scripts": {
-    "test": "node scripts/check-model.mjs && node --test scripts/check-model-tests.mjs tests/*.test.js && node tests/run_all.js",
+    "test": "node scripts/check-model.mjs && node scripts/check-product.mjs --check && node --test scripts/*-tests.mjs tests/*.test.js && node tests/run_all.js",
     "serve": "python3 -m http.server 8080",
     "model:write": "node scripts/check-model.mjs --write",
     "model:check": "node scripts/check-model.mjs",
-    "test:independent": "python3 scripts/verify-custody.py"
+    "test:independent": "python3 scripts/verify-custody.py",
+    "product:write": "node scripts/check-product.mjs --write",
+    "product:check": "node scripts/check-product.mjs --check"
   },
   "repository": {
     "type": "git",

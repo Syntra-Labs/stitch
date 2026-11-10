@@ -1,8 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
-import { ResourceAdmission, wireBytes } from '../src/layer2-schedulers/policy.js';
-import { generateAuthority, signPointer, PointerObserver, pointerDnsText, parsePointerDnsText } from '../src/layer1-uor/pointer.js';
+import { ResourceAdmission, wireBytes, reserveNetwork } from '../src/layer2-schedulers/policy.js';
+import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from '../src/layer1-uor/pointer.js';
 import { LiveUorMeshDatabase } from '../src/layer3-storage/index.js';
 import { LiveDistributedComputeCoordinator } from '../src/layer4-compute/index.js';
 import { createCheckpoint, demoProgram, replayProgram } from '../src/layer4-compute/replay.js';
@@ -151,44 +151,64 @@ test('retained pointer heads serialize forks, reject foreign pins, and preserve 
   assert.equal(noCache.head, null);
 });
 
-test('actual browser script sends v1 channel sync and gates full pointer publishing on explicit pin and retained head', async () => {
+async function browserHarness({ AdmissionClass = ResourceAdmission, publicationMode = 'success' } = {}) {
   const html = await readFile(new URL('../index.html', import.meta.url), 'utf8');
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1]
     .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
   const elements = new Map();
   const element = () => ({ value: '', checked: false, textContent: '', style: {}, listeners: {},
-    addEventListener(type, callback) { this.listeners[type] = callback; }, replaceChildren() {}, append() {} });
+    addEventListener(type, callback) { this.listeners[type] = callback; }, replaceChildren() {}, append() {}, click() {} });
   const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element };
   document.getElementById('meshKeyInput').value = 'test';
   document.getElementById('dnsQueryInput').value = 'state.example.test';
   document.getElementById('dbPayloadInput').value = 'browser object';
   document.getElementById('dbLabelInput').value = 'state.txt';
-  let mesh, db; const published = [];
+  let mesh, db, coordinator, tick, exportedBlob; const published = [], dnsCalls = [];
   class FakeTransport {
-    constructor(options) { Object.assign(this, transport(), options); mesh = this; }
+    constructor(options) { Object.assign(this, transport(), options); this.sendToPeer = FakeTransport.prototype.sendToPeer; this.broadcast = FakeTransport.prototype.broadcast; mesh = this; }
     signalTopic() { return 'signal'; } warmCacheTopic() { return 'warm'; } connect() {}
+    sendToPeer(_, packet) { reserveNetwork(this.admission, 'place', packet); this.sent.push(packet); return true; }
+    broadcast(packet) { reserveNetwork(this.admission, 'retrieve', packet, this.openPeers().length); this.sent.push(packet); return this.openPeers().length; }
   }
   class FakeDb extends LiveUorMeshDatabase { constructor(options) { super(options); db = this; } }
+  class FakeCoordinator extends LiveDistributedComputeCoordinator { constructor(options) { super(options); coordinator = this; } }
   class FakeDns {
     constructor(options) { this.admission = options.admission; }
+    async listCloudflareRecords({ name }) {
+      dnsCalls.push('GET');
+      this.admission.reserve('retrieve', { requests: 1 });
+      return published.length ? [{ id: 'record-1', name, type: 'TXT', content: pointerDnsText(published.at(-1)) }] : [];
+    }
     async writeCloudflareRecord(options) {
-      this.admission.reserve('refresh', { requests: 1 }); published.push(parsePointerDnsText(options.content));
-      return { ok: true };
+      this.admission.reserve('refresh', { requests: 1 }); dnsCalls.push(options.recordId ? 'PUT' : 'POST');
+      if (publicationMode === 'lost-not-created') return { ok: false, outcome: 'unknown' };
+      published.push(parsePointerDnsText(options.content));
+      if (publicationMode === 'lost-created') return { ok: false, outcome: 'unknown' };
+      return { ok: true, outcome: 'published', id: 'record-1' };
     }
   }
   const bindings = { document, window: { addEventListener() {} }, location: { hash: '' }, navigator: {},
-    fetch: async () => new Response('colo=TEST\n'), setInterval: () => 1,
-    ResourceAdmission, generateAuthority, signPointer, PointerObserver, pointerDnsText, parsePointerDnsText,
+    fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
+    URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
+    ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
-    BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator,
+    BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,
     LinuxVmNode: class { async mountUorObject() {} },
     benchmarkUorHashers: () => [], benchmarkSchedulers: () => [], benchmarkStorageStrategies: () => [], benchmarkComputeStrategies: () => [] };
   new Function(...Object.keys(bindings), script)(...Object.values(bindings));
   await db.flush();
+  await Promise.resolve();
+  return { document, elements, mesh, db, coordinator, published, dnsCalls,
+    click: id => elements.get(id).listeners.click(), tick: () => tick(),
+    exported: async () => JSON.parse(await exportedBlob.text()) };
+}
+
+test('actual browser script sends v1 channel sync and gates full pointer publishing on explicit pin and retained head', async () => {
+  const { document, elements, mesh, db, published, click } = await browserHarness();
+  await db.flush();
   await mesh.onEvent({ type: 'channel_open', remoteId: 'remote' });
   assert.deepEqual(mesh.sent.at(-1), { type: 'uor_sync_req', version: 1 });
-  const click = id => elements.get(id).listeners.click();
   await click('dbPutBtn');
   await click('writeSignedDnsBtn');
   assert.equal(document.getElementById('pointerJsonInput').value, '');
@@ -255,4 +275,119 @@ test('joining another mesh closes old holders before any new-key sync and bounds
     assert.throws(() => node.getOrCreatePeer('remote'), code('peer-capacity'));
     node.bc?.close(); node.ws?.close();
   } finally { Object.assign(globalThis, saved); }
+});
+
+test('browser epochs expire visibly, renew only by explicit choice, and preserve prior ledgers, objects, jobs and pointer heads', async () => {
+  let now = 0;
+  class ControlledAdmission extends ResourceAdmission {
+    constructor(options = {}) { super({ ...options, clock: () => now }); }
+  }
+  const h = await browserHarness({ AdmissionClass: ControlledAdmission });
+  const { document, db, coordinator, click } = h;
+  const field = id => document.getElementById(id);
+  assert.equal(field('budgetMinutesInput').value, '10');
+  assert.match(field('budgetStatus').textContent, /Epoch 1 active/);
+  await click('dbPutBtn');
+  await click('pinSessionAuthorityBtn');
+  await click('writeSignedDnsBtn');
+  const pointer = JSON.parse(field('pointerJsonInput').value);
+  const program = demoProgram(3), checkpoint = await createCheckpoint(program, 1);
+  assert.equal(await coordinator.ingestCheckpoint({ type: 'compute_ckpt', jobId: 'paused', program, checkpoint, ownerPeerId: h.mesh.peerId }), true);
+  const objects = [...db.objects.keys()];
+  let rejectOldEffect;
+  const oldEffect = db.admission.run('place', { requests: 1 }, () => new Promise((_, reject) => { rejectOldEffect = reject; }));
+  oldEffect.catch(() => {});
+  const beforeExpiry = db.admission.state;
+  now = beforeExpiry.endMs;
+  h.tick();
+  assert.match(field('budgetStatus').textContent, /Epoch expired.*Start New Epoch/);
+  assert.match(field('budgetLabel').textContent, /0s left/);
+  await assert.rejects(db.put('not admitted after expiry'), code('epoch-expired'));
+  const sharedHandle = db.admission;
+  assert.equal(coordinator.admission, sharedHandle); assert.equal(h.mesh.admission, sharedHandle);
+  assert.equal(field('budgetPolicyPanel').open, true);
+  assert.deepEqual([...db.objects.keys()], objects);
+  assert.deepEqual(sharedHandle.state, beforeExpiry);
+  // Merely changing form values or waiting cannot reset the epoch.
+  field('budgetMinutesInput').value = '2';
+  field('budgetRequestsInput').value = '2';
+  field('budgetTransferInput').value = '500000';
+  field('budgetStorageInput').value = '100000';
+  field('budgetComputeInput').value = '100000';
+  field('budgetActionsInput').value = '100';
+  field('budgetRefreshInput').value = '3';
+  h.tick(); h.tick();
+  assert.deepEqual(sharedHandle.state, beforeExpiry);
+  field('budgetActionsInput').value = '70000';
+  click('renewBudgetBtn');
+  assert.match(field('budgetStatus').textContent, /Policy unchanged/);
+  assert.deepEqual(sharedHandle.state, beforeExpiry);
+  field('budgetActionsInput').value = '100';
+  click('renewBudgetBtn');
+  assert.match(field('budgetStatus').textContent, /Epoch 2 active/);
+  assert.equal(db.admission, sharedHandle); assert.equal(coordinator.admission, sharedHandle);
+  assert.equal(sharedHandle.state.limit.requests, 2);
+  assert.equal(sharedHandle.state.endMs - sharedHandle.state.startMs, 120000);
+  assert.deepEqual(sharedHandle.state.spent, { requests: 0, transferBytes: 0, storageBytes: 0, computeSteps: 0 });
+  assert.deepEqual([...db.objects.keys()], objects);
+  assert.equal(coordinator.jobs.get('paused').stepIndex, 1);
+  assert.equal(coordinator.running.size, 0); // No hidden retries on renewal.
+  assert.match(field('budgetHistoryBox').textContent, /Epoch 1.*reservations retained/);
+  rejectOldEffect(Error('old outcome remains uncertain'));
+  await assert.rejects(oldEffect, /uncertain/);
+  // Renewal cannot turn a replayed pointer into a new genesis or lose its pin/head.
+  field('pointerJsonInput').value = JSON.stringify(pointer);
+  await assert.rejects(click('admitPointerBtn'), code('pointer-conflict'));
+  await click('takeoverJobsBtn');
+  await coordinator.running.get('paused');
+  assert.equal(coordinator.jobs.get('paused').status, 'completed');
+  assert.equal(sharedHandle.state.spent.requests, 2);
+  let effects = 0;
+  assert.throws(() => sharedHandle.run('place', { requests: 1 }, () => effects++), code('budget-exhausted'));
+  assert.equal(effects, 0);
+  assert.match(field('budgetStatus').textContent, /refused.*budget-exhausted.*Start New Epoch/);
+  const secondEpoch = sharedHandle.state;
+  click('exportBudgetHistoryBtn');
+  let exported = await h.exported();
+  assert.equal(exported.epochs.length, 2);
+  assert.deepEqual(exported.epochs[0].budget, beforeExpiry);
+  assert.deepEqual(exported.epochs[1].budget, secondEpoch);
+  assert.ok(exported.epochs[0].budget.reservations.every(r => r.status === 'reserved'));
+  field('budgetRequestsInput').value = '5';
+  click('renewBudgetBtn');
+  assert.equal(sharedHandle.state.limit.requests, 5);
+  assert.equal(sharedHandle.state.spent.requests, 0);
+  click('exportBudgetHistoryBtn');
+  exported = await h.exported();
+  assert.equal(exported.epochs.length, 3);
+  assert.deepEqual(exported.epochs[0].budget, beforeExpiry);
+  assert.deepEqual(exported.epochs[1].budget, secondEpoch);
+});
+
+
+test('actual browser unknown publication reconciles without duplicate POST or concurrent-click effects', async () => {
+  const h = await browserHarness({ publicationMode: 'lost-created' });
+  await h.click('dbPutBtn'); await h.click('pinSessionAuthorityBtn');
+  h.document.getElementById('cfZoneInput').value = 'a'.repeat(32);
+  h.document.getElementById('cfTokenInput').value = 'test-token';
+  await Promise.all([h.click('writeSignedDnsBtn'), h.click('writeSignedDnsBtn')]);
+  assert.deepEqual(h.dnsCalls, ['GET', 'POST']);
+  assert.match(h.elements.get('wireLogBox').textContent, /POINTER-UNKNOWN/);
+  const candidate = JSON.parse(h.document.getElementById('pointerJsonInput').value);
+  await h.click('dbWipeLocalBtn');
+  await h.click('writeSignedDnsBtn');
+  assert.deepEqual(h.dnsCalls, ['GET', 'POST', 'GET']);
+  assert.equal(JSON.parse(h.document.getElementById('pointerJsonInput').value).pointerDigest, candidate.pointerDigest);
+  assert.match(h.elements.get('wireLogBox').textContent, /Reconciled/);
+});
+
+test('actual browser retries only provider reads while an absent prior create remains unknown', async () => {
+  const h = await browserHarness({ publicationMode: 'lost-not-created' });
+  await h.click('dbPutBtn'); await h.click('pinSessionAuthorityBtn');
+  h.document.getElementById('cfZoneInput').value = 'a'.repeat(32);
+  h.document.getElementById('cfTokenInput').value = 'test-token';
+  await h.click('writeSignedDnsBtn'); await h.click('writeSignedDnsBtn');
+  assert.deepEqual(h.dnsCalls, ['GET', 'POST', 'GET']);
+  assert.match(h.elements.get('wireLogBox').textContent, /POINTER-UNKNOWN/);
+  assert.doesNotMatch(h.elements.get('wireLogBox').textContent, /CF-DNS/);
 });

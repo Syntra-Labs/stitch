@@ -3,7 +3,7 @@ import { PrimitiveOp } from '../layer1-uor/index.js';
 import { canonicalBytes, sha256Bytes } from '../layer1-uor/custody.js';
 import { record, natural, hexValue, digest, refuse } from '../layer1-uor/contracts.js';
 
-import { checkpointLinkAllowed, model, modelSourceDigest } from '../layer1-uor/generated-model.js';
+import { checkpointLinkAllowed, model, modelExecutionDigest } from '../layer1-uor/generated-model.js';
 export const MAX_PROGRAM_STEPS = 1024;
 const unary = new Set([PrimitiveOp.NEG, PrimitiveOp.BNOT, PrimitiveOp.SUCC, PrimitiveOp.PRED]);
 const binary = new Set([4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16]);
@@ -52,11 +52,15 @@ export async function createCheckpoint(program, stepIndex, previous = null, { ad
     if (previous.stepIndex >= stepIndex) refuse('checkpoint-order');
   }
   const state = replayProgram(program, stepIndex, admission);
-  const body = { version: 1, jobId, modelDigest: modelSourceDigest, ...state, previousDigest: previous?.checkpointDigest ?? null };
+  const body = { version: 1, jobId, modelDigest: modelExecutionDigest, ...state, previousDigest: previous?.checkpointDigest ?? null };
   return { ...body, checkpointDigest: await hash(body, 'checkpoint') };
 }
 
-/** Full replay from identified input is required even when no predecessor was retained. */
+/** Full replay from identified input is required even when no predecessor was retained.
+ * modelDigest binds executable semantics and adapters, not unrelated proofs or
+ * product metadata. Exact whole-source provenance remains in MODEL_SOURCE.
+ * Legacy whole-source checkpoint roots are not implicitly accepted.
+ */
 export async function verifyCheckpoint(program, checkpoint, previous = undefined, { admission = null } = {}) {
   program = snapshot(program); checkpoint = snapshot(checkpoint);
   if (previous !== undefined && previous !== null) previous = snapshot(previous);
@@ -64,7 +68,7 @@ export async function verifyCheckpoint(program, checkpoint, previous = undefined
   validateProgram(program);
   if (checkpoint.version !== 1) refuse('unsupported-checkpoint');
   digest(checkpoint.jobId); digest(checkpoint.checkpointDigest);
-  if (checkpoint.modelDigest !== modelSourceDigest) refuse('checkpoint-model');
+  if (checkpoint.modelDigest !== modelExecutionDigest) refuse('checkpoint-model');
   if (checkpoint.previousDigest !== null) digest(checkpoint.previousDigest);
   natural(checkpoint.stepIndex, program.instructions.length); hexValue(checkpoint.stateHex, program.bits);
   if (checkpoint.jobId !== await identifyProgram(program)) refuse('program-mismatch');
