@@ -80,3 +80,52 @@ After the placement model changed, the same actual candidate regenerated the
 25-module closure at local source checkpoint `c99dc0d` and passed all 30 cold
 native jobs again in 16.093 seconds. The separate `stitch-placement/` evidence
 records those new input hashes; no earlier source attestation is reused for it.
+
+## Completion flow and evidence ownership
+
+Keep the dependency chain explicit instead of rerunning the known broken native
+build after unrelated host changes:
+
+1. **Stitch source → source proof.** The current
+   [source summary](../product/source-verification.json) binds every declared
+   source/vocabulary/configuration input to the retained actual
+   [attestation](../product/source-attestation.json) and
+   [build manifest](../product/source-build-manifest.json): 25 modules, 1,316
+   declaration audits and 85 successful Lean/leanchecker processes. This is
+   source evidence only, not native acceptance.
+2. **LexLean source → repaired compiler.** LexLean owns PR #466's complete
+   acceptance. The exact compiler candidate and unchanged current-source native
+   rehearsal are already retained above. A successful diagnostic does not
+   authorize a Stitch SDK lock update.
+3. **Compiler → qualified SDK.** PrismPM owns reconciliation of the accepted
+   compiler revision, compiler-pair and SDK qualification, then publication of
+   an immutable image. Track the existing
+   [SDK owner coordination](https://github.com/UOR-Foundation/PrismPM/issues/194#issuecomment-6780585108).
+   The current `prismpm.lock` still selects the reproduced failing compiler;
+   this dependency is blocked, not a green or skipped native result.
+4. **Qualified SDK → Stitch acceptance.** Consume the owner's qualified digest
+   and matching official locks, regenerate only the authoring outputs required
+   by that compiler, and run the unchanged
+   `sh scripts/check-model-sdk.sh --check` in that SDK. Retain its real source,
+   native artifact and vector evidence. A changed compiler requires new proof
+   evidence even if the application source is unchanged.
+
+`node scripts/check-source-evidence.mjs` cheaply checks the retained evidence's
+input freshness, existing digest/ID bindings, reported statuses/counts and pinned
+proof-tool identities. The normal Node suite includes negative cases for stale,
+added, missing and mismatched inputs. Host-only changes leave these exact source
+inputs intact, so the same source proof remains useful without another manual
+proof build. Discovery includes `.lex.tex` modules and each bound lexicon's
+`lexicon.toml` and `entries/` files; other documentation is not a compiler input.
+This check authenticates no producer and replays no proof; it is
+not a certificate verifier, native gate, workflow router or CI result cache.
+
+The factory work in [PrismPM #586](https://github.com/UOR-Foundation/PrismPM/pull/586)
+describes release-line obligation identities and owner-controlled receipts. It
+is draft upstream work, not a qualified consumer receipt API to copy here.
+Stitch keeps its existing CI gates. Runtime/browser checks bind their own host
+and test inputs; the independent source-complete guest build binds its recipe,
+toolchain and resulting image/source/license materials. Neither a passing source
+proof nor a passing browser test clears guest redistribution. Do not restart
+that long build for unrelated model or host edits, and do not replace the
+bundled guest until its actual candidate and accompanying materials qualify.
