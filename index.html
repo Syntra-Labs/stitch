@@ -949,11 +949,16 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       }
     });
     async function administerVm(action) {
-      const pending = vmNode[action]();
-      showVmCommand(); renderExperience();
-      await pending;
-      document.getElementById('vmShareObjects').checked = vmNode.objectSharing;
-      document.getElementById('vmShareEthernet').checked = vmNode.ethernetSharing;
+      try {
+        const pending = vmNode[action]();
+        showVmCommand(); renderExperience();
+        await pending;
+      } finally {
+        document.getElementById('vmShareObjects').checked = vmNode.objectSharing;
+        document.getElementById('vmShareEthernet').checked = vmNode.ethernetSharing;
+        // onStatus runs before the host clears adminBusy. Refresh settled locks too.
+        showVmCommand(); renderExperience();
+      }
     }
     bindModelAction('stopVmBtn', () => administerVm('stop'));
     bindModelAction('destroyVmBtn', () => administerVm('destroy'));

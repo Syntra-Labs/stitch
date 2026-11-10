@@ -57,6 +57,11 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#destroyVmBtn')).toBeDisabled();
   await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED DESTROYED');
+  await expect(page.locator('#vmIpv4Address')).toBeEnabled();
+  await expect(page.locator('#vmPrefixLength')).toBeEnabled();
+  await expect(page.locator('#vmRuntimeSeconds')).toBeEnabled();
+  await expect(page.locator('#vmNetworkSummary')).not.toContainText('configuration locked');
+  await expect(page.locator('#vmNetworkStatus')).toContainText('Applied at next boot.');
   // Restart a fresh actual guest; the previous command evidence remains selected.
   await page.locator('#bootVmBtn').click();
   await expect(page.locator('#vmStatusLabel')).toContainText('ONLINE', { timeout: 70_000 });
@@ -81,6 +86,11 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#vmCommandSelection option')).toHaveCount(2);
   await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED DESTROYED');
+  await expect(page.locator('#vmIpv4Address')).toBeEnabled();
+  await expect(page.locator('#vmPrefixLength')).toBeEnabled();
+  await expect(page.locator('#vmRuntimeSeconds')).toBeEnabled();
+  await expect(page.locator('#vmNetworkSummary')).not.toContainText('configuration locked');
+  await expect(page.locator('#vmNetworkStatus')).toContainText('Applied at next boot.');
   await expect(page.locator('#vmCommandOutcome')).toContainText('unknown');
   await testInfo.attach('destroyed-retained-unknown-command', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
   const transitions = await page.evaluate(() => window.vmEvidenceTransitions);

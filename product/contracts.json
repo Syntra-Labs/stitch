@@ -1061,8 +1061,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 89079,
-      "sha256": "95a034555a85fdc29e2821544ca38a7ffad04ddd146b6dd28f5fe1254f32de2b"
+      "bytes": 89258,
+      "sha256": "c7b8a6c92c15eda28d16ce002e3dba31b1cad77e08130cc743ecbe84c8d1b89d"
     },
     {
       "declaration": "assetAuthorityUi",
