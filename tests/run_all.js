@@ -275,10 +275,27 @@ import {
 console.log('\n[LAYER 1 BENCHMARK] UOR Hasher Substitution Axis Comparison (1,000 objects x 64B)');
 console.table(benchmarkUorHashers(1000, 64));
 
-const drops = [];
-for (let t = 18; t < 600; t += 18) drops.push(t);
-console.log('\n[LAYER 2 BENCHMARK] Refresh Scheduler Comparison (600s window, drop interval = 18s, TTL = 60s)');
-console.table(benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: drops }));
+const uniformDrops = [];
+for (let t = 18; t < 600; t += 18) uniformDrops.push(t);
+console.log('\n[LAYER 2 BENCHMARK A — CLAIM C3/C4 FALSIFICATION] Equal Refresh Budget (B=30) on Uniform Churn (CV=0.0)');
+console.table(benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: uniformDrops, maxRefreshBudget: 30 }));
+
+// Regime-switching churn: calm window (t=0..415, ~68s spacing) -> storm window (t=420..600, 9s spacing)
+const burstyDrops = [63, 131, 197, 269, 341, 411, 420, 429, 438, 447, 456, 465, 474, 483, 492, 501, 510, 519, 528, 537, 546, 555, 564, 573, 582, 591];
+const burstyBench = benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: burstyDrops, maxRefreshBudget: 30 });
+console.log('\n[LAYER 2 BENCHMARK B — CLAIM C3/C4 REGIME TEST] Equal Refresh Budget (B=30) on Bursty Regime Churn (CV>1.0)');
+console.table(burstyBench);
+
+// Enforce C3 falsification discipline:
+// 1. Unpaced Poisson-Survival loses to Fixed-Interval when capped at equal refresh budget B=30 (refutes naive C3)
+// 2. Budget-Paced-Survival (Cauchy-Schwarz sqrt hazard pacing) beats Fixed-Interval at equal refresh budget B=30 on CV>1.0
+const fixedBursty = burstyBench.find(r => r.scheduler === 'Fixed-Interval (TTL/2)');
+const unpacedPoissonBursty = burstyBench.find(r => r.scheduler === 'Poisson-Survival');
+const budgetPacedBursty = burstyBench.find(r => r.scheduler === 'Budget-Paced-Survival');
+assert.equal(fixedBursty.refreshes_issued, 30);
+assert.equal(budgetPacedBursty.refreshes_issued, 30);
+assert.ok(unpacedPoissonBursty.unavailable_seconds > fixedBursty.unavailable_seconds);
+assert.ok(budgetPacedBursty.unavailable_seconds < fixedBursty.unavailable_seconds);
 
 console.log('\n[LAYER 3 BENCHMARK] Ephemeral UOR Database Durability Under 100% Node Turnover (0 initial nodes surviving)');
 console.table(benchmarkStorageStrategies({ objectCount: 24, objectSizeBytes: 256, initialNodes: 5, generations: 8 }));

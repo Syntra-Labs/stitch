@@ -303,26 +303,125 @@ export class ShannonEntropyHysteresisScheduler {
   }
 }
 
+// ============================================================================
+// CANDIDATE SCHEDULER 5: Budget-Paced Survival Scheduler (Fixes C3 Budget Exhaustion)
+// Allocates refresh budget B across horizon T proportional to short-term vs long-term hazard ratio.
+// ============================================================================
+export class BudgetPacedSurvivalScheduler {
+  static NAME = 'Budget-Paced-Survival';
+
+  constructor({ ttlSeconds = 60, durationSeconds = 600, maxRefreshBudget = 30, minFloorSeconds = 5 } = {}) {
+    this.ttlSeconds = ttlSeconds;
+    this.durationSeconds = durationSeconds;
+    this.maxRefreshBudget = maxRefreshBudget;
+    this.minFloorSeconds = minFloorSeconds;
+    this.failureTimestamps = [];
+    this.lastRefreshSec = 0;
+    this.refreshCount = 0;
+  }
+
+  recordFailure(timestampSec) {
+    this.failureTimestamps.push(timestampSec);
+  }
+
+  markRefreshed(timestampSec) {
+    this.lastRefreshSec = timestampSec;
+    this.refreshCount++;
+  }
+
+  evaluate(nowSec) {
+    const ageSeconds = Math.max(0, nowSec - this.lastRefreshSec);
+    const shortFailures = this.failureTimestamps.slice(-4);
+    const lambdaShort = estimatePoissonRate(shortFailures, 1 / this.ttlSeconds);
+    const lambdaLong = estimatePoissonRate(this.failureTimestamps, 1 / this.ttlSeconds);
+    // Cauchy-Schwarz optimal refresh spacing under budget constraint: dt* proportional to (lambda_long / lambda_short)^(1/2)
+    const sqrtHazardRatio = Math.max(0.5, Math.min(2.5, Math.sqrt(lambdaShort / Math.max(1e-6, lambdaLong))));
+
+    const refreshesUsed = Math.max(0, this.refreshCount - 1);
+    const budgetRemaining = Math.max(1, this.maxRefreshBudget - refreshesUsed);
+    const timeRemaining = Math.max(this.minFloorSeconds, this.durationSeconds - nowSec);
+    const nominalBudgetInterval = timeRemaining / budgetRemaining;
+
+    const targetIntervalSeconds = Math.max(
+      this.minFloorSeconds,
+      Math.min(this.ttlSeconds * 0.9, nominalBudgetInterval / sqrtHazardRatio)
+    );
+    const pAlive = computeSurvivalProbability(lambdaShort, ageSeconds);
+    const shouldRefresh = ageSeconds >= targetIntervalSeconds;
+    return {
+      ageSeconds,
+      lambda: lambdaShort,
+      pAlive,
+      entropyBits: computeBinaryEntropy(pAlive),
+      targetIntervalSeconds,
+      shouldRefresh,
+      reason: shouldRefresh ? 'budget_paced_hazard' : null
+    };
+  }
+}
+
 /**
- * Evaluate and compare all 4 scheduler candidates on an identical failure timestamp sequence.
+ * Compute sample mean, standard deviation, and Coefficient of Variation (CV = std / mean)
+ * of inter-event intervals to test Claim C4 (memoryless exponential fit requires CV ~ 1.0).
+ * @param {number[]} timestampsSeconds
+ */
+export function computeIntervalStats(timestampsSeconds) {
+  if (!Array.isArray(timestampsSeconds) || timestampsSeconds.length < 3) {
+    return { count: 0, mean_sec: 0, std_sec: 0, cv: 0, c4_exponential_valid: false };
+  }
+  const intervals = [];
+  for (let i = 1; i < timestampsSeconds.length; i++) {
+    const dt = timestampsSeconds[i] - timestampsSeconds[i - 1];
+    if (dt > 0) intervals.push(dt);
+  }
+  if (intervals.length < 2) {
+    return { count: intervals.length, mean_sec: 0, std_sec: 0, cv: 0, c4_exponential_valid: false };
+  }
+  const mean = intervals.reduce((a, b) => a + b, 0) / intervals.length;
+  const variance = intervals.reduce((acc, v) => acc + (v - mean) ** 2, 0) / intervals.length;
+  const std = Math.sqrt(variance);
+  const cv = mean > 0 ? std / mean : 0;
+  return {
+    count: intervals.length,
+    mean_sec: Number(mean.toFixed(2)),
+    std_sec: Number(std.toFixed(2)),
+    cv: Number(cv.toFixed(3)),
+    c4_exponential_valid: cv >= 0.5 && cv <= 2.0
+  };
+}
+
+/**
+ * Evaluate and compare all 4 scheduler candidates under Claim C3 protocol:
+ *   - Supports an explicit `maxRefreshBudget` so all schedulers are capped at the
+ *     exact same maximum refresh count (exposing whether adaptive scheduling wins
+ *     at equal cost, rather than winning by simply polling 5x more often).
  *
  * @param {object} params
  * @param {number} [params.durationSeconds=600]
  * @param {number} [params.ttlSeconds=60]
  * @param {number[]} params.dropTimestamps
+ * @param {number | null} [params.maxRefreshBudget=null]
  */
 export function benchmarkSchedulers({
   durationSeconds = 600,
   ttlSeconds = 60,
-  dropTimestamps = []
+  dropTimestamps = [],
+  maxRefreshBudget = null
 }) {
   const sortedDrops = [...dropTimestamps].sort((a, b) => a - b);
+  const intervalStats = computeIntervalStats(sortedDrops);
+
+  // If maxRefreshBudget is set, fixed-interval spreads that exact budget evenly across durationSeconds
+  const fixedFraction = maxRefreshBudget
+    ? Math.max(5, durationSeconds / maxRefreshBudget) / ttlSeconds
+    : 0.5;
 
   const candidates = [
-    () => new FixedIntervalScheduler({ ttlSeconds, fraction: 0.5, minFloorSeconds: 5 }),
+    () => new FixedIntervalScheduler({ ttlSeconds, fraction: fixedFraction, minFloorSeconds: 5 }),
     () => new AdaptiveAimdScheduler({ ttlSeconds, minFloorSeconds: 5 }),
-    () => new PoissonSurvivalScheduler({ ttlSeconds, epsilon: 0.10, minFloorSeconds: 5 }),
-    () => new ShannonEntropyHysteresisScheduler({ ttlSeconds, epsilon: 0.08, entropyThreshold: 0.40, hysteresis: 0.04, minFloorSeconds: 5 })
+    () => new PoissonSurvivalScheduler({ ttlSeconds, epsilon: 0.10, minFloorSeconds: 5, maxHistory: 8 }),
+    () => new ShannonEntropyHysteresisScheduler({ ttlSeconds, epsilon: 0.08, entropyThreshold: 0.40, hysteresis: 0.04, minFloorSeconds: 5, maxHistory: 8 }),
+    () => new BudgetPacedSurvivalScheduler({ ttlSeconds, durationSeconds, maxRefreshBudget: maxRefreshBudget || 30, minFloorSeconds: 5 })
   ];
 
   return candidates.map(factory => {
@@ -331,6 +430,7 @@ export function benchmarkSchedulers({
 
     let alive = true;
     let unavailableSeconds = 0;
+    let stalenessEvents = 0;
     let dropIdx = 0;
     let lastDropTime = null;
     const recoveryLags = [];
@@ -339,14 +439,18 @@ export function benchmarkSchedulers({
       while (dropIdx < sortedDrops.length && sortedDrops[dropIdx] <= t) {
         if (alive) {
           alive = false;
+          stalenessEvents++;
           lastDropTime = sortedDrops[dropIdx];
         }
         sched.recordFailure(sortedDrops[dropIdx]);
         dropIdx++;
       }
 
+      const refreshesUsed = sched.refreshCount - 1;
+      const budgetRemaining = maxRefreshBudget === null || refreshesUsed < maxRefreshBudget;
       const status = sched.evaluate(t);
-      if (status.shouldRefresh) {
+
+      if (status.shouldRefresh && budgetRemaining) {
         if (!alive && lastDropTime !== null) {
           recoveryLags.push(t - lastDropTime);
           lastDropTime = null;
@@ -369,9 +473,11 @@ export function benchmarkSchedulers({
     return {
       scheduler: sched.constructor.NAME,
       refreshes_issued: refreshesIssued,
+      staleness_events: stalenessEvents,
       unavailable_seconds: unavailableSeconds,
       availability_ratio: availabilityRatio,
-      mean_recovery_lag_sec: meanRecoveryLagSec
+      mean_recovery_lag_sec: meanRecoveryLagSec,
+      interval_cv: intervalStats.cv
     };
   });
 }
