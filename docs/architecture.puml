@@ -1,0 +1,70 @@
+@startuml
+skinparam backgroundColor #FFFFFF
+skinparam defaultFontName "JetBrains Mono"
+skinparam defaultFontSize 11
+skinparam roundCorner 4
+skinparam shadowing false
+skinparam packageStyle rectangle
+skinparam ArrowColor #222222
+skinparam RectangleBorderColor #222222
+
+title Syntra-Labs / stitch — Stratified 5-Layer Architecture & Public Control-Plane Dataflow
+
+package "Existing Public Internet Infrastructure (Zero User-Operated Servers)" as Infra #F5F7FA {
+  component "Authoritative DNS + DoH\n(Cloudflare RFC 8484 / DuckDNS)\n[Cold/Warm Pointer: SRV & TXT <= 255B]\n(Claims C2, C8, C10)" as DNS #E8EEF5
+  component "Public STUN Servers\n(stun.l.google.com:19302\nstun.cloudflare.com:3478)\n[ICE NAT Hole-Punching (Claim C1)]" as STUN #E8EEF5
+  component "Public Ephemeral Pub/Sub Bus\n(wss://ntfy.sh/<topic>)\n[SDP Signaling + 30m Warm Ring Buffer]\n(Claim C6 Boundary)" as NTFY #E8EEF5
+  component "Optional L3 Mesh VPN / DN42\n(WireGuard + BIRD/FRR BGP)\n[Hold-Timer Route Telemetry]\n(Objective O4 / Claim C5)" as BGP #E8EEF5
+}
+
+package "Browser Peer Node A (https://syntra-labs.github.io/stitch)" as PeerA #FFFFFF {
+
+  package "Layer 5: Transport & Discovery (src/layer5-transport)" as L5 #FAFAFA {
+    component "DohResolver\n- RFC 8484 DoH SRV/TXT Reader\n- Cloudflare SRV/TXT & DuckDNS Writer\n- Ed25519 Pointer Sign/Verify (C8)\n- Staleness vs TTL Probe (C2)" as L5_DNS
+    component "WebRtcTransportNode\n- Multi-Peer Ordered DataChannels\n- BroadcastChannel + WS Signaling\n- 5s Ping/Pong RTT Heartbeats\n- O5 JSONL Trial Logger (C1-C8)" as L5_RTC
+  }
+
+  package "Layer 2: Liveness & Refresh Schedulers (src/layer2-schedulers)" as L2 #FAFAFA {
+    component "BudgetPacedSurvivalScheduler\n- MLE Hazard Rate lambda_hat\n- Survival P(t) = exp(-lambda * t)\n- Shannon Entropy H(p)\n- Cauchy-Schwarz Budget Pacing (C3/C4)" as L2_SCHED
+  }
+
+  package "Layer 3: Ephemeral Mesh Storage (src/layer3-storage)" as L3 #FAFAFA {
+    component "LiveUorMeshDatabase\n- 2-of-3 XOR Parity Sharding (S0, S1, S0^S1)\n- Proactive Cohort-Turnover Repair\n- 0-Peer Gap Warm-Cache Recovery" as L3_DB
+  }
+
+  package "Layer 4: Distributed Compute & VM (src/layer4-compute)" as L4 #FAFAFA {
+    component "LiveDistributedComputeCoordinator\n- Z/(2^64)Z Ring Reduction Slices\n- Per-Step UOR Checkpoint Broadcast\n- Automatic Stalled-Job Takeover" as L4_COORD
+    component "LinuxVmNode (v86 x86 Emulator)\n- Linux 5.6 Kernel (buildroot-bzimage.bin)\n- 9p /mnt Filesystem Bridge\n- ne2k eth0 L2 Ethernet Bridge" as L4_VM
+  }
+
+  package "Layer 1: UOR Foundation Core (src/lib.rs + src/layer1-uor)" as L1 #FAFAFA {
+    component "uor-foundation v0.5.2 Substrate\n- Z/(2^n)Z Datum & 18 PrimitiveOps\n- Fnv1aHasher16 (128-bit) / Fnv1aHasher32 / SHA-256\n- Deterministic Execution Trace Verifier" as L1_UOR
+  }
+}
+
+package "Browser Peer Node B..N (Remote Network / Mobile / Cloud)" as PeerB #FFFFFF {
+  component "Remote WebRtcTransportNode\n+ LiveUorMeshDatabase\n+ LiveDistributedComputeCoordinator\n+ LinuxVmNode (eth0: 10.0.2.x)" as RemotePeer
+}
+
+' Control-Plane Relationships (Pointers & Signaling Only — C10 <= 255B)
+L5_DNS <--> DNS : "1. Cold/Warm Pointer (<255B)\nEd25519 Signed TXT / SRV (TTL 30-60s)"
+L5_RTC <--> STUN : "2. STUN Binding\n(srflx IP:Port)"
+L5_RTC <--> NTFY : "3. ICE/SDP Handshake +\nWarm Ring-Buffer Envelopes"
+BGP ..> L2_SCHED : "4. Optional BGP Hold/Keepalive\nChurn Intervals"
+
+' Direct Edge-to-Edge Data Plane (Bulk Data & Compute Stay on Edges)
+L5_RTC <==> RemotePeer : "5. Direct P2P WebRTC DataChannel (SCTP/DTLS/UDP)\n- uor_shard (2-of-3 XOR Parity Blocks)\n- compute_ckpt (Step Checkpoints)\n- eth_frame (Raw L2 Ethernet Frames)"
+
+' Internal Stratum Wiring (Strictly Isolated Interfaces)
+L5_RTC --> L2_SCHED : "Heartbeat RTT & Peer Drop Timestamps"
+L2_SCHED --> L5_DNS : "Budget-Paced Pointer Refresh Trigger"
+L2_SCHED --> L3_DB : "Proactive Parity Repair Trigger"
+L5_RTC <--> L3_DB : "Shard Gossip & Warm Sync"
+L5_RTC <--> L4_COORD : "Checkpoint Gossip & Takeover"
+L5_RTC <--> L4_VM : "eth0 L2 Frames"
+L3_DB --> L4_VM : "Auto-Mount Verified Objects in /mnt"
+L4_VM --> L3_DB : "Persist VM stdout as UOR Object"
+L3_DB --> L1_UOR : "Mint & Verify ContentAddress (u128)"
+L4_COORD --> L1_UOR : "Apply Ring Ops & Verify Trace"
+
+@enduml

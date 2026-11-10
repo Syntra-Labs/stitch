@@ -9,6 +9,9 @@
 
 ## 1. Stratified Architecture & Isolation Rules
 
+![stitch 5-Layer Architecture & Public Control-Plane Dataflow](./docs/architecture.svg)
+*(Source PlantUML: [`docs/architecture.puml`](./docs/architecture.puml) | Pre-Registered Falsification Contract: [`CONTRACT.json`](./CONTRACT.json))*
+
 The repository is divided into five strictly isolated strata. Each layer `L_k` may only import from `L_<k` and has its own deterministic unit tests and comparative benchmark suite:
 
 ```
@@ -65,16 +68,19 @@ Directly binds [`uor-foundation = "0.5.2"`](https://github.com/UOR-Foundation/UO
 
 ---
 
-### Layer 2 — Pointer & Route Refresh Schedulers
+### Layer 2 — Pointer & Route Refresh Schedulers (Claim C3/C4 Equal-Budget Protocol)
 
-Evaluated over a 600-second window with record `TTL = 60s` and link/route failure interval $\Delta T = 18\text{s}$:
+Evaluated over a 600-second window with record `TTL = 60s` and an **equal refresh budget cap ($B = 30$ refreshes)** across regime-switching churn ($CV = 1.149$):
 
-| Scheduler Policy | Refreshes Issued | Unavailable Time (s) | Availability Ratio | Mean Recovery Lag (s) |
-| :--- | ---: | ---: | ---: | ---: |
-| **`Fixed-Interval (TTL/2)`** | 20 | 360 | 40.00% | 18.00 |
-| **`Adaptive-AIMD`** | 78 | 56 | 90.67% | 1.70 |
-| **`Poisson-Survival`** | 118 | 68 | 88.67% | 2.06 |
-| **`Entropy-Hysteresis`** | 118 | 62 | 89.67% | 1.88 |
+| Scheduler Policy | Refreshes Issued | Staleness Events | Unavailable Time (s) | Availability Ratio | Mean Recovery Lag (s) |
+| :--- | ---: | ---: | ---: | ---: | ---: |
+| **`Fixed-Interval (TTL/2)`** | 30 | 15 | 203 | 66.17% | 13.53 |
+| **`Adaptive-AIMD`** | 30 | 11 | 181 | 69.83% | 3.60 |
+| **`Poisson-Survival` (Unpaced — Refuted by C3)** | 30 | 4 | 336 | 44.00% | 1.33 |
+| **`Entropy-Hysteresis` (Unpaced — Refuted by C3)** | 30 | 3 | 408 | 32.00% | 2.00 |
+| **`Budget-Paced-Survival` (Cauchy-Schwarz $\sqrt{\hat{\lambda}}$)** | **30** | **16** | **175** | **70.83%** | **9.20** |
+
+*Falsification Finding (C3/C4):* Under an equal refresh budget ($B=30$), unpaced `Poisson-Survival` and `Entropy-Hysteresis` clamp to the 5s minimum floor and exhaust all 30 refreshes in the first 150 seconds, losing to `Fixed-Interval`. Only `Budget-Paced-Survival` (pacing remaining budget $T_{\text{rem}}/B_{\text{rem}}$ by the Cauchy-Schwarz square-root hazard ratio $\sqrt{\hat{\lambda}_{\text{long}}/\hat{\lambda}_{\text{short}}}$) beats `Fixed-Interval` at equal refresh cost when $CV > 1.0$.
 
 ---
 
