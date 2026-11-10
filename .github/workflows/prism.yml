@@ -56,6 +56,9 @@ jobs:
             "$SDK_IMAGE" "$@"
           SH
           chmod +x "$RUNNER_TEMP/run-sdk"
+      - name: Retain pinned compiler for inexpensive local source diagnostics
+        run: |
+          "$RUNNER_TEMP/run-sdk" sh -c 'cp "$(command -v lexlean)" verification-output/lexlean; sha256sum verification-output/lexlean; ldd verification-output/lexlean' | tee verification-output/compiler-identity.log
       - name: Generate initial lock and observed axiom policies when absent
         if: ${{ hashFiles('app/lexlean.lock') == '' }}
         run: |
