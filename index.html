@@ -357,10 +357,10 @@
       </table>
     </section>
 
-    <!-- LIVE PANEL C: IN-BROWSER X86 LINUX 5.6 VM (v86) + ETHERNET OVER WEBRTC -->
+    <!-- LIVE PANEL C: IN-BROWSER X86 LINUX VM (v86) + ETHERNET OVER WEBRTC -->
     <section class="stratum" id="vmPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2 id="vmTitle">In-Browser x86 Linux 5.6 VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
+        <h2 id="vmTitle">In-Browser x86 Linux VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
         <span class="muted" id="vmStatusLabel">VM Standby</span>
       </div>
       <p id="vmEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
@@ -375,14 +375,20 @@
         <p class="muted">Guest RAM: 64 MiB. Local 9p /mnt: 16 MiB per buffer, 64 MiB cumulative allocation requests, and 4096 inode/link admissions per instance. Removing files does not refund that allowance. Result reads: 4 MiB per command, 16 MiB retained in total. Other guest filesystems consume configured guest memory; these controls are not a complete host-memory or guest-isolation guarantee.</p>
         <p id="vmResourceUsage" role="status" aria-live="polite">No guest resource usage observed.</p>
       </details>
-      <div class="controls">
+      <details id="vmNetworkPanel">
+        <summary>Optional guest networking: <span id="vmNetworkSummary">offline</span></summary>
+        <div class="controls">
         <label for="vmIpv4Address">Guest static IPv4 address (optional, set before boot)</label>
         <input id="vmIpv4Address" type="text" placeholder="e.g. 10.42.0.2" aria-describedby="vmNetworkHelp" />
         <label for="vmPrefixLength">Subnet prefix length (0–32)</label>
         <input id="vmPrefixLength" type="number" min="0" max="32" step="1" value="24" aria-describedby="vmNetworkHelp" />
         <p id="vmNetworkHelp" class="muted">Leave blank for offline shell and object work. For Ethernet sharing, choose a different address for every guest on the mesh and compatible subnet prefixes. The example is not an allocation. Display names do not assign addresses. No DHCP, duplicate-address detection, gateway or DNS setup is provided. /31 is for point-to-point links; /32 needs explicit guest routes. Destroy a retained instance before changing configuration.</p>
         <p id="vmNetworkStatus" role="status">No static address configured.</p>
-        <button id="bootVmBtn">Boot Linux 5.6 VM</button>
+        <p id="vmNetworkValidation" role="status" aria-live="polite"></p>
+        </div>
+      </details>
+      <div class="controls">
+        <button id="bootVmBtn">Boot Linux VM</button>
         <button id="stopVmBtn" class="secondary">Stop VM</button>
         <button id="destroyVmBtn" class="secondary">Destroy VM</button>
         <label for="vmShareObjects">Guest object sharing <input type="checkbox" id="vmShareObjects" /> Share new database objects with this guest</label>
@@ -409,7 +415,7 @@
       <pre id="vmStdoutText" class="mono-out" tabindex="0" role="region" aria-labelledby="vmStdoutTitle" aria-describedby="vmStdoutSummary">No guest output observed.</pre>
       <p class="muted">The console below is the emulator display. Shell commands and their captured text above do not require interacting with its canvas. Graphics-only guest applications may have no text equivalent.</p>
       <div id="vmScreenContainer" role="region" aria-label="Guest emulator display">
-        <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux 5.6 VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
+        <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
 Object sharing and Ethernet bridging start off. Grants expose data to the guest or mesh peers. Revocation blocks future transfers; it does not erase guest copies or undo effects.</div>
         <canvas style="display: none;"></canvas>
       </div>
@@ -745,7 +751,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
 
     document.getElementById('nodeIdLabel').textContent = transport.peerId;
 
-    // 3. Layer-4 In-Browser Linux 5.6 VM Node (v86)
+    // 3. Layer-4 In-Browser Linux VM Node (v86)
     const vmNode = new LinuxVmNode({
       transport,
       screenContainer: document.getElementById('vmScreenContainer'),
@@ -754,14 +760,14 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
           st.state === 'online'
             ? `ONLINE (eth0=${st.cidr || st.ip || 'offline'})`
             : st.state === 'booting'
-            ? `BOOTING LINUX 5.6 (${st.cidr || st.ip || 'offline'})...`
+            ? `BOOTING LINUX (${st.cidr || st.ip || 'offline'})...`
             : ['offline', 'stopping'].includes(st.state)
             ? st.message
             : `ERROR: ${st.message || 'Unknown VM lifecycle observation'}`;
         document.getElementById('vmShareObjects').checked = Boolean(vmNode.objectSharing);
         document.getElementById('vmShareEthernet').checked = Boolean(vmNode.ethernetSharing);
         showVmCommand();
-        logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}${st.message ? `: ${st.message}` : ''}`);
+        logWire('VM', `Linux state=${st.state} ip=${st.ip || ''}${st.message ? `: ${st.message}` : ''}`);
       }
     });
 
@@ -935,7 +941,12 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     document.getElementById('vmShareObjects').addEventListener('change', event => vmNode.setObjectSharing(event.target.checked));
     document.getElementById('vmShareEthernet').addEventListener('change', event => {
       try { vmNode.setEthernetSharing(event.target.checked); }
-      catch (error) { event.target.checked = Boolean(vmNode.ethernetSharing); logWire('VM-REFUSED', error.message); }
+      catch (error) {
+        event.target.checked = Boolean(vmNode.ethernetSharing);
+        document.getElementById('vmNetworkPanel').open = true;
+        document.getElementById('vmNetworkValidation').textContent = error.message;
+        logWire('VM-REFUSED', error.message);
+      }
     });
     async function administerVm(action) {
       const pending = vmNode[action]();
@@ -972,6 +983,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       const networkLocked = !vmNode.lifecycle.canConfigureNetwork;
       document.getElementById('vmIpv4Address').disabled = networkLocked;
       document.getElementById('vmPrefixLength').disabled = networkLocked;
+      document.getElementById('vmNetworkSummary').textContent = `${vmNode.networkConfiguration?.cidr || 'offline'}${networkLocked ? '; configuration locked' : ''}`;
       document.getElementById('vmNetworkStatus').textContent = vmNode.networkConfiguration
         ? `Configured eth0: ${vmNode.networkConfiguration.cidr} (netmask ${vmNode.networkConfiguration.netmask}). ${networkLocked ? 'Instance retained; configuration locked.' : 'Applied at next boot.'} Address uniqueness and peer subnet compatibility must be checked by the operator.`
         : 'Offline configuration: shell and object work available; Ethernet sharing requires configuration before Boot.';
@@ -980,7 +992,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         ? `9p allocation requests admitted: ${usage.allocatedBytes}/67108864 bytes. Inode admissions: ${usage.createdInodes}/4096; directory-entry admissions: ${usage.linkedEntries}/4096. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s. ${vmNode.boundaryReason || ''}`
         : `No guest resource usage observed. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s.`;
       document.getElementById('vmCommandOutcome').textContent = evidence
-        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}); termination: ${evidence.termination}. Retained evidence: ${vmNode.commands.size}/128. Unknown effects stay retained; destroying the VM does not resolve them.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
+        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}); termination: ${evidence.termination}. Retained evidence: ${vmNode.commands.size}/128. Destroying the VM does not undo guest effects or discard this evidence.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
     }
     document.getElementById('vmCommandSelection').addEventListener('change', () => { showVmCommand(); renderExperience(); });
     bindModelAction('cancelVmObservationBtn', async () => {
@@ -1010,10 +1022,26 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       showVmCommand();
     });
 
-    bindModelAction('bootVmBtn', () => {
+    function configureVmNetwork() {
+      const feedback = document.getElementById('vmNetworkValidation');
       try {
         const prefixText = document.getElementById('vmPrefixLength').value;
         vmNode.setNetworkConfiguration(document.getElementById('vmIpv4Address').value || null, /^(0|[1-9][0-9]*)$/.test(prefixText) ? Number(prefixText) : NaN);
+        feedback.textContent = '';
+        showVmCommand();
+        return true;
+      } catch (error) {
+        document.getElementById('vmNetworkPanel').open = true;
+        feedback.textContent = error.message;
+        logWire('VM-REFUSED', error.message);
+        return false;
+      }
+    }
+    for (const id of ['vmIpv4Address', 'vmPrefixLength'])
+      document.getElementById(id).addEventListener('change', configureVmNetwork);
+    bindModelAction('bootVmBtn', () => {
+      if (!configureVmNetwork()) return;
+      try {
         vmNode.setRuntimeAllowance(Number(document.getElementById('vmRuntimeSeconds').value) * 1000);
         vmNode.boot(); showVmCommand();
       } catch (error) { logWire('VM-REFUSED', error.message); }
@@ -1023,7 +1051,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       const cmd = document.getElementById('vmCmdInput').value.trim();
       if (!cmd) return;
       try {
-        logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
+        logWire('VM-EXEC', `Running inside Linux VM: ${cmd}`);
         const pending = vmNode.executeShellCommand(cmd, 8000);
         const commandId = vmNode.lastCommandId;
         showVmCommand(true);
@@ -1334,6 +1362,8 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         const unfinished = jobs.filter(j => j.status !== 'completed');
         return {
           ...recoveryControls.facts(),
+          vmTerminationPending: vm?.terminationObservation === 'pending',
+          vmStopped: vm?.terminationObservation === 'stopped', vmDestroyed: vm?.terminationObservation === 'destroyed',
           vmCanBoot: Boolean(vm?.canBoot), vmCanExecute: Boolean(vm?.canExecute),
           vmCanAdminister: Boolean(vm?.canAdminister), vmCanCancelObservation: Boolean(vm?.canCancelObservation),
           vmCanForgetCommand: Boolean(vm?.canForgetCommand), vmCanReconcileCommand: Boolean(vm?.canReconcileCommand), vmAdminBlocked: Boolean(vm?.adminBlocked),

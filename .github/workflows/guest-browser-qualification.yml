@@ -44,7 +44,7 @@ jobs:
       - name: Qualify production UI and runtime with the candidate
         env:
           STITCH_CANDIDATE_QUALIFICATION: '1'
-        run: npm run test:browser -- guest-candidate.spec.mjs --global-timeout=600000
+        run: npm run test:browser -- vm.spec.mjs --global-timeout=600000
       - name: Retain exact candidate browser evidence
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02

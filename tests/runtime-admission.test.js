@@ -766,16 +766,24 @@ test('browser static address controls reject invalid input, preserve offline boo
   for (const [address, prefix] of [['----', '24'], ['10.42.0.0', '24'], ['10.42.0.2', ''], ['10.42.0.2', '33']]) {
     field('vmIpv4Address').value = address; field('vmPrefixLength').value = prefix;
     await h.click('bootVmBtn'); assert.equal(h.vm.boots, 0);
+    assert.equal(field('vmNetworkPanel').open, true);
+    assert.ok(field('vmNetworkValidation').textContent.length > 0);
     assert.match(field('vmActionStatus').textContent, /VM-REFUSED/);
   }
   field('vmIpv4Address').value = ''; await h.click('bootVmBtn');
   assert.equal(h.vm.boots, 1); assert.equal(h.vm.networkConfiguration, null);
+  assert.equal(field('vmNetworkValidation').textContent, '');
+  assert.equal(field('vmNetworkSummary').textContent, 'offline');
   assert.match(field('vmNetworkStatus').textContent, /Offline configuration/);
   const checkbox = field('vmShareEthernet'); checkbox.checked = true;
   checkbox.listeners.change({ target: checkbox });
   assert.equal(checkbox.checked, false);
   assert.match(field('vmActionStatus').textContent, /Configure a unique static IPv4/);
   field('vmIpv4Address').value = '10.42.1.0'; field('vmPrefixLength').value = '23';
+  field('vmPrefixLength').listeners.change();
+  assert.equal(field('vmNetworkValidation').textContent, '');
+  assert.equal(field('vmNetworkSummary').textContent, '10.42.1.0/23');
+  assert.equal(h.vm.boots, 1);
   await h.click('bootVmBtn');
   assert.equal(h.vm.boots, 2);
   assert.match(field('vmNetworkStatus').textContent, /10.42.1.0\/23.*255.255.254.0/);

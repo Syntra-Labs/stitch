@@ -67,3 +67,42 @@ No guest, runtime, transport, image, or global timeout was changed to mask the
 failure. The next hosted job runs the peer spec only, reusing the passed UI result
 on the identical runtime source and immutable image. Hosted peer qualification
 remains pending until this bounded natural-recovery test passes.
+
+## Observed successful candidate matrix
+
+- Immutable image SHA-256:
+  `313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07`.
+- Required host command line:
+  `console=tty0 console=ttyS0,115200 rdinit=/init nomodeset`.
+- Production UI lifecycle passed on revision
+  `723df67cc524b3c96e6358f52449d57628dcd5ca`,
+  [run 42920254481, job 130193002437](https://github.com/afflom/stitch/actions/runs/42920254481/job/130193002437),
+  in 28.8 seconds. This includes explicit static address, real VGA/keyboard shell,
+  nonce-based bidirectional 9p readiness, captured output, reconciliation,
+  stop/destroy, fresh boot, post-dispatch cancellation and retained evidence.
+  That overall run failed the then-too-strict peer test; only its UI test passed.
+- Peer qualification passed on revision
+  `039d30025956b527253bc16c60addb9081976379`,
+  [run 42921514892, job 130197253391](https://github.com/afflom/stitch/actions/runs/42921514892/job/130197253391),
+  in 37.6 seconds. Runtime source and candidate were unchanged from the UI pass.
+  The retained serial output proves Linux 6.18.7 and actual serial shell execution.
+  The initial ungranted ping failed. After bilateral grants, the first probe
+  remained FAILED, the second naturally became REACHABLE and received a reply
+  (17.297 ms). Reverse ping succeeded (15.498 ms). Receiver grant revocation
+  caused the next ping to fail and did not advance the guest receive counter.
+  Native authenticated RTC routing IDs were distinct; the observed channel was
+  open with ICE connected. Frames include real ARP and IPv4 ICMP, not a synthetic
+  injected echo. The guest runtime remained at 64 MiB with existing bounded
+  command/result/filesystem policy and no public STUN, TURN or signaling.
+- [Peer artifact 13812047028](https://github.com/afflom/stitch/actions/runs/42921514892/artifacts/13812047028)
+  retains exact serial output, commands/results, packet headers and peer identities.
+  ZIP SHA-256: `18589024dcac779cc1308aaeaa3ebf67793c5a33ab2a9c2eb9bfaac6a041a1cc`.
+- [UI artifact 13811865759](https://github.com/afflom/stitch/actions/runs/42920254481/artifacts/13811865759)
+  retains ready and stopped/reconciled screenshots. ZIP SHA-256:
+  `c264d03cc91cff941cb95d1d8910fc7f5e615a80751825acf61279834e5e15d3`.
+
+These observations qualify the stated hardware/operational scenarios on this
+Chromium runner. They do not establish source publication, redistribution
+clearance, public networking, cross-device behavior, automatic unique address
+allocation, every budget-exhaustion path, or isolation. Later UI/lifecycle changes
+need their own affected checks; this record does not silently qualify new code.

@@ -10,10 +10,22 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await selectJourney(page, 'vm');
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#runVmCmdBtn')).toBeDisabled();
+  await expect(page.locator('#vmNetworkPanel')).not.toHaveAttribute('open', '');
+  await expect(page.locator('#vmIpv4Address')).not.toBeVisible();
+  await page.evaluate(() => {
+    window.vmEvidenceTransitions = [];
+    new MutationObserver(records => {
+      for (const record of records) for (const node of record.removedNodes) window.vmEvidenceTransitions.push(node.textContent);
+      window.vmEvidenceTransitions.push(document.getElementById('vmEvidence').textContent);
+    }).observe(document.getElementById('vmEvidence'), { childList: true, subtree: true });
+  });
   await page.locator('#vmLimitsPanel > summary').click();
   await expect(page.locator('#vmRuntimeSeconds')).toBeVisible();
   await page.locator('#vmRuntimeSeconds').fill('120');
+  await page.locator('#vmNetworkPanel > summary').click();
   await page.locator('#vmIpv4Address').fill('10.42.0.2');
+  await page.locator('#vmNetworkPanel > summary').click();
+  await page.locator('#vmLimitsPanel > summary').click();
   await page.locator('#bootVmBtn').click();
   await expect(page.locator('#bootVmBtn')).toBeDisabled();
   await expect(page.locator('#vmStatusLabel')).toContainText('ONLINE', { timeout: 70_000 });
@@ -38,10 +50,13 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await expect(page.locator('#runVmCmdBtn')).toBeDisabled();
   await expect(page.locator('#bootVmBtn')).toBeDisabled();
   await expect(page.locator('#destroyVmBtn')).toBeEnabled();
+  await expect(page.locator('#stopVmBtn')).toBeDisabled();
+  await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED STOPPED');
   await testInfo.attach('stopped-reconciled-operator', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
   await page.locator('#destroyVmBtn').click();
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#destroyVmBtn')).toBeDisabled();
+  await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED DESTROYED');
   // Restart a fresh actual guest; the previous command evidence remains selected.
   await page.locator('#bootVmBtn').click();
   await expect(page.locator('#vmStatusLabel')).toContainText('ONLINE', { timeout: 70_000 });
@@ -55,12 +70,22 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await page.locator('#cancelVmObservationBtn').click();
   await expect(page.locator('#vmCommandOutcome')).toContainText('vm-stopped');
   await expect(page.locator('#vmCommandOutcome')).toContainText('unknown');
+  await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED STOPPED');
+  await expect(page.locator('#stopVmBtn')).toBeDisabled();
+  await expect(page.locator('#destroyVmBtn')).toBeEnabled();
+  await testInfo.attach('cancelled-command-confirmed-stop', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
   await expect(page.locator('#vmShareEthernet')).not.toBeChecked();
   await expect(page.locator('#runVmCmdBtn')).toBeDisabled();
   await expect(page.locator('#bootVmBtn')).toBeDisabled();
   await page.locator('#destroyVmBtn').click();
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#vmCommandSelection option')).toHaveCount(2);
+  await expect(page.locator('#vmEvidence')).toContainText('HOST-OBSERVED DESTROYED');
+  await expect(page.locator('#vmCommandOutcome')).toContainText('unknown');
+  await testInfo.attach('destroyed-retained-unknown-command', { body: await page.screenshot({ fullPage: true }), contentType: 'image/png' });
+  const transitions = await page.evaluate(() => window.vmEvidenceTransitions);
+  expect(transitions.some(text => text.includes('HOST TERMINATION PENDING'))).toBe(true);
+  await testInfo.attach('actual-termination-transitions', { body: Buffer.from(JSON.stringify(transitions)), contentType: 'application/json' });
   await page.locator('#vmCommandSelection').selectOption({ index: 0 });
   // Successful administration never erases resolved command evidence.
   await expect(page.locator('#vmCommandOutcome')).toContainText('completed');

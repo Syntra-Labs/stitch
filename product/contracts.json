@@ -1061,8 +1061,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 87717,
-      "sha256": "8f737aa4c3e870f38cae81eee1c15cea95eb6c617bb336783b44fa4fff9c89f1"
+      "bytes": 89079,
+      "sha256": "95a034555a85fdc29e2821544ca38a7ffad04ddd146b6dd28f5fe1254f32de2b"
     },
     {
       "declaration": "assetAuthorityUi",
@@ -1127,8 +1127,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 1221281,
-      "sha256": "11676f3412cbd2e053623b4aada0e98cf8058b33a4fd92849717a572f7ae67df"
+      "bytes": 1229338,
+      "sha256": "2614eb73227c4b3c8a9fab33fd710fab6f10b3500cfd4e06292296ade5812492"
     },
     {
       "declaration": "assetFile4",
@@ -1204,8 +1204,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 42584,
-      "sha256": "cb8f3c1b90b03f2b11d273de1d74e6010a2ab74943e047a4c055cc48ae481af4"
+      "bytes": 43134,
+      "sha256": "5764553febb65aa2cb867322134ada5e5ca514f066122da9ea8c3234c1a47d73"
     },
     {
       "declaration": "assetFile11",
@@ -2071,7 +2071,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "3ee723767b00d0fb0de6e4b9a7ca75ff3613fa68fbe9b4d035c0e4ab3b2f3c28"
+      "sha256": "6f2625fdce3d3d51899cabc17ce3d57ec0a9381dd3bf3e6477da6ae3ccfb84bd"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -2174,5 +2174,5 @@
       "sha256": "c46831839f4b9aa9b54cc2b9756e78c030ba35715f5ee5b03ef5e77efe87276d"
     }
   ],
-  "sourceDigest": "sha256:47b0325f7915037f5c07a8fdb68bb99869f94bb83cd9da5feeec370d44b5c065"
+  "sourceDigest": "sha256:1f98874129ebaee8ac7545c6861f16acee5fd72a213396253c89dd84d6bf5d8a"
 }

@@ -206,3 +206,33 @@ test('restore action requires the selected accepted anchor and matching eligible
   assert.equal(experienceView('recovery', { ...base, recoveryRestoredAnchor: true }).id, 'recoveryRestored');
   assert.equal(experienceView('recovery', { ...base, recoveryRestoredAnchor: true, recoveryBusy: true }).id, 'recoveryChecking');
 });
+
+test('VM journey distinguishes pending, confirmed stop, retained uncertainty and destruction', () => {
+  const base = experienceFacts({ vmCanAdminister: true, vmAdminBlocked: true, vmFailed: true });
+  assert.equal(experienceView('vm', base).id, 'vmQuarantined');
+  assert.equal(experienceActionAllowed('stopVmBtn', base), true);
+  assert.equal(experienceView('vm', { ...base, vmTerminationPending: true }).id, 'vmTerminationPending');
+  const stopped = { ...base, vmStopped: true, vmCanReconcileCommand: true, vmCanForgetCommand: true };
+  assert.equal(experienceView('vm', stopped).evidence, 'HOST-OBSERVED STOPPED');
+  assert.equal(call('viewStyle', stopped, 3), 'observed');
+  assert.equal(call('viewStyle', { ...base, vmTerminationPending: true }, 3), 'pending');
+  assert.equal(call('viewStyle', base, 3), 'attention');
+  assert.equal(experienceActionAllowed('stopVmBtn', stopped), false);
+  assert.equal(experienceActionAllowed('destroyVmBtn', stopped), true);
+  assert.equal(experienceActionAllowed('bootVmBtn', stopped), false);
+  assert.equal(experienceActionAllowed('reconcileVmCommandBtn', stopped), true);
+  assert.equal(experienceActionAllowed('forgetVmCommandBtn', stopped), true);
+  assert.equal(experienceView('vm', { ...base, vmAdminBlocked: false, vmDestroyed: true }).id, 'vmDestroyed');
+});
+
+test('network fields and full constraints are disclosed on demand, with local validation', () => {
+  const html = readFileSync(resolve(root, 'index.html'), 'utf8');
+  const panel = html.match(/<details id="vmNetworkPanel">([\s\S]*?)<\/details>/)?.[1];
+  assert.ok(panel);
+  for (const id of ['vmNetworkSummary', 'vmIpv4Address', 'vmPrefixLength', 'vmNetworkHelp', 'vmNetworkStatus', 'vmNetworkValidation'])
+    assert.ok(panel.includes(`id="${id}"`), id);
+  assert.match(panel, /different address for every guest/);
+  assert.match(panel, /compatible subnet prefixes/);
+  assert.match(panel, /\/31.*\/32.*Destroy a retained instance/);
+  assert.doesNotMatch(html, /Linux 5\.6|LINUX 5\.6/);
+});
