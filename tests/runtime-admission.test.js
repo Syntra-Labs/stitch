@@ -188,6 +188,8 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityCla
   document.getElementById('dbPayloadInput').value = 'browser object';
   document.getElementById('dbLabelInput').value = 'state.txt';
   document.getElementById('vmRuntimeSeconds').value = '300';
+  document.getElementById('vmIpv4Address').value = '10.42.0.2';
+  document.getElementById('vmPrefixLength').value = '24';
   let mesh, db, coordinator, vm, tick, exportedBlob; const published = [], dnsCalls = [];
   class FakeTransport {
     constructor(options) { Object.assign(this, transport(), options); this.sendToPeer = FakeTransport.prototype.sendToPeer; this.broadcast = FakeTransport.prototype.broadcast; mesh = this; }
@@ -224,8 +226,9 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityCla
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,
     LinuxVmNode: VmClass ? class extends VmClass { constructor(options) { super(options); vm = this; } } : class {
       constructor(options) { vm = this; this.options = options; this.phase = 'idle'; this.boots = 0; this.commands = 0; }
-      get lifecycle() { return { phase: this.phase, canBoot: !['ready', 'booting'].includes(this.phase), canExecute: this.phase === 'ready' }; }
+      get lifecycle() { return { phase: this.phase, canConfigureNetwork: !['ready', 'booting'].includes(this.phase), canBoot: !['ready', 'booting'].includes(this.phase), canExecute: this.phase === 'ready' }; }
       commandEvidence() { return null; }
+      setNetworkConfiguration() {}
       setRuntimeAllowance(milliseconds) { this.vmRuntimeMs = milliseconds; }
       boot() { this.boots++; this.setPhase('booting'); }
       setPhase(phase) { this.phase = phase; this.options.onStatus({ state: phase === 'ready' ? 'online' : phase, ip: 'test' }); }
@@ -755,4 +758,33 @@ test('actual browser repairs only an exact selected retained object after peers 
   assert.equal(get('placementObject').value, '');
   assert.equal(get('repairPlacementBtn').disabled, true);
   assert.match(get('placementEvidence').textContent, /No retained verified object/);
+});
+
+test('browser static address controls reject invalid input, preserve offline boot and show retained configuration', async () => {
+  class NetworkVm extends LinuxVmNode { boots = 0; boot() { this.boots++; } }
+  const h = await browserHarness({ VmClass: NetworkVm }), field = id => h.document.getElementById(id);
+  for (const [address, prefix] of [['----', '24'], ['10.42.0.0', '24'], ['10.42.0.2', ''], ['10.42.0.2', '33']]) {
+    field('vmIpv4Address').value = address; field('vmPrefixLength').value = prefix;
+    await h.click('bootVmBtn'); assert.equal(h.vm.boots, 0);
+    assert.match(field('vmActionStatus').textContent, /VM-REFUSED/);
+  }
+  field('vmIpv4Address').value = ''; await h.click('bootVmBtn');
+  assert.equal(h.vm.boots, 1); assert.equal(h.vm.networkConfiguration, null);
+  assert.match(field('vmNetworkStatus').textContent, /Offline configuration/);
+  const checkbox = field('vmShareEthernet'); checkbox.checked = true;
+  checkbox.listeners.change({ target: checkbox });
+  assert.equal(checkbox.checked, false);
+  assert.match(field('vmActionStatus').textContent, /Configure a unique static IPv4/);
+  field('vmIpv4Address').value = '10.42.1.0'; field('vmPrefixLength').value = '23';
+  await h.click('bootVmBtn');
+  assert.equal(h.vm.boots, 2);
+  assert.match(field('vmNetworkStatus').textContent, /10.42.1.0\/23.*255.255.254.0/);
+  h.vm.adminBlocked = true;
+  field('vmCommandSelection').listeners.change();
+  assert.equal(field('vmIpv4Address').disabled, true);
+  assert.equal(field('vmPrefixLength').disabled, true);
+  h.vm.v86 = {}; h.vm.vmPhase = 'Failed';
+  field('vmCommandSelection').listeners.change();
+  assert.equal(field('vmIpv4Address').disabled, true); assert.equal(field('vmPrefixLength').disabled, true);
+  assert.match(field('vmNetworkStatus').textContent, /Instance retained; configuration locked/);
 });

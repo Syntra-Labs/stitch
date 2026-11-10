@@ -98,5 +98,40 @@ definition{name: outputLimit, parameters: [], result: Nat, body: 4194304}
 definition{name: retainedOutputLimit, parameters: [], result: Nat, body: 16777216}
 
 definition{name: runtimeLimitMs, parameters: [], result: Nat, body: 300000}
+
+definition{
+  name: staticAddressAllowed,
+  parameters: [firstOctet : Nat, prefix : Nat, hostPart : Nat, hostMaximum : Nat],
+  result: Bool,
+  body: ((0 <? firstOctet) && ((firstOctet <? 224) && ((not (firstOctet =? 127)) && ((prefix <=? 32) && ((31 <=? prefix) || ((0 <? hostPart) && (hostPart <? hostMaximum)))))))
+}
+
+definition{
+  name: networkChangeAllowed,
+  parameters: [instancePresent : Bool, busy : Bool, booting : Bool],
+  result: Bool,
+  body: ((not instancePresent) && ((not busy) && (not booting)))
+}
+
+definition{
+  name: networkSharingAllowed,
+  parameters: [granted : Bool, configured : Bool],
+  result: Bool,
+  body: ((not granted) || configured)
+}
+
+theorem{
+  name: retainedInstanceCannotReconfigure,
+  parameters: [busy : Bool, booting : Bool],
+  statement: ((networkChangeAllowed true busy booting) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: unconfiguredCannotShareEthernet,
+  parameters: [],
+  statement: ((networkSharingAllowed true false) = false),
+  proof: reflexivity{}
+}
 \end{semanticmodule}
 \end{lexlean}

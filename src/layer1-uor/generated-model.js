@@ -33775,6 +33775,242 @@ const definitions = {
       "value": "300000"
     }
   },
+  "Stitch.VmAdministration.staticAddressAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "staticAddressAllowed",
+    "params": [
+      {
+        "name": "firstOctet",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "prefix",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "hostPart",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "hostMaximum",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "nat",
+          "value": "0"
+        },
+        "right": {
+          "k": "var",
+          "name": "firstOctet"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "var",
+            "name": "firstOctet"
+          },
+          "right": {
+            "k": "nat",
+            "value": "224"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "firstOctet"
+              },
+              "right": {
+                "k": "nat",
+                "value": "127"
+              }
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "var",
+                "name": "prefix"
+              },
+              "right": {
+                "k": "nat",
+                "value": "32"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "||",
+              "left": {
+                "k": "binary",
+                "op": "<=?",
+                "left": {
+                  "k": "nat",
+                  "value": "31"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "prefix"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "<?",
+                  "left": {
+                    "k": "nat",
+                    "value": "0"
+                  },
+                  "right": {
+                    "k": "var",
+                    "name": "hostPart"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "<?",
+                  "left": {
+                    "k": "var",
+                    "name": "hostPart"
+                  },
+                  "right": {
+                    "k": "var",
+                    "name": "hostMaximum"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.networkChangeAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "networkChangeAllowed",
+    "params": [
+      {
+        "name": "instancePresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "booting",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "instancePresent"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "busy"
+          }
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "booting"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.networkSharingAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "networkSharingAllowed",
+    "params": [
+      {
+        "name": "granted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "configured",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "granted"
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "configured"
+      }
+    }
+  },
   "Product.Experience.initialFacts": {
     "module": "Product.Experience",
     "name": "initialFacts",
@@ -35267,7 +35503,7 @@ const definitions = {
         },
         "help": {
           "k": "string",
-          "value": "Allowed only outside ready or booting lifecycle."
+          "value": "Offline boot needs no IP address. Ethernet sharing requires an explicit static IPv4 host address and compatible subnet prefix before boot. Destroy retained instances before reconfiguration; operators must ensure address uniqueness."
         }
       }
     }
@@ -42656,12 +42892,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:b311f42d052b8a819bd0c0ff62cb64c033723e10e73aaaa58d11a5ad766c2506";
+export const modelSourceDigest = "sha256:b257b6e63232e446f9d6889d96f796ed76b7d9b5743f780919beba7b8c4e4f1d";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:b311f42d052b8a819bd0c0ff62cb64c033723e10e73aaaa58d11a5ad766c2506",
+  "sourceDigest": "sha256:b257b6e63232e446f9d6889d96f796ed76b7d9b5743f780919beba7b8c4e4f1d",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -46275,7 +46511,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "10bd1e9b22dc5697b752240ce6d566160dc65bb5810f6a520cb8018f5ff79743"
+      "sha256": "3ee723767b00d0fb0de6e4b9a7ca75ff3613fa68fbe9b4d035c0e4ab3b2f3c28"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -46351,7 +46587,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
+      "sha256": "4c27a3a3d1b3650aa78d8fe22b6f07a7335d7e9ec58969ad50f7ad9294f30f81"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
@@ -46553,11 +46789,11 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
+      "sha256": "4c27a3a3d1b3650aa78d8fe22b6f07a7335d7e9ec58969ad50f7ad9294f30f81"
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "10bd1e9b22dc5697b752240ce6d566160dc65bb5810f6a520cb8018f5ff79743"
+      "sha256": "3ee723767b00d0fb0de6e4b9a7ca75ff3613fa68fbe9b4d035c0e4ab3b2f3c28"
     }
   ],
   "theorems": [
@@ -48032,6 +48268,18 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.VmAdministration.retainedInstanceCannotReconfigure",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/VmAdministration.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.VmAdministration.unconfiguredCannotShareEthernet",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/VmAdministration.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Product.Experience.unselectedObjectCannotRepair",
       "proof": "decide",
       "source": "app/src/Product/Experience.lex.tex",
@@ -48506,12 +48754,15 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.VmAdministration.filesystemMetadataLimit",
     "Stitch.VmAdministration.forgetAllowed",
     "Stitch.VmAdministration.metadataAllowed",
+    "Stitch.VmAdministration.networkChangeAllowed",
+    "Stitch.VmAdministration.networkSharingAllowed",
     "Stitch.VmAdministration.observationAllowed",
     "Stitch.VmAdministration.outputLimit",
     "Stitch.VmAdministration.resultReadAllowed",
     "Stitch.VmAdministration.retainedOutputLimit",
     "Stitch.VmAdministration.runtimeLimitMs",
     "Stitch.VmAdministration.shareAllowed",
+    "Stitch.VmAdministration.staticAddressAllowed",
     "Stitch.VmAdministration.terminationRequired"
   ],
   "aliases": {

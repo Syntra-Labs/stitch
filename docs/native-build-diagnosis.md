@@ -90,7 +90,7 @@ build after unrelated host changes:
    [source summary](../product/source-verification.json) binds every declared
    source/vocabulary/configuration input to the retained actual
    [attestation](../product/source-attestation.json) and
-   [build manifest](../product/source-build-manifest.json): 25 modules, 1,316
+   [build manifest](../product/source-build-manifest.json): 25 modules, 1,321
    declaration audits and 85 successful Lean/leanchecker processes. This is
    source evidence only, not native acceptance.
 2. **LexLean source → repaired compiler.** LexLean owns PR #466's complete

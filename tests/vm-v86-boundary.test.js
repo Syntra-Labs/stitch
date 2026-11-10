@@ -64,7 +64,7 @@ test('shipped guest proves bidirectional 9p initialization before Ready and capt
     return emulator;
   };
   const online = new Promise((resolve, reject) => { resolveOnline = resolve; rejectOnline = reject; });
-  const node = new LinuxVmNode({ transport: { peerId: 'node-test' },
+  const node = new LinuxVmNode({ network: { address: '10.42.0.2', prefixLength: 24 }, transport: { peerId: 'node-test' },
     screenContainer: { querySelectorAll: () => (emulator?.screen_adapter?.get_text_screen?.() ?? []).map(innerText => ({ innerText })) },
     onStatus: status => { statuses.push(status); if (status.state === 'online') resolveOnline(); if (status.state === 'error') rejectOnline(Error(status.message)); }
   });
