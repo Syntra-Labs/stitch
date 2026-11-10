@@ -21,12 +21,14 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
         let refused = false;
         try { offline.setEthernetSharing(true); } catch (error) { refused = error.code === 'vm-network-required'; }
         if (!refused || offline.ethernetSharing) throw Error('Absent network must refuse Ethernet sharing');
-        const state = window.guest = { statuses: [], serial: '', frames: 0 };
+        const state = window.guest = { statuses: [], serial: '', frames: 0, packets: [], commands: [], events: [] };
         const transport = state.transport = new WebRtcTransportNode({ peerId: `candidate-${index}`, channelKey,
           iceServers: [], publicSignaling: false, publicRelayConsent: () => false,
           onEvent: event => {
+            if (['policy_refused', 'channel_open', 'channel_send_result'].includes(event.type)) state.events.push(event);
             if (event.type === 'mesh_message' && event.msg.type === 'eth_frame') {
               state.frames++;
+              state.packets.push({ direction: 'received', from: event.from, advertisedFrom: event.msg.from, length: event.msg.frame.length, header: event.msg.frame.slice(0, 42) });
               state.vm.handleIncomingEthFrame(event.msg.frame);
             }
           } });
@@ -35,6 +37,7 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
           onStatus: status => state.statuses.push(status) });
         transport.connect();
         vm.boot();
+        vm.v86.add_listener('net0-send', bytes => state.packets.push({ direction: 'guest-send', length: bytes.length, header: Array.from(bytes.slice(0, 42)), granted: vm.ethernetSharing }));
         vm.v86.add_listener('serial0-output-byte', byte => { state.serial = (state.serial + String.fromCharCode(byte)).slice(-65536); });
       }, { channelKey, index });
       await expect.poll(() => target.evaluate(() => window.guest.vm.booted), { timeout: 75_000 }).toBe(true);
@@ -42,7 +45,10 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
     }));
     const addresses = await Promise.all(pages.map(p => p.evaluate(() => window.guest.vm.ipAddress)));
     expect(addresses[0]).not.toBe(addresses[1]);
-    const command = async (target, text) => target.evaluate(async text => new TextDecoder().decode(await window.guest.vm.executeShellCommand(text, 20_000)), text);
+    const command = async (target, text) => target.evaluate(async text => {
+      const output = new TextDecoder().decode(await window.guest.vm.executeShellCommand(text, 20_000));
+      window.guest.commands.push({ text, output }); return output;
+    }, text);
     // The boot nonce already read host input and wrote back over 9p. Also inspect
     // both real consoles and kernel identity instead of inferring them from boot.
     expect(await command(page, 'uname -r; printf stderr_probe >&2')).toContain('6.18.7');
@@ -51,7 +57,16 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
     expect(await command(page, `ping -c 1 -W 2 ${addresses[1]}; echo ping_exit:$?`)).toContain('ping_exit:1');
     expect(await page.evaluate(() => window.guest.vm.ethFramesSent)).toBe(0);
     await Promise.all(pages.map(p => p.evaluate(() => window.guest.vm.setEthernetSharing(true))));
-    expect(await command(page, `ping -c 1 -W 3 ${addresses[1]}; echo ping_exit:$?`)).toContain('ping_exit:0');
+    // A denied ping may leave ARP probes exhausted. Exercise normal guest
+    // recovery after the grant with at most three real probes, without flushing
+    // neighbor state, increasing a global timeout, or replaying any shell effect.
+    const recovered = [];
+    for (let attempt = 0; attempt < 3; attempt++) {
+      const output = await command(page, `ping -c 1 -W 3 ${addresses[1]}; result=$?; ip neigh; echo ping_exit:$result`);
+      recovered.push(output);
+      if (output.includes('ping_exit:0')) break;
+    }
+    expect(recovered.some(output => output.includes('ping_exit:0')), JSON.stringify(recovered)).toBe(true);
     expect(await command(other, `ping -c 1 -W 3 ${addresses[0]}; echo ping_exit:$?`)).toContain('ping_exit:0');
     for (const target of pages) {
       const counters = await target.evaluate(() => ({ sent: window.guest.vm.ethFramesSent, received: window.guest.vm.ethFramesReceived }));
@@ -74,7 +89,8 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
         await testInfo.attach(`candidate-${index}-state`, { body: Buffer.from(JSON.stringify(await target.evaluate(() => {
           const g = window.guest;
           return g ? { statuses: g.statuses, serial: g.serial, frames: g.frames, lifecycle: g.vm.lifecycle,
-            sent: g.vm.ethFramesSent, received: g.vm.ethFramesReceived } : null;
+            sent: g.vm.ethFramesSent, received: g.vm.ethFramesReceived, packets: g.packets, commands: g.commands, events: g.events,
+            routingId: g.transport.routingPeerId, peers: g.transport.openPeers().map(p => ({ remoteId: p.remoteId, state: p.dc.readyState, ice: p.pc.iceConnectionState })) } : null;
         }), null, 2)), contentType: 'application/json' });
         await target.evaluate(async () => { if (window.guest) { await window.guest.vm.destroy(); window.guest.transport.close(); } });
       }

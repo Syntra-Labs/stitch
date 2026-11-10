@@ -48,3 +48,22 @@ VMs refuse Ethernet grants; the two real guest fixtures explicitly choose
 10.42.0.2/24 and 10.42.0.3/24. The existing default-denial, bilateral-grant,
 bidirectional ICMP and receiver-revocation checks remain. Unique address
 selection belongs to operators; no automatic allocation protocol is claimed.
+
+Run [42920254481](https://github.com/afflom/stitch/actions/runs/42920254481),
+revision `723df67cc524b3c96e6358f52449d57628dcd5ca`, passed the complete
+production UI VM lifecycle test in 28.8 seconds. Ready and stopped screenshots
+were inspected: visible configured address, output, limits and grants are retained.
+The peer test passed both boots and serial execution but failed its first
+post-grant ping. Both peers recorded one transmitted and one received frame.
+A socket-free two-real-VM diagnostic reproduced the failure independently of
+RTC: the intentionally denied initial ping exhausted ARP probes, leaving its
+neighbor INCOMPLETE/FAILED. Explicit guest `ip neigh flush dev eth0` between
+negative and positive test phases yielded first-attempt ping success. The final test does not flush neighbor state. Instead it permits at most three
+real one-packet probes with a three-second guest timeout after granting, recording
+each exact output and neighbor state. At least one probe must succeed. This
+checks natural denied-to-granted recovery without implying immediate delivery.
+It also retains bounded frame headers and authenticated routing diagnostics.
+No guest, runtime, transport, image, or global timeout was changed to mask the
+failure. The next hosted job runs the peer spec only, reusing the passed UI result
+on the identical runtime source and immutable image. Hosted peer qualification
+remains pending until this bounded natural-recovery test passes.
