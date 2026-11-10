@@ -1,0 +1,9 @@
+[package]
+name = "stitch-uor-conformance"
+version = "0.1.0"
+edition = "2021"
+description = "Direct conformance bindings against official uor-foundation crate"
+license = "MIT"
+
+[dependencies]
+uor-foundation = "0.5.2"

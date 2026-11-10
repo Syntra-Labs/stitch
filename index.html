@@ -3,191 +3,86 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>stitch — Routing-Layer Persistence Fabric | Syntra Labs</title>
+  <title>stitch — Stratified Routing Persistence, UOR Storage & Distributed Compute</title>
   <style>
     :root {
-      --bg: #080808;
-      --panel: #101010;
-      --border: #262626;
-      --border-hi: #484848;
-      --fg: #f0f0f0;
-      --muted: #8a8a8a;
-      --accent: #ffffff;
-      --ok: #d4f7d4;
-      --warn: #f5e3b3;
-      --font: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, monospace;
+      --bg: #0a0a0a;
+      --panel: #111111;
+      --border: #2a2a2a;
+      --fg: #e8e8e8;
+      --muted: #888888;
+      --font: "JetBrains Mono", "Fira Code", Consolas, monospace;
     }
 
-    * {
-      box-sizing: border-box;
-      margin: 0;
-      padding: 0;
-    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
 
     body {
       background: var(--bg);
       color: var(--fg);
       font-family: var(--font);
       font-size: 12px;
-      line-height: 1.5;
-      min-height: 100vh;
-      display: flex;
-      flex-direction: column;
+      line-height: 1.45;
+      padding: 16px;
     }
 
     header {
-      border-bottom: 1px solid var(--border);
-      padding: 12px 20px;
-      display: flex;
-      flex-wrap: wrap;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      background: var(--panel);
-    }
-
-    .brand {
-      display: flex;
-      align-items: baseline;
-      gap: 12px;
-    }
-
-    .brand h1 {
-      font-size: 15px;
-      font-weight: 700;
-      letter-spacing: 0.04em;
-    }
-
-    .brand span {
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .status-pill {
-      border: 1px solid var(--border-hi);
-      padding: 4px 10px;
-      font-size: 11px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      background: #000;
-    }
-
-    .dot {
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: var(--muted);
-      display: inline-block;
-    }
-
-    .dot.live {
-      background: #fff;
-      box-shadow: 0 0 8px #fff;
-    }
-
-    main {
-      flex: 1;
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 1px;
-      background: var(--border);
-    }
-
-    @media (max-width: 960px) {
-      main {
-        grid-template-columns: 1fr;
-      }
-    }
-
-    .panel {
-      background: var(--bg);
-      padding: 18px 20px;
-      display: flex;
-      flex-direction: column;
-      gap: 14px;
-    }
-
-    .panel-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      border-bottom: 1px solid var(--border);
-      padding-bottom: 8px;
-    }
-
-    .panel-title {
-      font-size: 12px;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 0.08em;
-      color: var(--fg);
-    }
-
-    .panel-sub {
-      color: var(--muted);
-      font-size: 11px;
-    }
-
-    .metrics-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: 8px;
-    }
-
-    @media (max-width: 600px) {
-      .metrics-grid {
-        grid-template-columns: repeat(2, 1fr);
-      }
-    }
-
-    .metric-card {
       border: 1px solid var(--border);
       background: var(--panel);
-      padding: 10px;
+      padding: 12px 16px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 10px;
     }
 
-    .metric-label {
-      color: var(--muted);
-      font-size: 10px;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
+    h1 { font-size: 14px; font-weight: 700; }
+    h2 { font-size: 12px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; }
+
+    .grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
     }
 
-    .metric-value {
-      font-size: 16px;
-      font-weight: 700;
-      margin-top: 4px;
-      color: var(--fg);
+    @media (max-width: 1024px) {
+      .grid { grid-template-columns: 1fr; }
     }
 
-    .metric-sub {
-      font-size: 10px;
-      color: var(--muted);
-      margin-top: 2px;
+    .stratum {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
     }
 
-    .controls-row {
+    .stratum-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: baseline;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 6px;
+    }
+
+    .muted { color: var(--muted); font-size: 11px; }
+
+    .controls {
       display: flex;
       flex-wrap: wrap;
-      gap: 8px;
+      gap: 6px;
       align-items: center;
     }
 
-    input[type="text"], input[type="number"] {
+    input, select {
       background: #000;
-      border: 1px solid var(--border-hi);
       color: var(--fg);
+      border: 1px solid var(--border);
       font-family: var(--font);
-      font-size: 12px;
-      padding: 6px 10px;
-      outline: none;
-      flex: 1;
-      min-width: 140px;
-    }
-
-    input:focus {
-      border-color: var(--fg);
+      font-size: 11px;
+      padding: 5px 8px;
     }
 
     button {
@@ -197,52 +92,14 @@
       font-family: var(--font);
       font-size: 11px;
       font-weight: 700;
-      padding: 6px 12px;
+      padding: 5px 10px;
       cursor: pointer;
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
     }
 
     button.secondary {
       background: transparent;
       color: var(--fg);
-      border-color: var(--border-hi);
-    }
-
-    button:hover {
-      opacity: 0.88;
-    }
-
-    canvas {
-      width: 100%;
-      height: 170px;
-      border: 1px solid var(--border);
-      background: #050505;
-      display: block;
-    }
-
-    .log-box {
-      border: 1px solid var(--border);
-      background: #050505;
-      padding: 10px;
-      height: 185px;
-      overflow-y: auto;
-      font-size: 11px;
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .log-entry {
-      display: flex;
-      gap: 8px;
-      border-bottom: 1px dotted #191919;
-      padding-bottom: 2px;
-    }
-
-    .log-ts {
-      color: var(--muted);
-      flex-shrink: 0;
+      border-color: var(--border);
     }
 
     table {
@@ -253,576 +110,362 @@
 
     th, td {
       border: 1px solid var(--border);
-      padding: 6px 8px;
+      padding: 5px 7px;
       text-align: left;
     }
 
     th {
-      background: var(--panel);
+      background: #080808;
       color: var(--muted);
-      text-transform: uppercase;
-      font-size: 10px;
+      font-weight: 600;
     }
 
-    .formula-bar {
+    .mono-out {
+      background: #050505;
       border: 1px solid var(--border);
-      background: var(--panel);
-      padding: 8px 12px;
+      padding: 8px;
       font-size: 11px;
-      color: var(--muted);
-      display: flex;
-      justify-content: space-between;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
-
-    .formula-bar code {
-      color: var(--fg);
-    }
-
-    footer {
-      border-top: 1px solid var(--border);
-      padding: 10px 20px;
-      color: var(--muted);
-      font-size: 11px;
-      display: flex;
-      justify-content: space-between;
-      background: var(--panel);
-    }
-
-    a {
-      color: var(--fg);
-      text-decoration: underline;
+      overflow-x: auto;
+      white-space: pre-wrap;
     }
   </style>
 </head>
 <body>
   <header>
-    <div class="brand">
-      <h1>STITCH // ROUTING-LAYER PERSISTENCE FABRIC</h1>
-      <span>“The Internet Is a Notebook” — WebRTC + DNS SRV/DoH + Survival Entropy Scheduler</span>
+    <div>
+      <h1>Syntra-Labs / stitch — Stratified Verification & Comparative Benchmark Console</h1>
+      <div class="muted">5 Isolated Layers: L1 UOR Addressing | L2 Refresh Schedulers | L3 Ephemeral Database | L4 Distributed Compute | L5 Transport (WebRTC + DoH)</div>
     </div>
-    <div style="display: flex; gap: 10px; align-items: center;">
-      <div class="status-pill">
-        <span id="stitchDot" class="dot"></span>
-        <span id="stitchStateLabel">RENDEZVOUS LISTENING</span>
-      </div>
-      <div class="status-pill">
-        <span>LOCAL ID: <strong id="localPeerLabel">...</strong></span>
-      </div>
+    <div class="controls">
+      <button id="runAllBenchBtn">Re-Run All Layer Benchmarks</button>
     </div>
   </header>
 
-  <main>
-    <!-- PANEL 1: L0 HOT LAYER — TWO-PEER WEBRTC STITCH -->
-    <section class="panel">
-      <div class="panel-header">
-        <span class="panel-title">L0 Hot Layer // Two-Peer WebRTC DataChannel Stitch</span>
-        <span class="panel-sub">Zero-Backend Rendezvous (WebSocket + BroadcastChannel)</span>
+  <div class="grid">
+    <!-- STRATUM 1: UOR CONTENT ADDRESSING & RING KERNEL -->
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 1: UOR Content Addressing & Ring Z/(2^n)Z</h2>
+        <span class="muted">src/layer1-uor/index.js (uor-foundation v0.5.2 conformant)</span>
       </div>
 
-      <div class="controls-row">
-        <input type="text" id="stitchKeyInput" placeholder="Stitch Handle / Key" value="syntra-notebook-01" />
-        <button id="connectBtn">Join / Re-Stitch</button>
-        <button id="copyLinkBtn" class="secondary">Copy Peer Share URL</button>
-        <button id="injectChurnBtn" class="secondary">Simulate Link Drop</button>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">ICE Transport</div>
-          <div class="metric-value" id="iceStateVal">WAIT</div>
-          <div class="metric-sub" id="candidateTypeVal">No candidate yet</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Remote Peer</div>
-          <div class="metric-value" id="remotePeerVal">NONE</div>
-          <div class="metric-sub">Open URL in 2nd tab/network</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Heartbeats (5s)</div>
-          <div class="metric-value" id="heartbeatCountVal">0</div>
-          <div class="metric-sub" id="rttVal">RTT: — ms</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Pointer Refreshes</div>
-          <div class="metric-value" id="refreshCountVal">1</div>
-          <div class="metric-sub" id="refreshReasonVal">Initial bind</div>
-        </div>
-      </div>
-
-      <div class="controls-row">
-        <input type="text" id="peerMessageInput" placeholder="Send packet across the stitch DataChannel..." />
-        <button id="sendMsgBtn" class="secondary">Transmit</button>
-      </div>
-
-      <div class="log-box" id="telemetryLog"></div>
-    </section>
-
-    <!-- PANEL 2: L1/L2 ENTROPY & SURVIVAL REFRESH CLOCK -->
-    <section class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Survival & Entropy Refresh Scheduler</span>
-        <span class="panel-sub">P(alive at t) = exp(-λt) | H(p) Binary Staleness Entropy</span>
-      </div>
-
-      <div class="formula-bar">
-        <span>Rate: <code>λ̂ = 1 / E[ΔT]</code></span>
-        <span>Refresh: <code>t_ref = min(TTL/2, -ln(1-ε)/λ̂)</code></span>
-        <span>Entropy: <code>H(p) = -p log₂ p - (1-p) log₂(1-p)</code></span>
-      </div>
-
-      <div class="metrics-grid">
-        <div class="metric-card">
-          <div class="metric-label">Est. Rate (λ̂)</div>
-          <div class="metric-value" id="lambdaVal">0.017 /s</div>
-          <div class="metric-sub">Poisson churn rate</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Survival P(t)</div>
-          <div class="metric-value" id="pAliveVal">1.000</div>
-          <div class="metric-sub" id="pointerAgeVal">Age: 0.0s</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Stale Entropy H(p)</div>
-          <div class="metric-value" id="entropyVal">0.000 bit</div>
-          <div class="metric-sub">Threshold: 0.40 bit</div>
-        </div>
-        <div class="metric-card">
-          <div class="metric-label">Next Refresh</div>
-          <div class="metric-value" id="nextRefreshVal">30.0s</div>
-          <div class="metric-sub" id="ttlLabelVal">TTL Cap: 60s</div>
-        </div>
-      </div>
-
-      <canvas id="survivalCanvas" width="640" height="170"></canvas>
-
-      <div class="controls-row">
-        <label style="color: var(--muted);">TTL (s):</label>
-        <input type="number" id="ttlInput" value="60" min="10" max="600" style="max-width: 80px;" />
-        <label style="color: var(--muted);">Staleness ε:</label>
-        <input type="number" id="epsInput" value="0.08" step="0.01" min="0.01" max="0.45" style="max-width: 80px;" />
-        <button id="manualRefreshBtn" class="secondary">Re-Knot Stitch Now</button>
-      </div>
-    </section>
-
-    <!-- PANEL 3: L1/L3 COLD & WARM POINTER LAYER (DNS SRV / TXT OVER DoH) -->
-    <section class="panel">
-      <div class="panel-header">
-        <span class="panel-title">L1/L3 Cold & Warm Pointer // DNS SRV & TXT Resolution (DoH)</span>
-        <span class="panel-sub">RFC 8484 Cloudflare DNS-over-HTTPS Telemetry</span>
-      </div>
-
-      <div class="controls-row">
-        <input type="text" id="dnsNameInput" value="_xmpp-client._tcp.jabber.org" placeholder="_stitch._udp.example.net" />
-        <button id="resolveSrvBtn">Resolve SRV</button>
-        <button id="resolveTxtBtn" class="secondary">Resolve TXT</button>
+      <div class="controls">
+        <label class="muted">Samples:</label>
+        <input type="number" id="l1Samples" value="1000" min="100" max="10000" style="width: 80px;" />
+        <label class="muted">Payload (B):</label>
+        <input type="number" id="l1Bytes" value="64" min="8" max="4096" style="width: 70px;" />
+        <button id="runL1Btn" class="secondary">Run L1 Benchmark</button>
       </div>
 
       <table>
         <thead>
           <tr>
-            <th>Query Name</th>
-            <th>Type</th>
-            <th>TTL (s)</th>
-            <th>RTT (ms)</th>
-            <th>Cache Inference</th>
-            <th>Target / Record Payload</th>
+            <th>Hasher Axis</th>
+            <th>Width (B)</th>
+            <th>Samples</th>
+            <th>Collisions</th>
+            <th>Time (ms)</th>
+            <th>Ops / sec</th>
+            <th>MB / s</th>
           </tr>
         </thead>
-        <tbody id="dnsTableBody">
-          <tr>
-            <td colspan="6" style="color: var(--muted);">Click "Resolve SRV" or "Resolve TXT" to query live authoritative/cached DNS records via DoH.</td>
-          </tr>
-        </tbody>
+        <tbody id="l1Body"></tbody>
       </table>
 
-      <div class="formula-bar">
-        <span>Synthesized Pointer TXT Record for this Peer:</span>
-        <code id="synthesizedTxtCode">v=stitch1;peer=...</code>
+      <div class="controls">
+        <input type="text" id="l1InputText" value="[1, 2, 3, 4]" style="flex: 1;" />
+        <button id="l1MintBtn" class="secondary">Mint UOR Address</button>
       </div>
+      <div class="mono-out" id="l1MintOut"></div>
     </section>
 
-    <!-- PANEL 4: A/B BENCHMARK (FIXED-TTL VS ENTROPY-DRIVEN REFRESH) -->
-    <section class="panel">
-      <div class="panel-header">
-        <span class="panel-title">Phase 3 A/B Benchmark // Fixed-TTL vs. Entropy-Driven Refresh</span>
-        <span class="panel-sub">600s Route/Pointer Churn Evaluation</span>
+    <!-- STRATUM 2: LIVENESS & REFRESH SCHEDULERS -->
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 2: Liveness & Refresh Schedulers</h2>
+        <span class="muted">src/layer2-schedulers/index.js</span>
       </div>
 
-      <div class="controls-row">
-        <span style="color: var(--muted);">Evaluate 600s window across variable network failure/withdrawal cadence:</span>
-        <button id="runAbBtn">Run A/B Comparison</button>
+      <div class="controls">
+        <label class="muted">Duration (s):</label>
+        <input type="number" id="l2Duration" value="600" style="width: 70px;" />
+        <label class="muted">TTL (s):</label>
+        <input type="number" id="l2Ttl" value="60" style="width: 60px;" />
+        <label class="muted">Drop Interval (s):</label>
+        <input type="number" id="l2DropInterval" value="18" style="width: 60px;" />
+        <button id="runL2Btn" class="secondary">Run L2 Benchmark</button>
       </div>
 
       <table>
         <thead>
           <tr>
             <th>Scheduler Policy</th>
-            <th>Total Refreshes Issued</th>
-            <th>Stale Duration (s)</th>
-            <th>Staleness Ratio (%)</th>
-            <th>Control-Plane Verdict</th>
+            <th>Refreshes Issued</th>
+            <th>Unavailable (s)</th>
+            <th>Availability Ratio</th>
+            <th>Mean Recovery Lag (s)</th>
           </tr>
         </thead>
-        <tbody id="abTableBody"></tbody>
+        <tbody id="l2Body"></tbody>
       </table>
+    </section>
+
+    <!-- STRATUM 3: DISTRIBUTED EPHEMERAL UOR DATABASE -->
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 3: Ephemeral UOR Database (100% Node Turnover)</h2>
+        <span class="muted">src/layer3-storage/index.js</span>
+      </div>
+
+      <div class="controls">
+        <label class="muted">Objects:</label>
+        <input type="number" id="l3Objects" value="24" style="width: 60px;" />
+        <label class="muted">Size (B):</label>
+        <input type="number" id="l3Size" value="256" style="width: 65px;" />
+        <label class="muted">Turnover Generations:</label>
+        <input type="number" id="l3Gens" value="8" style="width: 55px;" />
+        <button id="runL3Btn" class="secondary">Run L3 Benchmark</button>
+      </div>
 
       <table>
         <thead>
           <tr>
-            <th>Memory Tier</th>
-            <th>What Persists</th>
-            <th>Control Plane</th>
-            <th>Refresh Trigger</th>
+            <th>Storage & Repair Strategy</th>
+            <th>Gen-0 Nodes Alive</th>
+            <th>Recovered</th>
+            <th>Retention Rate</th>
+            <th>Storage Amp</th>
+            <th>Repair Bytes</th>
+            <th>Repair Ops</th>
           </tr>
         </thead>
-        <tbody>
-          <tr>
-            <td><strong>L0 Hot</strong></td>
-            <td>Active peer streams</td>
-            <td>WebRTC DataChannel</td>
-            <td>5s heartbeats, ICE state</td>
-          </tr>
-          <tr>
-            <td><strong>L1 Warm</strong></td>
-            <td>Service endpoints, handles</td>
-            <td>DNS SRV / HTTPS / TXT</td>
-            <td>TTL decay, health probes</td>
-          </tr>
-          <tr>
-            <td><strong>L2 Route</strong></td>
-            <td>Prefix / anycast liveness</td>
-            <td>BGP (DN42 / BIRD / FRR)</td>
-            <td>Hold timer, update entropy</td>
-          </tr>
-          <tr>
-            <td><strong>L3 Cold</strong></td>
-            <td>Signed manifests, identities</td>
-            <td>Authoritative DNS + sigs</td>
-            <td>Key rotation / change events</td>
-          </tr>
-        </tbody>
+        <tbody id="l3Body"></tbody>
       </table>
     </section>
-  </main>
 
-  <footer>
-    <span>Syntra Labs — <strong>stitch</strong> (Routing-Layer Persistence Fabric)</span>
-    <span>Open this page in two tabs or across two networks with the same Stitch Key to form a live WebRTC stitch.</span>
-  </footer>
+    <!-- STRATUM 4: DISTRIBUTED UOR COMPUTE ENGINE -->
+    <section class="stratum">
+      <div class="stratum-head">
+        <h2>Layer 4: Distributed UOR Compute Engine</h2>
+        <span class="muted">src/layer4-compute/index.js</span>
+      </div>
+
+      <div class="controls">
+        <label class="muted">Tasks:</label>
+        <input type="number" id="l4Tasks" value="20" style="width: 60px;" />
+        <label class="muted">Steps/Task:</label>
+        <input type="number" id="l4Steps" value="24" style="width: 60px;" />
+        <label class="muted">Drop Modulo:</label>
+        <input type="number" id="l4DropMod" value="9" style="width: 55px;" />
+        <button id="runL4Btn" class="secondary">Run L4 Benchmark</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Execution & Fault Strategy</th>
+            <th>Completed</th>
+            <th>Mean Latency (ticks)</th>
+            <th>Total Ring Ops</th>
+            <th>Wasted Ops</th>
+            <th>Checkpoints</th>
+            <th>Trace Verified</th>
+          </tr>
+        </thead>
+        <tbody id="l4Body"></tbody>
+      </table>
+    </section>
+
+    <!-- STRATUM 5: NETWORK & DNS CONTROL-PLANE ADAPTERS -->
+    <section class="stratum" style="grid-column: 1 / -1;">
+      <div class="stratum-head">
+        <h2>Layer 5: Transport Adapters (WebRTC DataChannel + RFC 8484 DNS-over-HTTPS)</h2>
+        <span class="muted">src/layer5-transport/index.js</span>
+      </div>
+
+      <div class="controls">
+        <label class="muted">Channel Key:</label>
+        <input type="text" id="l5Key" value="syntra-uor-bus-01" style="width: 160px;" />
+        <button id="l5ConnectBtn">Connect WebRTC Peer</button>
+        <button id="l5ReplicateBtn" class="secondary">Replicate UOR Object to Peer</button>
+        <label class="muted" style="margin-left: 12px;">DoH Query:</label>
+        <input type="text" id="l5DnsName" value="_xmpp-client._tcp.jabber.org" style="width: 210px;" />
+        <button id="l5SrvBtn" class="secondary">Resolve SRV</button>
+        <button id="l5TxtBtn" class="secondary">Resolve TXT</button>
+      </div>
+
+      <div class="mono-out" id="l5Log">Initializing Layer 5 transport node...</div>
+    </section>
+  </div>
 
   <script type="module">
     import {
-      SurvivalClock,
-      survivalProbability,
-      binaryEntropy,
-      compareFixedVsEntropy
-    } from './src/survival.js';
-    import { DnsPointerObserver, formatPointerTxt } from './src/pointer.js';
-    import { StitchPeer } from './src/peer.js';
+      Fnv1aHasher16,
+      mintContentAddress,
+      benchmarkUorHashers
+    } from './src/layer1-uor/index.js';
+    import { benchmarkSchedulers } from './src/layer2-schedulers/index.js';
+    import { benchmarkStorageStrategies } from './src/layer3-storage/index.js';
+    import { benchmarkComputeStrategies } from './src/layer4-compute/index.js';
+    import { DohResolver, WebRtcTransportNode } from './src/layer5-transport/index.js';
 
-    const logEl = document.getElementById('telemetryLog');
-    function logEvent(tag, msg) {
-      const row = document.createElement('div');
-      row.className = 'log-entry';
-      const ts = new Date().toISOString().slice(11, 19);
-      row.innerHTML = `<span class="log-ts">[${ts}]</span><strong>[${tag}]</strong><span>${msg}</span>`;
-      logEl.prepend(row);
-      while (logEl.children.length > 60) {
-        logEl.removeChild(logEl.lastChild);
+    function runL1() {
+      const samples = Number(document.getElementById('l1Samples').value) || 1000;
+      const bytes = Number(document.getElementById('l1Bytes').value) || 64;
+      const rows = benchmarkUorHashers(samples, bytes);
+      document.getElementById('l1Body').innerHTML = rows.map(r => `
+        <tr>
+          <td><strong>${r.hasher}</strong></td>
+          <td>${r.output_bytes}</td>
+          <td>${r.samples}</td>
+          <td>${r.collisions}</td>
+          <td>${r.elapsed_ms}</td>
+          <td>${r.ops_per_sec}</td>
+          <td>${r.throughput_mb_s}</td>
+        </tr>
+      `).join('');
+    }
+
+    function mintInteractive() {
+      const raw = document.getElementById('l1InputText').value.trim();
+      let bytes;
+      try {
+        const arr = JSON.parse(raw);
+        bytes = Array.isArray(arr) ? new Uint8Array(arr) : new TextEncoder().encode(raw);
+      } catch {
+        bytes = new TextEncoder().encode(raw);
       }
+      const { address, fingerprint } = mintContentAddress(bytes, Fnv1aHasher16);
+      document.getElementById('l1MintOut').textContent =
+        `Input Bytes (${bytes.length}B): [${Array.from(bytes).join(', ')}]\n` +
+        `UOR ContentAddress (u128): ${address.toHex()}\n` +
+        `UOR ContentFingerprint (${fingerprint.widthBytes}B): ${fingerprint.toHex()}`;
     }
 
-    // 1. Initialize Survival Clock
-    const nowSec = () => Date.now() / 1000;
-    const clock = new SurvivalClock({
-      ttlSeconds: 60,
-      epsilon: 0.08,
-      entropyThreshold: 0.40,
-      hysteresis: 0.04,
-      minFloorSeconds: 5
-    });
-    clock.markRefreshed(nowSec());
+    function runL2() {
+      const durationSeconds = Number(document.getElementById('l2Duration').value) || 600;
+      const ttlSeconds = Number(document.getElementById('l2Ttl').value) || 60;
+      const step = Math.max(3, Number(document.getElementById('l2DropInterval').value) || 18);
+      const dropTimestamps = [];
+      for (let t = step; t < durationSeconds; t += step) dropTimestamps.push(t);
 
-    // Seed initial baseline intervals so lambda starts realistic (~1/45s)
-    const t0 = nowSec();
-    clock.recordChurnEvent(t0 - 90);
-    clock.recordChurnEvent(t0 - 45);
-
-    // 2. Initialize StitchPeer (Zero-setup WebRTC DataChannel)
-    const hashKey = location.hash.replace(/^#/, '').trim();
-    const stitchKeyInput = document.getElementById('stitchKeyInput');
-    if (hashKey) {
-      stitchKeyInput.value = hashKey;
+      const rows = benchmarkSchedulers({ durationSeconds, ttlSeconds, dropTimestamps });
+      document.getElementById('l2Body').innerHTML = rows.map(r => `
+        <tr>
+          <td><strong>${r.scheduler}</strong></td>
+          <td>${r.refreshes_issued}</td>
+          <td>${r.unavailable_seconds}</td>
+          <td>${(r.availability_ratio * 100).toFixed(2)}%</td>
+          <td>${r.mean_recovery_lag_sec}</td>
+        </tr>
+      `).join('');
     }
 
-    let peer = null;
-    function startPeer(stitchKey) {
-      if (peer) peer.close();
-      location.hash = stitchKey;
+    function runL3() {
+      const objectCount = Number(document.getElementById('l3Objects').value) || 24;
+      const objectSizeBytes = Number(document.getElementById('l3Size').value) || 256;
+      const generations = Number(document.getElementById('l3Gens').value) || 8;
+      const rows = benchmarkStorageStrategies({ objectCount, objectSizeBytes, initialNodes: 5, generations });
+      document.getElementById('l3Body').innerHTML = rows.map(r => `
+        <tr>
+          <td><strong>${r.strategy}</strong></td>
+          <td>${r.initial_nodes_remaining}</td>
+          <td>${r.objects_recovered} / ${r.objects_written}</td>
+          <td>${(r.retention_rate * 100).toFixed(1)}%</td>
+          <td>${r.storage_amplification}x</td>
+          <td>${r.network_bytes_transferred} B</td>
+          <td>${r.repair_ops}</td>
+        </tr>
+      `).join('');
+    }
 
-      peer = new StitchPeer({
-        stitchKey,
-        heartbeatIntervalMs: 5000,
-        onTelemetry: ev => {
+    function runL4() {
+      const taskCount = Number(document.getElementById('l4Tasks').value) || 20;
+      const stepsPerTask = Number(document.getElementById('l4Steps').value) || 24;
+      const dropStepModulo = Number(document.getElementById('l4DropMod').value) || 9;
+      const rows = benchmarkComputeStrategies({ taskCount, stepsPerTask, workerLambda: 0.08, dropStepModulo });
+      document.getElementById('l4Body').innerHTML = rows.map(r => `
+        <tr>
+          <td><strong>${r.strategy}</strong></td>
+          <td>${r.tasks_completed}</td>
+          <td>${r.mean_latency_ticks}</td>
+          <td>${r.total_ring_ops}</td>
+          <td>${r.wasted_ring_ops}</td>
+          <td>${r.checkpoints_written}</td>
+          <td>${(r.trace_verified_rate * 100).toFixed(1)}%</td>
+        </tr>
+      `).join('');
+    }
+
+    function runAll() {
+      runL1();
+      mintInteractive();
+      runL2();
+      runL3();
+      runL4();
+    }
+
+    document.getElementById('runL1Btn').addEventListener('click', runL1);
+    document.getElementById('l1MintBtn').addEventListener('click', mintInteractive);
+    document.getElementById('runL2Btn').addEventListener('click', runL2);
+    document.getElementById('runL3Btn').addEventListener('click', runL3);
+    document.getElementById('runL4Btn').addEventListener('click', runL4);
+    document.getElementById('runAllBenchBtn').addEventListener('click', runAll);
+
+    // Layer 5 setup
+    const l5Log = document.getElementById('l5Log');
+    function appendL5Log(line) {
+      const ts = new Date().toISOString().slice(11, 19);
+      l5Log.textContent = `[${ts}] ${line}\n` + l5Log.textContent.slice(0, 2400);
+    }
+
+    const doh = new DohResolver();
+    let rtcNode = null;
+
+    function startRtc() {
+      if (rtcNode) rtcNode.close();
+      const key = document.getElementById('l5Key').value.trim() || 'syntra-uor-bus-01';
+      rtcNode = new WebRtcTransportNode({
+        channelKey: key,
+        onEvent: ev => {
           if (ev.type === 'signaling_ready') {
-            logEvent('SIGNAL', `Listening on ${ev.mode} [key=${ev.stitchKey}]`);
-          } else if (ev.type === 'ice_candidate') {
-            document.getElementById('candidateTypeVal').textContent = ev.candidateType;
-          } else if (ev.type === 'ice_state') {
-            document.getElementById('iceStateVal').textContent = ev.state.toUpperCase();
-            logEvent('ICE', `State -> ${ev.state}`);
+            appendL5Log(`Signaling active on topic=${ev.topic} (localPeer=${ev.peerId})`);
           } else if (ev.type === 'channel_open') {
-            document.getElementById('stitchDot').classList.add('live');
-            document.getElementById('stitchStateLabel').textContent = 'STITCH LIVE (DATACHANNEL OPEN)';
-            document.getElementById('remotePeerVal').textContent = peer.remotePeerId || 'CONNECTED';
-            logEvent('STITCH', `WebRTC DataChannel '${ev.label}' open with ${peer.remotePeerId}`);
-          } else if (ev.type === 'channel_close') {
-            document.getElementById('stitchDot').classList.remove('live');
-            document.getElementById('stitchStateLabel').textContent = 'STITCH BROKEN (RE-LISTENING)';
-            clock.recordChurnEvent(nowSec());
-            logEvent('CHURN', `DataChannel closed; recorded survival churn event.`);
+            appendL5Log(`WebRTC DataChannel open with remotePeer=${ev.remotePeerId}`);
           } else if (ev.type === 'heartbeat') {
-            document.getElementById('heartbeatCountVal').textContent = String(ev.totalHeartbeats);
-            document.getElementById('remotePeerVal').textContent = peer.remotePeerId || 'CONNECTED';
-            if (ev.rttMs !== null) {
-              document.getElementById('rttVal').textContent = `RTT: ${ev.rttMs} ms`;
-            }
-          } else if (ev.type === 'peer_message') {
-            logEvent('MSG', `From ${ev.from}: ${ev.text}`);
+            appendL5Log(`Heartbeat #${ev.count} from ${ev.remotePeerId} (rtt=${ev.rttMs ?? '—'} ms)`);
+          } else if (ev.type === 'uor_replicate') {
+            const { address } = mintContentAddress(ev.bytes, Fnv1aHasher16);
+            appendL5Log(`Received UOR block ${ev.addressHex} (${ev.bytes.length}B), verified=${address.toHex() === ev.addressHex}`);
           }
         }
       });
-
-      document.getElementById('localPeerLabel').textContent = peer.peerId;
-      document.getElementById('synthesizedTxtCode').textContent = formatPointerTxt({
-        peer: peer.peerId,
-        ep: `wss://ntfy.sh/${peer.getRendezvousTopic()}`
-      });
-
-      peer.startAutoStitch(stitchKey);
+      rtcNode.connect(key);
     }
 
-    startPeer(stitchKeyInput.value.trim());
-
-    document.getElementById('connectBtn').addEventListener('click', () => {
-      startPeer(stitchKeyInput.value.trim() || 'syntra-notebook-01');
+    document.getElementById('l5ConnectBtn').addEventListener('click', startRtc);
+    document.getElementById('l5ReplicateBtn').addEventListener('click', () => {
+      const payload = new Uint8Array([1, 2, 3, 4, 5, 6, 7, 8]);
+      const { address } = mintContentAddress(payload, Fnv1aHasher16);
+      const sent = rtcNode && rtcNode.replicateUorObject(address.toHex(), payload);
+      appendL5Log(sent ? `Replicated ${address.toHex()} over DataChannel` : `DataChannel not open; open page in 2nd tab to test replication`);
     });
 
-    document.getElementById('copyLinkBtn').addEventListener('click', async () => {
-      const url = `${location.origin}${location.pathname}#${encodeURIComponent(stitchKeyInput.value.trim())}`;
+    async function resolveDns(type) {
+      const name = document.getElementById('l5DnsName').value.trim();
       try {
-        await navigator.clipboard.writeText(url);
-        logEvent('SHARE', `Copied share URL to clipboard: ${url}`);
-      } catch {
-        logEvent('SHARE', `Share URL: ${url}`);
-      }
-    });
-
-    document.getElementById('injectChurnBtn').addEventListener('click', () => {
-      clock.recordChurnEvent(nowSec());
-      logEvent('CHURN', 'Injected synthetic route/pointer drop into survival estimator.');
-    });
-
-    document.getElementById('manualRefreshBtn').addEventListener('click', () => {
-      clock.markRefreshed(nowSec());
-      if (peer) peer.sendSignal({ kind: 'announce' });
-      document.getElementById('refreshCountVal').textContent = String(clock.refreshCount);
-      document.getElementById('refreshReasonVal').textContent = 'manual_re_knot';
-      logEvent('REFRESH', 'Manual pointer & route re-announcement triggered.');
-    });
-
-    document.getElementById('sendMsgBtn').addEventListener('click', () => {
-      const input = document.getElementById('peerMessageInput');
-      const text = input.value.trim();
-      if (!text) return;
-      if (peer && peer.sendMessage(text)) {
-        logEvent('TX', `Sent to ${peer.remotePeerId}: ${text}`);
-        input.value = '';
-      } else {
-        logEvent('WARN', 'DataChannel not open yet — open this page in a second tab or network first.');
-      }
-    });
-
-    // 3. Real-Time Survival Canvas & Scheduler Loop
-    const canvas = document.getElementById('survivalCanvas');
-    const ctx = canvas.getContext('2d');
-
-    function renderSurvivalCurve(status) {
-      const w = canvas.width;
-      const h = canvas.height;
-      ctx.clearRect(0, 0, w, h);
-
-      const ttl = clock.ttlSeconds;
-      const padL = 36;
-      const padR = 16;
-      const padT = 16;
-      const padB = 24;
-      const plotW = w - padL - padR;
-      const plotH = h - padT - padB;
-
-      // Grid lines
-      ctx.strokeStyle = '#1e1e1e';
-      ctx.lineWidth = 1;
-      for (let i = 0; i <= 4; i++) {
-        const y = padT + (plotH * i) / 4;
-        ctx.beginPath();
-        ctx.moveTo(padL, y);
-        ctx.lineTo(w - padR, y);
-        ctx.stroke();
-      }
-
-      // Draw P(alive at t) = exp(-lambda * t) in solid white
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1.8;
-      ctx.beginPath();
-      for (let px = 0; px <= plotW; px++) {
-        const t = (px / plotW) * ttl;
-        const p = survivalProbability(status.lambda, t);
-        const x = padL + px;
-        const y = padT + (1 - p) * plotH;
-        if (px === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-
-      // Draw binary entropy H(p) in dashed gray
-      ctx.strokeStyle = '#7a7a7a';
-      ctx.setLineDash([4, 4]);
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      for (let px = 0; px <= plotW; px++) {
-        const t = (px / plotW) * ttl;
-        const p = survivalProbability(status.lambda, t);
-        const ent = binaryEntropy(p);
-        const x = padL + px;
-        const y = padT + (1 - ent) * plotH;
-        if (px === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.stroke();
-      ctx.setLineDash([]);
-
-      // Draw current age cursor
-      const curX = padL + Math.min(1, status.ageSeconds / ttl) * plotW;
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 1;
-      ctx.beginPath();
-      ctx.moveTo(curX, padT);
-      ctx.lineTo(curX, h - padB);
-      ctx.stroke();
-
-      // Labels
-      ctx.fillStyle = '#8a8a8a';
-      ctx.font = '10px monospace';
-      ctx.fillText('1.0', 6, padT + 4);
-      ctx.fillText('0.5', 6, padT + plotH / 2 + 4);
-      ctx.fillText('0.0', 6, h - padB);
-      ctx.fillText('t=0s', padL, h - 6);
-      ctx.fillText(`TTL=${ttl}s`, w - padR - 48, h - 6);
-      ctx.fillStyle = '#ffffff';
-      ctx.fillText('— P(alive)', padL + 8, padT + 12);
-      ctx.fillStyle = '#8a8a8a';
-      ctx.fillText('-- H(p) entropy', padL + 86, padT + 12);
-    }
-
-    setInterval(() => {
-      clock.ttlSeconds = Math.max(10, Number(document.getElementById('ttlInput').value) || 60);
-      clock.epsilon = Math.max(0.01, Math.min(0.49, Number(document.getElementById('epsInput').value) || 0.08));
-
-      const status = clock.evaluate(nowSec());
-      if (status.shouldRefresh) {
-        clock.markRefreshed(nowSec());
-        if (peer) peer.sendSignal({ kind: 'announce' });
-        document.getElementById('refreshCountVal').textContent = String(clock.refreshCount);
-        document.getElementById('refreshReasonVal').textContent = status.reason;
-        logEvent('SCHED', `Entropy scheduler refreshed pointer [reason=${status.reason}, H=${status.entropyBits.toFixed(3)} bit]`);
-      }
-
-      document.getElementById('lambdaVal').textContent = `${status.lambda.toFixed(3)} /s`;
-      document.getElementById('pAliveVal').textContent = status.pAlive.toFixed(3);
-      document.getElementById('pointerAgeVal').textContent = `Age: ${status.ageSeconds.toFixed(1)}s`;
-      document.getElementById('entropyVal').textContent = `${status.entropyBits.toFixed(3)} bit`;
-      document.getElementById('nextRefreshVal').textContent = `${status.nextRefreshInSeconds.toFixed(1)}s`;
-      document.getElementById('ttlLabelVal').textContent = `TTL Cap: ${clock.ttlSeconds}s`;
-
-      renderSurvivalCurve(status);
-    }, 200);
-
-    // 4. DNS-over-HTTPS Pointer Observer
-    const dnsObserver = new DnsPointerObserver();
-    const dnsTableBody = document.getElementById('dnsTableBody');
-
-    async function runDnsQuery(type) {
-      const name = document.getElementById('dnsNameInput').value.trim();
-      if (!name) return;
-      try {
-        const res = await dnsObserver.resolve(name, type);
-        logEvent('DNS', `Resolved ${type} ${name} in ${res.latencyMs}ms (TTL=${res.ttlSeconds}s)`);
-        if (dnsObserver.history.length === 1) {
-          dnsTableBody.innerHTML = '';
-        }
-        const tr = document.createElement('tr');
-        const payloadStr = res.records.length > 0
-          ? JSON.stringify(res.records[0])
-          : `Status=${res.status} (No Answer records)`;
-        tr.innerHTML = `
-          <td>${res.name}</td>
-          <td>${res.type}</td>
-          <td>${res.ttlSeconds}s</td>
-          <td>${res.latencyMs} ms</td>
-          <td>${res.inferredCacheHit ? 'CACHED (Decaying TTL)' : 'FRESH / AUTHORITATIVE'}</td>
-          <td><code>${payloadStr}</code></td>
-        `;
-        dnsTableBody.prepend(tr);
-      } catch (err) {
-        logEvent('DNS-ERR', err.message);
+        const res = await doh.resolve(name, type);
+        appendL5Log(`DoH ${type} ${name}: status=${res.status}, ttl=${res.ttl_seconds}s, rtt=${res.rtt_ms}ms, cacheHit=${res.cache_hit_inferred}, records=${JSON.stringify(res.records)}`);
+      } catch (e) {
+        appendL5Log(`DoH error: ${e.message}`);
       }
     }
 
-    document.getElementById('resolveSrvBtn').addEventListener('click', () => runDnsQuery('SRV'));
-    document.getElementById('resolveTxtBtn').addEventListener('click', () => runDnsQuery('TXT'));
+    document.getElementById('l5SrvBtn').addEventListener('click', () => resolveDns('SRV'));
+    document.getElementById('l5TxtBtn').addEventListener('click', () => resolveDns('TXT'));
 
-    // 5. Phase 3 A/B Benchmark Runner
-    function updateAbTable() {
-      const drops = [];
-      let t = 0;
-      while (t < 600) {
-        t += Math.floor(15 + Math.random() * 25);
-        if (t < 600) drops.push(t);
-      }
-      const res = compareFixedVsEntropy({
-        durationSeconds: 600,
-        ttlSeconds: 60,
-        dropTimestamps: drops
-      });
-
-      const tbody = document.getElementById('abTableBody');
-      tbody.innerHTML = `
-        <tr>
-          <td><strong>Fixed-TTL Refresh (TTL/2 = 30s)</strong></td>
-          <td>${res.fixed.refreshes}</td>
-          <td>${res.fixed.staleSeconds}s</td>
-          <td>${(res.fixed.stalenessRatio * 100).toFixed(1)}%</td>
-          <td>Blind periodic polling ignores bursty churn</td>
-        </tr>
-        <tr>
-          <td><strong>Entropy-Driven Survival Scheduler</strong></td>
-          <td>${res.entropy.refreshes}</td>
-          <td>${res.entropy.staleSeconds}s</td>
-          <td>${(res.entropy.stalenessRatio * 100).toFixed(1)}%</td>
-          <td>Proactively re-knots pointer before H(p) crosses bound</td>
-        </tr>
-      `;
-    }
-
-    document.getElementById('runAbBtn').addEventListener('click', () => {
-      updateAbTable();
-      logEvent('BENCH', 'Completed 600s A/B simulation: Fixed-TTL vs. Entropy-Driven scheduler.');
-    });
-
-    updateAbTable();
+    runAll();
+    startRtc();
   </script>
 </body>
 </html>

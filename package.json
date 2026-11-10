@@ -1,11 +1,11 @@
 {
   "name": "@syntra-labs/stitch",
-  "version": "0.1.0",
-  "description": "Routing-Layer Persistence Fabric — WebRTC + DNS SRV/DoH + Survival Entropy Scheduler",
+  "version": "0.2.0",
+  "description": "Stratified routing persistence, UOR content-addressed ephemeral database, and distributed ring compute",
   "type": "module",
-  "main": "src/survival.js",
+  "main": "src/layer1-uor/index.js",
   "scripts": {
-    "test": "node tests/test_survival.js",
+    "test": "node tests/run_all.js",
     "serve": "python3 -m http.server 8080"
   },
   "repository": {
