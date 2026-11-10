@@ -2,6 +2,7 @@
 import { identifier, natural, record, refuse } from '../layer1-uor/contracts.js';
 import { snapshotRecord } from '../layer1-uor/custody.js';
 import { budgetReserveAllowed, budgetSettlementAllowed } from '../layer1-uor/generated-model.js';
+let runtimeEpoch = 0; // origin-local instance identity, never a distributed clock
 const kinds = ['refresh', 'place', 'repair', 'checkpoint', 'retrieve'];
 const measures = ['requests', 'transferBytes', 'storageBytes', 'computeSteps'];
 function cost(value) { record(value, measures); for (const k of measures) natural(value[k]); return value; }
@@ -74,9 +75,16 @@ export class ResourceAdmission {
     this.maxActions = maxActions;
     const startMs = clock(); natural(startMs);
     natural(startMs + durationMs);
-    this.#state = createBudget({ epoch: 'runtime', startMs, endMs: startMs + durationMs, limit });
+    this.#state = createBudget({ epoch: `runtime-${++runtimeEpoch}`, startMs, endMs: startMs + durationMs, limit });
   }
   get state() { return structuredClone(this.#state); }
+  /** Read-only admission evidence for a correlated still-pending effect. */
+  reservationCurrent(id, epoch) {
+    const now = this.clock();
+    return Number.isSafeInteger(now) && now >= this.#state.lastObservedMs
+      && now < this.#state.endMs && this.#state.epoch === epoch
+      && this.#state.reservations.some(r => r.id === id && r.status === 'reserved');
+  }
   reserve(kind, requested = {}) {
     if (this.#sequence >= this.maxActions) refuse('action-capacity');
     const amount = { ...zeroCost(), ...requested };

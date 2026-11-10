@@ -199,3 +199,85 @@ test('bounded application channel parsing discards duplicate-key and malformed U
   channel.onmessage({ data: '{"type":"eth_frame","frame":[1]}' });
   assert.equal(events.at(-1).type, 'mesh_message');
 });
+
+for (const state of ['disconnected', 'failed', 'closed', 'channel-close']) {
+  test(`terminal ${state} closes and releases the removed RTC connection exactly once`, t => {
+    const { node } = fixture(t), entry = node.getOrCreatePeer('remote', true);
+    const close = t.mock.method(entry.pc, 'close', entry.pc.close.bind(entry.pc));
+    entry.pendingHeartbeats.set(1, {});
+    if (state === 'channel-close') entry.dc.close();
+    else { entry.pc.iceConnectionState = state; entry.pc.oniceconnectionstatechange(); }
+    assert.equal(node.peers.size, 0);
+    assert.equal(close.mock.callCount(), 1);
+    assert.equal(entry.c1Deadline, null);
+    assert.equal(entry.statsDeadline, null);
+    assert.equal(entry.pendingHeartbeats.size, 0);
+    node.close(); assert.equal(close.mock.callCount(), 1);
+  });
+}
+
+test('replacement closes old RTC after fencing synchronous and late callbacks', t => {
+  const { node, events } = fixture(t), old = node.getOrCreatePeer('remote', true);
+  const close = t.mock.method(old.pc, 'close', old.pc.close.bind(old.pc));
+  old.pc.connectionState = 'failed';
+  const fresh = node.getOrCreatePeer('remote', true);
+  assert.notEqual(fresh, old);
+  assert.equal(close.mock.callCount(), 1);
+  assert.equal(node.peers.get('remote'), fresh);
+  const before = events.length;
+  old.dc.onclose(); old.pc.oniceconnectionstatechange();
+  assert.equal(node.peers.get('remote'), fresh);
+  assert.equal(events.length, before);
+  assert.equal(fresh.pc.connectionState, 'new');
+});
+
+test('reentrant disposal observer replacement is retained rather than overwritten or closed', t => {
+  const { node } = fixture(t), old = node.getOrCreatePeer('remote', true);
+  let replacement;
+  node.onEvent = event => {
+    if (event.type === 'channel_send_result' && event.outcome === 'closed' && !replacement) {
+      replacement = node.getOrCreatePeer('remote', true);
+    }
+  };
+  old.pc.connectionState = 'failed';
+  const actual = node.getOrCreatePeer('remote', true);
+  assert.ok(replacement);
+  assert.equal(actual, replacement);
+  assert.equal(node.peers.get('remote'), replacement);
+  assert.equal(old.pc.connectionState, 'closed');
+  assert.equal(replacement.pc.connectionState, 'new');
+});
+
+test('transport cleanup cannot close provider handles installed by a reentrant reconnect', t => {
+  const { node } = fixture(t);
+  node.connect('old');
+  const old = node.getOrCreatePeer('remote', true);
+  let freshSocketClose, freshBroadcastClose;
+  node.onEvent = event => {
+    if (event.type !== 'channel_send_result' || event.outcome !== 'closed' || freshSocketClose) return;
+    node.connect('new');
+    freshSocketClose = t.mock.method(node.ws, 'close', node.ws.close.bind(node.ws));
+    freshBroadcastClose = t.mock.method(node.bc, 'close', node.bc.close.bind(node.bc));
+  };
+  node.close();
+  assert.equal(old.pc.connectionState, 'closed');
+  assert.equal(node.channelKey, 'new');
+  assert.equal(node.closed, false);
+  assert.equal(freshSocketClose.mock.callCount(), 0);
+  assert.equal(freshBroadcastClose.mock.callCount(), 0);
+});
+
+test('throwing event observer does not interrupt closing other peers or captured providers', t => {
+  const { node } = fixture(t);
+  node.connect('old');
+  const entries = ['first', 'second'].map(id => node.getOrCreatePeer(id, true));
+  const closes = entries.map(entry => t.mock.method(entry.pc, 'close', entry.pc.close.bind(entry.pc)));
+  const socketClose = t.mock.method(node.ws, 'close', node.ws.close.bind(node.ws));
+  const broadcastClose = t.mock.method(node.bc, 'close', node.bc.close.bind(node.bc));
+  node.onEvent = () => { throw new Error('observer failed'); };
+  assert.doesNotThrow(() => node.close());
+  assert.equal(node.peers.size, 0);
+  for (const close of closes) assert.equal(close.mock.callCount(), 1);
+  assert.equal(socketClose.mock.callCount(), 1);
+  assert.equal(broadcastClose.mock.callCount(), 1);
+});

@@ -1,0 +1,11 @@
+{
+  "repository": "UOR-Foundation/LexLean",
+  "pull_request": 466,
+  "run_id": 42910816795,
+  "artifact_id": 13807497041,
+  "name": "native-candidate-cc5561203-diagnostic-only",
+  "zip_sha256": "36c696b3ef8c6640b3ed33f058577494ab8a7871931c565e1135dd27add22755",
+  "binary_sha256": "05ed3b3da7390aa8250288841cbe6baecc20ef28e96249df3d7682b8a51a4cfa",
+  "expires_at": "2026-11-17T22:06:31Z",
+  "qualified_sdk": false
+}

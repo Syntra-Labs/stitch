@@ -261,6 +261,13 @@
         <label for="allowPublicRelayInput">Public relay consent <input type="checkbox" id="allowPublicRelayInput" /><span id="relayDisclosureText">Public relay: share object/job bytes on ntfy.sh (not private)</span></label>
       </div>
 
+      <div class="controls">
+        <label for="placementObject">Retained object to repair <select id="placementObject" aria-describedby="placementHelp"></select></label>
+        <label for="placementReplaceHolder">Holder to replace <select id="placementReplaceHolder"><option value="">Keep current live holders</option></select></label>
+        <button id="repairPlacementBtn" class="secondary" aria-describedby="placementHelp placementEvidence">Repair Selected Placement</button>
+      </div>
+      <p id="placementHelp" class="muted">After peers join or change, select exact retained bytes and repair. Missing or expired fragments need fresh receipts. Optional replacement keeps the old holder until the new receipt commits, then requests exact release. A timeout never proves deletion.</p>
+      <p id="placementEvidence" role="status" aria-live="polite" aria-atomic="true">No retained verified object selected.</p>
       <p id="objectInputHelp" class="muted">Text is encoded as UTF-8, at most 128 KiB. The label is a convenience alias, not identity. New objects are shared with the guest only when guest object sharing is enabled.</p>
       <table>
         <thead>
@@ -601,6 +608,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     const policyHistory = [];
     const admission = {
       get state() { return activeAdmission.state; },
+      reservationCurrent(id, epoch) { return activeAdmission.reservationCurrent(id, epoch); },
       reserve(kind, cost) {
         try { return activeAdmission.reserve(kind, cost); }
         catch (error) {
@@ -776,7 +784,37 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       }));
     }
 
+    function renderPlacementControls() {
+      const select = document.getElementById('placementObject');
+      const selected = select.value;
+      const objects = [...liveDb.objects.values()].filter(e => e.verified && e.bytes);
+      const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
+      const replaceOptions = (control, options) => {
+        const current = Array.from(control.children);
+        if (current.length !== options.length || current.some((o, i) => o.value !== options[i].value || o.textContent !== options[i].textContent)) control.replaceChildren(...options);
+      };
+      replaceOptions(select, [option('', 'Select an exact object'), ...objects.map(e => option(e.addressHex, `${e.label || 'object'} · ${e.addressHex}`))]);
+      select.value = objects.some(e => e.addressHex === selected) ? selected : '';
+      const replace = document.getElementById('placementReplaceHolder'), previous = replace.value;
+      const state = liveDb.placements.get(select.value);
+      const holders = (state?.copies || []).filter(c => c.status === 'committed').map(c => c.holder);
+      replaceOptions(replace, [option('', 'Keep current live holders'), ...holders.map(holder => option(holder, holder))]);
+      replace.value = holders.includes(previous) ? previous : '';
+      renderPlacementEvidence();
+    }
+
+    function renderPlacementEvidence() {
+      const select = document.getElementById('placementObject');
+      let summary;
+      try { summary = liveDb.placementSummary(select.value); }
+      catch (error) { document.getElementById('placementEvidence').textContent = `Placement observation refused: ${error.code || error.message}. Retained bytes and custody history are unchanged.`; return; }
+      const text = summary ? `${select.value}: ${summary.committedFragments}/3 current distinct-holder receipts; ${summary.requestedTransfers} awaiting ACK; ${summary.uncertainTransfers} uncertain transfers; ${summary.assertedCopies} retained copy assertions; ${summary.pendingReleases} pending releases. ${summary.canRecoverFromCommitted ? 'Conditional remote recovery observed.' : 'Remote recovery threshold not established.'} Local full bytes are additional. No durability or independent-machine guarantee.` : 'No retained verified object selected.';
+      const evidence = document.getElementById('placementEvidence');
+      if (evidence.textContent !== text) evidence.textContent = text;
+    }
+
     function renderLiveDbTable() {
+      renderPlacementControls();
       renderExperience();
       const items = Array.from(liveDb.objects.values());
       renderRows(document.getElementById('liveDbBody'), items.length ? items.map(e => [
@@ -845,6 +883,15 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       renderLiveDbTable();
       updateCliProof(`# Verify object ${entry.addressHex} directly from terminal:\ncurl -s "https://ntfy.sh/${transport.warmCacheTopic()}/json?poll=1&since=30m" | grep "${entry.addressHex}"`);
       logWire('PUT', `Committed ${entry.addressHex}; remote placement is conditional on verified receipts and reachability.`);
+    });
+
+    document.getElementById('placementObject').addEventListener('change', () => { renderPlacementControls(); renderExperience(); });
+    bindModelAction('repairPlacementBtn', async () => {
+      const key = document.getElementById('placementObject').value;
+      const replaceHolder = document.getElementById('placementReplaceHolder').value || null;
+      const summary = await liveDb.repairPlacement(key, { replaceHolder });
+      renderLiveDbTable();
+      document.getElementById('objectsActionStatus').textContent = `Repair checked ${key}. ${summary.committedFragments}/3 current receipts; ${summary.requestedTransfers} awaiting ACK, ${summary.uncertainTransfers} uncertain transfers. Fresh receipts may arrive later; no pending request counts as custody.${summary.replacementUnavailable ? ' No spare distinct-holder route is available for the selected replacement; the original custody remains retained.' : ''}`;
     });
 
     bindModelAction('dbWipeLocalBtn', async () => {
@@ -1208,6 +1255,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
     setInterval(() => {
       const st = scheduler.evaluate(nowSec());
+      renderPlacementEvidence();
       renderBudgetPolicy();
       document.getElementById('schedLambdaLabel').textContent = `${st.lambda.toFixed(3)}/s`;
       document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
@@ -1278,8 +1326,9 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
           relayEnabled: publicRelayEnabled(),
           hasObject: objects.some(e => e.verified),
           hasPartial: objects.some(e => !e.verified),
-          recoverablePlacement: Array.from(liveDb.placements.values()).some(state => {
-            try { return placementStatus(state, Date.now()).canRecoverFromCommitted; }
+          placementObjectSelected: Boolean(liveDb.get(document.getElementById('placementObject').value).ok),
+          recoverablePlacement: Array.from(liveDb.placements.keys()).some(key => {
+            try { return liveDb.placementSummary(key).canRecoverFromCommitted; }
             catch { return false; }
           }),
           hasJobs: jobs.length > 0,
@@ -1306,6 +1355,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     }
     renderBudgetPolicy();
     // No automatic public signaling, relay payload publication or job resumption.
+    renderPlacementControls();
     renderExperience();
   </script>
 </body>

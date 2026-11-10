@@ -1,0 +1,14 @@
+info: prismpm_verify: no previous manifest, creating one from scratch
+info: toolchain not updated; no toolchain information found
+✔ [0/6] Ran job computation
+✔ [1/6] Ran prismpm_verify:extraDep
+ℹ [2/6] Built PrismTemplateContract.Foundation.View.Text.V1.Model (233ms)
+trace: .> LEAN_PATH=/tmp/template-466-diagnostic/native/.lake/build/lib/lean /tmp/stitch-lean/lean-4.32.1-linux/bin/lean -j2 /tmp/template-466-diagnostic/native/PrismTemplateContract/Foundation/View/Text/V1/Model.lean -o /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Foundation/View/Text/V1/Model.olean -i /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Foundation/View/Text/V1/Model.ilean -c /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Foundation/View/Text/V1/Model.c --setup /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Foundation/View/Text/V1/Model.setup.json --json
+ℹ [3/6] Built LexLeanRuntime.Portable (3.2s)
+trace: .> LEAN_PATH=/tmp/template-466-diagnostic/native/.lake/build/lib/lean /tmp/stitch-lean/lean-4.32.1-linux/bin/lean -j2 /tmp/template-466-diagnostic/native/LexLeanRuntime/Portable.lean -o /tmp/template-466-diagnostic/native/.lake/build/lib/lean/LexLeanRuntime/Portable.olean -i /tmp/template-466-diagnostic/native/.lake/build/lib/lean/LexLeanRuntime/Portable.ilean -c /tmp/template-466-diagnostic/native/.lake/build/ir/LexLeanRuntime/Portable.c --setup /tmp/template-466-diagnostic/native/.lake/build/ir/LexLeanRuntime/Portable.setup.json --json
+ℹ [4/6] Built PrismTemplateContract.Foundation.Bytes (191ms)
+trace: .> LEAN_PATH=/tmp/template-466-diagnostic/native/.lake/build/lib/lean /tmp/stitch-lean/lean-4.32.1-linux/bin/lean -j2 /tmp/template-466-diagnostic/native/PrismTemplateContract/Foundation/Bytes.lean -o /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Foundation/Bytes.olean -i /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Foundation/Bytes.ilean -c /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Foundation/Bytes.c --setup /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Foundation/Bytes.setup.json --json
+ℹ [5/6] Built PrismTemplateContract.Contract (7.6s)
+trace: .> LEAN_PATH=/tmp/template-466-diagnostic/native/.lake/build/lib/lean /tmp/stitch-lean/lean-4.32.1-linux/bin/lean -j2 /tmp/template-466-diagnostic/native/PrismTemplateContract/Contract.lean -o /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Contract.olean -i /tmp/template-466-diagnostic/native/.lake/build/lib/lean/PrismTemplateContract/Contract.ilean -c /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Contract.c --setup /tmp/template-466-diagnostic/native/.lake/build/ir/PrismTemplateContract/Contract.setup.json --json
+✔ [6/6] Ran prismpm_verify/PrismGenerated:default
+Build completed successfully (6 jobs).

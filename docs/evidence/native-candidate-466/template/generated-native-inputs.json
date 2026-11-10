@@ -1,0 +1,18 @@
+[
+  {
+    "path": "LexLeanRuntime/Portable.lean",
+    "sha256": "9a081b865659a3c13a6721ef7c5c93aec0b1ae2ce63bbd38286ec6d28483f8de"
+  },
+  {
+    "path": "PrismTemplateContract/Contract.lean",
+    "sha256": "84af5e952d4d71385ccfb68a9504698309a2a86600654b6cd2932750e1c15909"
+  },
+  {
+    "path": "PrismTemplateContract/Foundation/Bytes.lean",
+    "sha256": "c94b21a09161a40b314baddaeb68329b8fad4ebf0060ac7160338f94a1bd679e"
+  },
+  {
+    "path": "PrismTemplateContract/Foundation/View/Text/V1/Model.lean",
+    "sha256": "26c14f6e6ad7391233a0979848ff2650d38a3792f9f268ce0e8646ed2b0d5b74"
+  }
+]

@@ -212,7 +212,8 @@ async function request(state, parameters, migration) {
   const active = s.copies.filter(c => c.status === 'committed');
   const old = active.find(c => c.index === p.index);
   if (migration ? !old : !!old) fail('InvalidTransition', migration ? 'Migration needs a committed source' : 'Fragment already committed; request a migration');
-  if (active.some(c => c.holder === p.holder) || s.copies.some(c => c.index === p.index && c.holder === p.holder)) {
+  if (active.some(c => c.holder === p.holder)
+    || s.copies.some(c => c.index === p.index && c.holder === p.holder && c.status !== 'superseded')) {
     fail('HolderConflict', 'Target already holds an active fragment or this copy');
   }
   s.requests.push({ ...p, fromRequestId: old?.requestId ?? null, status: 'requested' });
@@ -248,6 +249,9 @@ export async function acknowledgePlacement(state, receipt, nowMs) {
     fail('ReceiptMismatch', 'Acknowledgement is not bound to this request');
   }
   await verifyFragment(s.manifest, { index: p.index, bytes });
+  // A fresh checked receipt for the same physical holder/index renews that
+  // assertion, not an additional copy. Until this check the old assertion stays.
+  s.copies = s.copies.filter(c => !(c.index === r.index && c.holder === r.holder && c.status === 'superseded'));
   if (s.copies.length >= CUSTODY_LIMITS.maxCopies) fail('CapacityLimit', 'Too many retained copies');
   r.status = 'acknowledged';
   s.copies.push({ index: r.index, holder: r.holder, requestId: r.requestId, status: 'acknowledged' });
@@ -296,12 +300,13 @@ export async function failPlacement(state, requestId, outcome = 'failed') {
 
 /**
  * Record local observation of holder loss. It is not proof of global death or
- * deletion. Removes its asserted reachable copies, never fabricates a repair.
+ * deletion. Supersedes reachable assertions while retaining possible physical
+ * copies for accounting. Expired leases use this same conservative transition.
  */
 export async function observeHolderLoss(state, holder) {
   id(holder);
   const s = await checkedState(state);
-  s.copies = s.copies.filter(c => c.holder !== holder);
+  for (const c of s.copies) if (c.holder === holder) c.status = 'superseded';
   for (const r of s.requests) {
     if (r.holder === holder && ['requested', 'acknowledged'].includes(r.status)) r.status = 'uncertain';
   }

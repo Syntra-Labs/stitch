@@ -45,3 +45,48 @@ Object/job export/import and explicitly accepted recent-anchor evidence are avai
 The new label/instruction checks are static markup checks. Executed-script and synthetic-DOM tests cover refusal feedback, interrupted storage, replay/import state, saved-write access with no object RAM, retained-command selection and text output when caching fails. They do not establish WCAG compliance, browser accessibility-tree correctness, visual reflow, screen-reader announcements, native file/download or clipboard behavior, or real IndexedDB/Web Locks interoperability. The graphical VM display can contain graphics-only applications with no equivalent text. The shell command/output path is a text alternative for the operations this UI exposes, not an accessibility certification of arbitrary guest software.
 
 A prior Chromium launch was blocked by the execution environment's Unix-socket restriction. No browser launch or alternative bypass was attempted in this change. Real graphical/browser and assistive-technology qualification remains outstanding, along with provider/WebRTC/physical-host trials and the final exact-source/native-artifact gates. Local recent-anchor restoration now has a source-owned admission predicate and explicit operator journey; it remains session-only and cannot establish global latest state, durable trust or key rotation.
+
+## Repairing a retained object's placement
+
+Store commits local bytes even before peers join. In the objects journey, select
+one exact full verified object, then use **Repair Selected Placement** after
+peers join, an ACK lease expires or a data channel is replaced. Repeated Store
+for those same bytes runs the same maintenance. Fetch Reachable Fragments stays
+a retrieval operation and does not invent writer assignments or remote custody.
+The selection is explicit and stable across status updates; a partial fragment
+cache cannot authorize repair. The selected-object evidence reports current
+route/lease-qualified receipts, pending ACKs, uncertain requests, retained copy
+assertions and pending release observations separately. Elapsed time updates the
+evidence without dispatching maintenance or changing navigation.
+
+Repair fills missing indices on distinct current peer routes. A pending transfer
+is not repeated while its exact route, lease and resource reservation remain
+current. Once those observations lapse, it becomes uncertain, retains its
+history and charges, and a later explicit repair can issue a fresh request.
+Expired or disconnected committed assertions become superseded, not deleted.
+A fresh checked receipt can renew the same physical holder/index assertion
+without counting two copies there. No surviving local bytes means repair is
+unavailable; recovery still needs enough retained information elsewhere.
+
+To move an unexpired live fragment, choose its current holder in **Holder to
+replace** before repair. The old committed source stays until the new exact
+receipt commits. Activation checks the actual dispatch's frame/envelope
+reservation IDs in their still-live original epoch, the exact request and
+manifest, target route, lease and current source. A changed epoch, replaced
+channel, forged/stale receipt or failed/unknown send cannot activate the target.
+
+Once at least two current fragments and a current replacement for that index
+exist, Stitch requests release of the exact superseded sender/request/index
+assignment. Only its correlated route-bound release ACK permits retirement from
+the sender's accounting. The holder checks that the request is still its current
+assignment; old releases cannot erase renewals or other writers' assignments.
+Lost release ACKs retain the old assertion and can be retried idempotently by a
+later explicit repair after the 15-second local observation deadline. Neither
+that deadline nor lease expiry proves remote deletion or refunds resource use.
+Local read/full-byte caches and other writers' custody remain additional copies.
+
+These are bounded session-local observations: at most 256 transfer-history
+records and 64 retained copy assertions per placement. Reaching a bound refuses
+more transitions rather than discarding unknown custody. Peer assertions and
+release assertions still depend on truthful peers; distinct route identities do
+not prove independent machines, durable storage or future reachability.

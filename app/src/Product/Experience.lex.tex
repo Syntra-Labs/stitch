@@ -32,6 +32,7 @@ structure{
     {name: relayEnabled, type: Bool},
     {name: hasObject, type: Bool},
     {name: hasPartial, type: Bool},
+    {name: placementObjectSelected, type: Bool},
     {name: recoverablePlacement, type: Bool},
     {name: hasJobs, type: Bool},
     {name: unfinishedJobs, type: Bool},
@@ -93,7 +94,7 @@ definition{
   name: initialFacts,
   parameters: [],
   result: Facts,
-  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := false, hasPartial := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := false, headRetained := false, dnsConfigured := false, publicationBusy := false, publicationUnknown := false, publicationPublished := false, policyBlocked := false, policyAttention := false})
+  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := false, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := false, headRetained := false, dnsConfigured := false, publicationBusy := false, publicationUnknown := false, publicationPublished := false, policyBlocked := false, policyAttention := false})
 }
 
 definition{
@@ -191,14 +192,14 @@ definition{
   name: objectsLocal,
   parameters: [],
   result: View,
-  body: (record View {id := "objectsLocal", journey := "objects", title := "Local object verified", evidence := "DIGEST MATCH; REMOTE CUSTODY UNESTABLISHED", detail := "Local bytes match the complete commitment. Placement requests alone do not establish retained remote fragments or durability."})
+  body: (record View {id := "objectsLocal", journey := "objects", title := "Local object verified", evidence := "DIGEST MATCH; REMOTE CUSTODY UNESTABLISHED", detail := "Local bytes match the complete commitment. Select that exact retained object and repair placement after peers join, leases expire or routes change. Pending or uncertain transfers never establish remote redundancy."})
 }
 
 definition{
   name: objectsPlaced,
   parameters: [],
   result: View,
-  body: (record View {id := "objectsPlaced", journey := "objects", title := "Conditional placement observed", evidence := "DIGEST-CHECKED PEER ASSERTIONS", detail := "At least one object has two current committed fragment assertions. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."})
+  body: (record View {id := "objectsPlaced", journey := "objects", title := "Conditional placement observed", evidence := "DIGEST-CHECKED PEER ASSERTIONS", detail := "At least one object has two current committed fragment assertions on currently reachable routes. Repair the selected object to fill missing indices or explicitly replace a current holder. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."})
 }
 
 definition{
@@ -524,10 +525,38 @@ definition{
 }
 
 definition{
+  name: actionPlacementRepair,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 30, id := "PlacementRepair", control := "repairPlacementBtn", journey := "objects", label := "Repair Selected Placement", help := "Use the exact retained verified object to fill missing fragments, refresh expired custody or replace a selected live holder. Uncertain requests and old copies stay accounted; only fresh checked receipts establish custody."})
+}
+
+definition{
+  name: placementRepairAllowed,
+  parameters: [selected : Bool, peers : Bool, blocked : Bool],
+  result: Bool,
+  body: (selected && (peers && (not blocked)))
+}
+
+theorem{
+  name: unselectedObjectCannotRepair,
+  parameters: [],
+  statement: (forall (peers : Bool), (forall (blocked : Bool), ((placementRepairAllowed false peers blocked) = false))),
+  proof: decide{}
+}
+
+theorem{
+  name: blockedPolicyCannotRepair,
+  parameters: [],
+  statement: (forall (selected : Bool), (forall (peers : Bool), ((placementRepairAllowed selected peers true) = false))),
+  proof: decide{}
+}
+
+definition{
   name: actions,
   parameters: [],
   result: (List Action),
-  body: (cons (actionJoin) (cons (actionStore) (cons (actionClear) (cons (actionRecover) (cons (actionStart) (cons (actionResume) (cons (actionBoot) (cons (actionExecute) (cons (actionSrv) (cons (actionTxt) (cons (actionPin) (cons (actionAdmit) (cons (actionPublish) (cons (actionReconcile) (cons (actionRenew) (cons (actionExport) (cons (actionRecoveryExport) (cons (actionRecoveryImport) (cons (actionRecoverySave) (cons (actionRecoveryDownload) (cons (actionRecoveryFinish) (cons (actionRecoveryTrust) (cons (actionVmStop) (cons (actionVmDestroy) (cons (actionVmCancel) (cons (actionVmReconcile) (cons (actionVmForget) (cons (actionSaveAuthority) (cons (actionLoadPublication) (cons (actionRecoveryRestore) (nil Action)))))))))))))))))))))))))))))))
+  body: (cons (actionJoin) (cons (actionStore) (cons (actionClear) (cons (actionRecover) (cons (actionStart) (cons (actionResume) (cons (actionBoot) (cons (actionExecute) (cons (actionSrv) (cons (actionTxt) (cons (actionPin) (cons (actionAdmit) (cons (actionPublish) (cons (actionReconcile) (cons (actionRenew) (cons (actionExport) (cons (actionRecoveryExport) (cons (actionRecoveryImport) (cons (actionRecoverySave) (cons (actionRecoveryDownload) (cons (actionRecoveryFinish) (cons (actionRecoveryTrust) (cons (actionVmStop) (cons (actionVmDestroy) (cons (actionVmCancel) (cons (actionVmReconcile) (cons (actionVmForget) (cons (actionSaveAuthority) (cons (actionLoadPublication) (cons (actionRecoveryRestore) (cons (actionPlacementRepair) (nil Action))))))))))))))))))))))))))))))))
 }
 
 definition{
@@ -653,7 +682,7 @@ definition{
   name: actionAllowed,
   parameters: [action : Nat, facts : Facts],
   result: Bool,
-  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then (project facts vmCanAdminister) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else (if (action =? 29) then ((not (project facts recoveryBusy)) && ((project facts recoveryAcceptedAnchor) && (project facts recoveryCanRestoreAnchor))) else ((action =? 27) || (action =? 28))))))))))))))))))))))))))))))
+  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((project facts vmCanBoot) && ((not (project facts vmReady)) && (not (project facts vmBooting)))) else (if (action =? 7) then ((project facts vmCanExecute) && (executionAllowed (project facts vmReady) (project facts policyBlocked))) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else (if (action =? 16) then ((not (project facts recoveryBusy)) && ((project facts hasObject) || ((project facts hasJobs) || (project facts headRetained)))) else (if (action =? 17) then ((not (project facts recoveryBusy)) && (project facts recoveryFileSelected)) else (if (action =? 18) then ((not (project facts recoveryBusy)) && (project facts recoveryHasEvidence)) else (if (action =? 19) then ((not (project facts recoveryBusy)) && (project facts recoveryHasObjects)) else (if (action =? 20) then ((not (project facts recoveryBusy)) && (project facts recoveryHasJobs)) else (if (action =? 21) then ((not (project facts recoveryBusy)) && ((project facts recoveryHasAnchors) && (project facts recoveryAnchorConsent))) else (if (action =? 22) then (project facts vmCanAdminister) else (if (action =? 23) then (project facts vmCanAdminister) else (if (action =? 24) then (project facts vmCanCancelObservation) else (if (action =? 25) then (project facts vmCanReconcileCommand) else (if (action =? 26) then (project facts vmCanForgetCommand) else (if (action =? 30) then (placementRepairAllowed (project facts placementObjectSelected) (project facts peersReachable) (project facts policyBlocked)) else (if (action =? 29) then ((not (project facts recoveryBusy)) && ((project facts recoveryAcceptedAnchor) && (project facts recoveryCanRestoreAnchor))) else ((action =? 27) || (action =? 28)))))))))))))))))))))))))))))))
 }
 
 definition{
@@ -702,7 +731,7 @@ definition{
   name: unknownPublicationFacts,
   parameters: [],
   result: Facts,
-  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := true, hasPartial := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := true, headRetained := true, dnsConfigured := true, publicationBusy := false, publicationUnknown := true, publicationPublished := false, policyBlocked := false, policyAttention := false})
+  body: (record Facts {recoveryBusy := false, recoveryFileSelected := false, recoveryHasEvidence := false, recoveryHasObjects := false, recoveryHasJobs := false, recoveryHasAnchors := false, recoveryAnchorConsent := false, recoveryAcceptedAnchor := false, recoveryCanRestoreAnchor := false, recoveryRestoredAnchor := false, vmCanBoot := false, vmCanExecute := false, vmCanAdminister := false, vmCanCancelObservation := false, vmCanForgetCommand := false, vmCanReconcileCommand := false, vmAdminBlocked := false, disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := true, hasPartial := false, placementObjectSelected := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := true, headRetained := true, dnsConfigured := true, publicationBusy := false, publicationUnknown := true, publicationPublished := false, policyBlocked := false, policyAttention := false})
 }
 
 theorem{

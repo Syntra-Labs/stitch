@@ -15066,6 +15066,67 @@ const definitions = {
       }
     }
   },
+  "Stitch.Custody.activationAllowed": {
+    "module": "Stitch.Custody",
+    "name": "activationAllowed",
+    "params": [
+      {
+        "name": "requestCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "reservationCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "leaseLive",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "routeCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "requestCurrent"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "reservationCurrent"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "leaseLive"
+          },
+          "right": {
+            "k": "var",
+            "name": "routeCurrent"
+          }
+        }
+      }
+    }
+  },
   "Stitch.Custody.retireAllowed": {
     "module": "Stitch.Custody",
     "name": "retireAllowed",
@@ -33817,6 +33878,10 @@ const definitions = {
           "k": "bool",
           "value": false
         },
+        "placementObjectSelected": {
+          "k": "bool",
+          "value": false
+        },
         "recoverablePlacement": {
           "k": "bool",
           "value": false
@@ -34358,7 +34423,7 @@ const definitions = {
         },
         "detail": {
           "k": "string",
-          "value": "Local bytes match the complete commitment. Placement requests alone do not establish retained remote fragments or durability."
+          "value": "Local bytes match the complete commitment. Select that exact retained object and repair placement after peers join, leases expire or routes change. Pending or uncertain transfers never establish remote redundancy."
         }
       }
     }
@@ -34392,7 +34457,7 @@ const definitions = {
         },
         "detail": {
           "k": "string",
-          "value": "At least one object has two current committed fragment assertions. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."
+          "value": "At least one object has two current committed fragment assertions on currently reachable routes. Repair the selected object to fill missing indices or explicitly replace a current holder. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."
         }
       }
     }
@@ -36081,6 +36146,94 @@ const definitions = {
       }
     }
   },
+  "Product.Experience.actionPlacementRepair": {
+    "module": "Product.Experience",
+    "name": "actionPlacementRepair",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "30"
+        },
+        "id": {
+          "k": "string",
+          "value": "PlacementRepair"
+        },
+        "control": {
+          "k": "string",
+          "value": "repairPlacementBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Repair Selected Placement"
+        },
+        "help": {
+          "k": "string",
+          "value": "Use the exact retained verified object to fill missing fragments, refresh expired custody or replace a selected live holder. Uncertain requests and old copies stay accounted; only fresh checked receipts establish custody."
+        }
+      }
+    }
+  },
+  "Product.Experience.placementRepairAllowed": {
+    "module": "Product.Experience",
+    "name": "placementRepairAllowed",
+    "params": [
+      {
+        "name": "selected",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "peers",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "selected"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "peers"
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "blocked"
+          }
+        }
+      }
+    }
+  },
   "Product.Experience.actions": {
     "module": "Product.Experience",
     "name": "actions",
@@ -36302,9 +36455,17 @@ const definitions = {
                                                                   "args": []
                                                                 },
                                                                 "tail": {
-                                                                  "k": "nil",
-                                                                  "type": {
-                                                                    "kind": "Action"
+                                                                  "k": "cons",
+                                                                  "head": {
+                                                                    "k": "call",
+                                                                    "name": "actionPlacementRepair",
+                                                                    "args": []
+                                                                  },
+                                                                  "tail": {
+                                                                    "k": "nil",
+                                                                    "type": {
+                                                                      "kind": "Action"
+                                                                    }
                                                                   }
                                                                 }
                                                               }
@@ -38289,69 +38450,114 @@ const definitions = {
                                                               },
                                                               "right": {
                                                                 "k": "nat",
-                                                                "value": "29"
+                                                                "value": "30"
                                                               }
                                                             },
                                                             "yes": {
-                                                              "k": "binary",
-                                                              "op": "&&",
-                                                              "left": {
-                                                                "k": "not",
-                                                                "value": {
+                                                              "k": "call",
+                                                              "name": "placementRepairAllowed",
+                                                              "args": [
+                                                                {
                                                                   "k": "project",
                                                                   "value": {
                                                                     "k": "var",
                                                                     "name": "facts"
                                                                   },
-                                                                  "field": "recoveryBusy"
+                                                                  "field": "placementObjectSelected"
+                                                                },
+                                                                {
+                                                                  "k": "project",
+                                                                  "value": {
+                                                                    "k": "var",
+                                                                    "name": "facts"
+                                                                  },
+                                                                  "field": "peersReachable"
+                                                                },
+                                                                {
+                                                                  "k": "project",
+                                                                  "value": {
+                                                                    "k": "var",
+                                                                    "name": "facts"
+                                                                  },
+                                                                  "field": "policyBlocked"
+                                                                }
+                                                              ]
+                                                            },
+                                                            "no": {
+                                                              "k": "if",
+                                                              "cond": {
+                                                                "k": "binary",
+                                                                "op": "=?",
+                                                                "left": {
+                                                                  "k": "var",
+                                                                  "name": "action"
+                                                                },
+                                                                "right": {
+                                                                  "k": "nat",
+                                                                  "value": "29"
                                                                 }
                                                               },
-                                                              "right": {
+                                                              "yes": {
                                                                 "k": "binary",
                                                                 "op": "&&",
                                                                 "left": {
-                                                                  "k": "project",
+                                                                  "k": "not",
                                                                   "value": {
-                                                                    "k": "var",
-                                                                    "name": "facts"
-                                                                  },
-                                                                  "field": "recoveryAcceptedAnchor"
+                                                                    "k": "project",
+                                                                    "value": {
+                                                                      "k": "var",
+                                                                      "name": "facts"
+                                                                    },
+                                                                    "field": "recoveryBusy"
+                                                                  }
                                                                 },
                                                                 "right": {
-                                                                  "k": "project",
-                                                                  "value": {
-                                                                    "k": "var",
-                                                                    "name": "facts"
+                                                                  "k": "binary",
+                                                                  "op": "&&",
+                                                                  "left": {
+                                                                    "k": "project",
+                                                                    "value": {
+                                                                      "k": "var",
+                                                                      "name": "facts"
+                                                                    },
+                                                                    "field": "recoveryAcceptedAnchor"
                                                                   },
-                                                                  "field": "recoveryCanRestoreAnchor"
-                                                                }
-                                                              }
-                                                            },
-                                                            "no": {
-                                                              "k": "binary",
-                                                              "op": "||",
-                                                              "left": {
-                                                                "k": "binary",
-                                                                "op": "=?",
-                                                                "left": {
-                                                                  "k": "var",
-                                                                  "name": "action"
-                                                                },
-                                                                "right": {
-                                                                  "k": "nat",
-                                                                  "value": "27"
+                                                                  "right": {
+                                                                    "k": "project",
+                                                                    "value": {
+                                                                      "k": "var",
+                                                                      "name": "facts"
+                                                                    },
+                                                                    "field": "recoveryCanRestoreAnchor"
+                                                                  }
                                                                 }
                                                               },
-                                                              "right": {
+                                                              "no": {
                                                                 "k": "binary",
-                                                                "op": "=?",
+                                                                "op": "||",
                                                                 "left": {
-                                                                  "k": "var",
-                                                                  "name": "action"
+                                                                  "k": "binary",
+                                                                  "op": "=?",
+                                                                  "left": {
+                                                                    "k": "var",
+                                                                    "name": "action"
+                                                                  },
+                                                                  "right": {
+                                                                    "k": "nat",
+                                                                    "value": "27"
+                                                                  }
                                                                 },
                                                                 "right": {
-                                                                  "k": "nat",
-                                                                  "value": "28"
+                                                                  "k": "binary",
+                                                                  "op": "=?",
+                                                                  "left": {
+                                                                    "k": "var",
+                                                                    "name": "action"
+                                                                  },
+                                                                  "right": {
+                                                                    "k": "nat",
+                                                                    "value": "28"
+                                                                  }
                                                                 }
                                                               }
                                                             }
@@ -38592,6 +38798,10 @@ const definitions = {
           "value": true
         },
         "hasPartial": {
+          "k": "bool",
+          "value": false
+        },
+        "placementObjectSelected": {
           "k": "bool",
           "value": false
         },
@@ -42226,6 +42436,12 @@ const types = {
         }
       },
       {
+        "name": "placementObjectSelected",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
         "name": "recoverablePlacement",
         "type": {
           "kind": "Bool"
@@ -42440,12 +42656,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:2a46ef81d180dde1f012e39afa9c414a8654ae3ad7d612c3fadf72f36eeda816";
+export const modelSourceDigest = "sha256:b311f42d052b8a819bd0c0ff62cb64c033723e10e73aaaa58d11a5ad766c2506";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:2a46ef81d180dde1f012e39afa9c414a8654ae3ad7d612c3fadf72f36eeda816",
+  "sourceDigest": "sha256:b311f42d052b8a819bd0c0ff62cb64c033723e10e73aaaa58d11a5ad766c2506",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -46059,7 +46275,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
+      "sha256": "10bd1e9b22dc5697b752240ce6d566160dc65bb5810f6a520cb8018f5ff79743"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -46087,7 +46303,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
-      "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
+      "sha256": "e9084ba97058adfd3017e634215af1dee12d89c4ff0d409a4271f05387d8d663"
     },
     {
       "path": "app/src/Stitch/Effects.lex.tex",
@@ -46289,7 +46505,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Custody.lex.tex",
-      "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
+      "sha256": "e9084ba97058adfd3017e634215af1dee12d89c4ff0d409a4271f05387d8d663"
     },
     {
       "path": "app/src/Stitch/Effects.lex.tex",
@@ -46341,7 +46557,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
+      "sha256": "10bd1e9b22dc5697b752240ce6d566160dc65bb5810f6a520cb8018f5ff79743"
     }
   ],
   "theorems": [
@@ -47090,6 +47306,18 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Custody.expiredReservationCannotActivate",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Custody.replacedRouteCannotActivate",
+      "proof": "decide",
+      "source": "app/src/Stitch/Custody.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Custody.unacknowledgedCannotCommit",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Custody.lex.tex",
@@ -47804,6 +48032,18 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Product.Experience.unselectedObjectCannotRepair",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.blockedPolicyCannotRepair",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Product.Experience.unknownPublicationDoesNotPermitNewCandidate",
       "proof": "decide",
       "source": "app/src/Product/Experience.lex.tex",
@@ -47880,6 +48120,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.actionJoin",
     "Product.Experience.actionLoadPublication",
     "Product.Experience.actionPin",
+    "Product.Experience.actionPlacementRepair",
     "Product.Experience.actionPublish",
     "Product.Experience.actionReconcile",
     "Product.Experience.actionRecover",
@@ -47939,6 +48180,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.objectsPartial",
     "Product.Experience.objectsPlaced",
     "Product.Experience.objectsView",
+    "Product.Experience.placementRepairAllowed",
     "Product.Experience.pointerLocal",
     "Product.Experience.pointerPending",
     "Product.Experience.pointerPinned",
@@ -48096,6 +48338,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Compute.typedStep",
     "Stitch.Compute.wordAllowed",
     "Stitch.Custody.acknowledgeTransfer",
+    "Stitch.Custody.activationAllowed",
     "Stitch.Custody.activeCount",
     "Stitch.Custody.activeThreshold",
     "Stitch.Custody.choosePlacement",

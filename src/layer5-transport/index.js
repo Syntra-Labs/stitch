@@ -607,14 +607,14 @@ export class WebRtcTransportNode {
       return entry;
     }
 
-    if (!transportPeerAllocationAllowed(this)) refuse('peer-capacity');
     if (entry) {
-      entry.flow?.dispose('peer-replaced');
-      entry.dc?.close();
-      if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
-      if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
-      entry.c1Logged = true;
+      const previousSession = captureTransport(this);
+      this.disposePeer(remoteId, entry, 'peer-replaced');
+      if (!transportSessionCurrent(this, previousSession)) refuse('transport-session-changed');
+      // Disposal observers may have installed a replacement synchronously.
+      if (this.peers.has(remoteId)) return this.getOrCreatePeer(remoteId, initiator);
     }
+    if (!transportPeerAllocationAllowed(this)) refuse('peer-capacity');
     this.admission.reserve('refresh', { requests: 1 });
     const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     entry = {
@@ -661,12 +661,10 @@ export class WebRtcTransportNode {
       if (!current()) return;
       const state = pc.iceConnectionState || 'closed';
       this.emit('ice_state', { remoteId, state });
+      if (!current()) return;
       if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-        this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, `ice_${state}`);
-        entry.flow?.dispose(`ice_${state}`);
-        entry.dc?.close();
-        this.peers.delete(remoteId);
-        this.emit('peer_disconnected', { remoteId, state });
+        this.disposePeer(remoteId, entry, `ice_${state}`, true);
+        if (transportSessionCurrent(this, callback) && !this.peers.has(remoteId)) this.emit('peer_disconnected', { remoteId, state });
       }
     };
 
@@ -681,6 +679,28 @@ export class WebRtcTransportNode {
     }
 
     return entry;
+  }
+
+  disposePeer(remoteId, entry, reason, recordTrial = false) {
+    if (entry.disposed) return;
+    // Fence callbacks before any close/dispose observer can run synchronously.
+    // A late cleanup owns only its captured entry, never a newer replacement.
+    if (this.peers.get(remoteId) === entry) this.peers.delete(remoteId);
+    entry.disposed = true;
+    if (entry.c1Deadline != null) clearTimeout(entry.c1Deadline);
+    if (entry.statsDeadline != null) clearTimeout(entry.statsDeadline);
+    entry.c1Deadline = entry.statsDeadline = null;
+    entry.pendingHeartbeats?.clear();
+    try {
+      if (recordTrial) this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, reason);
+    } finally {
+      entry.c1Logged = true;
+      try { entry.flow?.dispose(reason); }
+      finally {
+        try { entry.dc?.close(); }
+        finally { entry.pc?.close(); }
+      }
+    }
   }
 
   bindDataChannel(remoteId, channel) {
@@ -712,10 +732,8 @@ export class WebRtcTransportNode {
 
     channel.onclose = () => {
       if (!current()) return;
-      flow.dispose('channel-closed');
-      this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, 'channel-closed');
-      this.peers.delete(remoteId);
-      this.emit('channel_close', { remoteId });
+      this.disposePeer(remoteId, entry, 'channel-closed', true);
+      if (transportSessionCurrent(this, callback) && !this.peers.has(remoteId)) this.emit('channel_close', { remoteId });
     };
 
     channel.onerror = () => { if (current()) flow.fail('channel-error-unknown'); };
@@ -1139,6 +1157,8 @@ export class WebRtcTransportNode {
 
   close() {
     closeTransport(this);
+    const broadcast = this.bc, socket = this.ws;
+    this.bc = null; this.ws = null;
     this.signaling?.close();
     this.signalSigning?.clear();
     this.signalTail = Promise.resolve();
@@ -1149,21 +1169,11 @@ export class WebRtcTransportNode {
     this.signalAssembler?.dispose();
     this.signalAssembler = null;
     this.stopHeartbeat();
-    const peers = [...this.peers.values()];
+    const peers = [...this.peers.entries()];
     this.peers.clear();
-    for (const entry of peers) {
-      const { dc, pc } = entry;
-      entry.flow?.dispose('transport-closed');
-      if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
-      if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
-      entry.c1Logged = true;
-      if (dc) dc.close();
-      if (pc) pc.close();
-    }
-    this.peers.clear();
-    if (this.bc) this.bc.close();
-    if (this.ws) this.ws.close();
-    this.bc = null;
-    this.ws = null;
+    for (const [remoteId, entry] of peers) this.disposePeer(remoteId, entry, 'transport-closed');
+    // Close only captured providers: disposal observers may reconnect.
+    if (broadcast) broadcast.close();
+    if (socket) socket.close();
   }
 }

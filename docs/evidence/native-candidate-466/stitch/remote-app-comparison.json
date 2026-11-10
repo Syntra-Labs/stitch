@@ -1,0 +1,271 @@
+{
+  "remote_commit": "2f1fde828fea0d07cb4fca36c3241702e29e193f",
+  "local_commit": "dad91e429ffbf8248ae6ed9f9319dd90e229a299",
+  "remote_entries": [
+    {
+      "path": "app/.gitignore",
+      "sha": "96c6dd485a56eb2d76eb4121c49168ded37afed7"
+    },
+    {
+      "path": "app/README.md",
+      "sha": "fa5060a2c69331ecfbe0fdc8176192f54c7a9dba"
+    },
+    {
+      "path": "app/lake-manifest.json",
+      "sha": "b6674e4968f648b1f30ef92fe75005adcd66f128"
+    },
+    {
+      "path": "app/lakefile.toml",
+      "sha": "9f91cb7a4270496f15be58c3096f0cdb0c6f8fa0"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-component-kind.toml",
+      "sha": "dbd4780fd730208aef8e37d8085cb89a4fe03a86"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-component.toml",
+      "sha": "af43c9c8e28f20c9d00ca0c69448c39a0e7407a5"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-concern.toml",
+      "sha": "75fc2dfb50fc795b0a63b772d8e98905a822a96a"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge-kind.toml",
+      "sha": "ff413a4bcb2c3ff6d7bd54c6cfd9739a570f6252"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge.toml",
+      "sha": "64cf40e85e5ff5aef253d79bf9e0216136587606"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-model-kind.toml",
+      "sha": "0414bacc7c4927a00815933a216c3f444c9d9cb8"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-stakeholder.toml",
+      "sha": "c3ff77d92a25e11ca9aad4326fe6f20d1c8d4c54"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-standard-reference.toml",
+      "sha": "1eac4a3efa14810e0f74148cb729f22e74dc3cf0"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-text-application-model.toml",
+      "sha": "23ca3d904d7557f9076974190ce72c80b79d3a9c"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view-class.toml",
+      "sha": "a49493d642a696ed6fbca9b7418500befcca7e14"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view.toml",
+      "sha": "b75ebfa3acd6cc5b975bbda727db32c53785a747"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint-class.toml",
+      "sha": "fb12ac479ebb2d15daa60d1aeebfe1a10b9016cc"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint.toml",
+      "sha": "005fb8730c47248d21ab623e8211307908dea2d2"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-flat-validation-input.toml",
+      "sha": "9489644b73398c326d7be1f0d955c46677100a36"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-normalized-model.toml",
+      "sha": "919f2c8aa55dacde44861bf35b691f29b19a5670"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-standards-profile.toml",
+      "sha": "dfe904272b687b4a49cb4731f8151e52639a339b"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-bounded-byte-buffer.toml",
+      "sha": "745b919c7869c61729bd3604ee917443b676715a"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-browser-system-model.toml",
+      "sha": "8c88467aeba35af5f73fb54f2a50e69f6bcd8e61"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-production-system-model.toml",
+      "sha": "534ab287adecb2af7e9cbb740fe2ca334693acd5"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-unicode-text-codec.toml",
+      "sha": "ad3af5c179c87edc1f2d9d12336d65c7783f8fee"
+    },
+    {
+      "path": "app/language/prism.arch/lexicon.toml",
+      "sha": "7639a320c7eb3d9ffd1d2ca4646e4bb8321d692e"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-budget.toml",
+      "sha": "3416ea366c19483c62a7e04b5a31d9ecbddc980b"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-checkpoint.toml",
+      "sha": "4733926d787752f6b4eee128a7dd71f324671de0"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-encoding.toml",
+      "sha": "4cc43d01c762fb669933d3519cf229c82804f696"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-evidence.toml",
+      "sha": "686b63d4314766ca348b713c5f2e36d40bb79a37"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-fragment.toml",
+      "sha": "2bc52c1358d176259f758b95a0a5d485e149a67e"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-object.toml",
+      "sha": "f3729522dad7b700863e87c922eb5b9847a7999a"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-observation.toml",
+      "sha": "a5d4bf567d777e50d59ac25b16db58c08facfa3b"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-placement.toml",
+      "sha": "bc37a711baed6de4899ff0038554e500392808ca"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-pointer.toml",
+      "sha": "2ea13ee92f4471faf1385e99c17ef4a5fda8b3f5"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-service-model.toml",
+      "sha": "fdfa706677fcf967fe4ec9e235a0ab2e9bb8cf53"
+    },
+    {
+      "path": "app/language/stitch.domain/lexicon.toml",
+      "sha": "4e5dcc50d9ce92777427f3dd03039e3d71cbcbe6"
+    },
+    {
+      "path": "app/lean-toolchain",
+      "sha": "2b61957be5f4986fcc464cb4f62322f2d6ca3dfc"
+    },
+    {
+      "path": "app/lexlean.lock",
+      "sha": "16f78c4044a729ed98498e7732b98fa2154187ff"
+    },
+    {
+      "path": "app/lexlean.toml",
+      "sha": "fb29a839ec338b08d974479b466f7354f491e886"
+    },
+    {
+      "path": "app/prism.toml",
+      "sha": "bfea9f23cdb485f5aff16e86a8a342f7590e5bac"
+    },
+    {
+      "path": "app/prismpm.toml",
+      "sha": "1fa19ff1f3ddf7afede5e001b0e5566284af41cc"
+    },
+    {
+      "path": "app/src/Foundation/Arch.lex.tex",
+      "sha": "e015d2169476370a57852dcd5eccd9c5732871fa"
+    },
+    {
+      "path": "app/src/Foundation/Bytes.lex.tex",
+      "sha": "f54f9c0266f082c693e9b3c7086e0bca8259a6e2"
+    },
+    {
+      "path": "app/src/Foundation/View/Text/V1/Model.lex.tex",
+      "sha": "dcd17faef2d6f91476efa6538c426ffa9d879921"
+    },
+    {
+      "path": "app/src/Product/Architecture.lex.tex",
+      "sha": "6fd6a58d4f9bc2cf96e43b55514371ab934ea0e3"
+    },
+    {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha": "7528922c7fd28a3ce563420915017bade9604aca"
+    },
+    {
+      "path": "app/src/Product/Host.lex.tex",
+      "sha": "aee958d0c2264cc4419df44de74dda40642d04ab"
+    },
+    {
+      "path": "app/src/Product/Model.lex.tex",
+      "sha": "5c75095b83668d2572b80d43249d1a235518416f"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha": "e97309e9b0716eb407d1754a7dd1dc0a3229e892"
+    },
+    {
+      "path": "app/src/Stitch/Budget.lex.tex",
+      "sha": "f8ba012e466bdba0f803c2dccf6c1db6418e5c77"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha": "3eef6132e89b3e9636a714f7cb82c153c8dbecd6"
+    },
+    {
+      "path": "app/src/Stitch/Compute.lex.tex",
+      "sha": "b8811b8b18145ed2b84f66f7501d78300ddb59c9"
+    },
+    {
+      "path": "app/src/Stitch/Custody.lex.tex",
+      "sha": "23ad86330f4e4bb3e3bf788fdadbf5410977f6a7"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha": "a4f961ed6f9dcd8cee490e92728db4c37ee12483"
+    },
+    {
+      "path": "app/src/Stitch/Encoding.lex.tex",
+      "sha": "940ba10d0ba0e4f3976f4fe5b4719b6f8ff58c6c"
+    },
+    {
+      "path": "app/src/Stitch/Evidence.lex.tex",
+      "sha": "425496ff62efc5efeaee5a14bb67a09642e72232"
+    },
+    {
+      "path": "app/src/Stitch/Fragments.lex.tex",
+      "sha": "9b74db6cb7ae82570800afc72c6deee545c62440"
+    },
+    {
+      "path": "app/src/Stitch/Identity.lex.tex",
+      "sha": "1218eb2d4b7143dee74e50592ce8b2ef90f1e769"
+    },
+    {
+      "path": "app/src/Stitch/Observation.lex.tex",
+      "sha": "66af6258a6fc7e2633ee04e508dead76e022dc98"
+    },
+    {
+      "path": "app/src/Stitch/Pointer.lex.tex",
+      "sha": "c21fc6fedd2a58fa5ed5eaa4b02bb0f0bb0c905c"
+    },
+    {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha": "ef5374794c701226e45720163230abbe8e88feeb"
+    },
+    {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha": "99a45d33b000f920300195ede85a03855c3ddc89"
+    },
+    {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha": "34733f48e450db7f0557606824aaba90cc0e4aae"
+    },
+    {
+      "path": "app/src/Stitch/System.lex.tex",
+      "sha": "b1c6a3d66c2c52a1140f800e7bcf829025e75dc7"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha": "f5f6cdec0d75689d68277834bd51eaf643b722b9"
+    },
+    {
+      "path": "app/src/StitchApp.lex.tex",
+      "sha": "448dfbcfe52c06565b270956f1203e5e6a582178"
+    }
+  ],
+  "differences": []
+}\n

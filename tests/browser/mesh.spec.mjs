@@ -187,3 +187,125 @@ test('native two-holder custody restores exact object bytes after writer RAM is 
     for (const target of pages) if (!target.isClosed()) await target.evaluate(() => window.stitch?.transport.close());
   }
 });
+
+test('native compute retains a reachable authenticated owner and resumes its checkpoint only after owner tab closes', async ({ page, context }, testInfo) => {
+  test.setTimeout(60_000);
+  const receiver = await context.newPage(), pages = [page, receiver];
+  const channel = `compute-owner-${crypto.randomUUID()}`, jobId = `failover-${crypto.randomUUID()}`;
+  try {
+    await startNode(page, channel, 'compute-owner-label');
+    await startNode(receiver, channel, 'compute-receiver-label');
+    await Promise.all(pages.map(target => connected(target)));
+    const owner = await page.evaluate(jobId => {
+      const { transport, compute, errors } = window.stitch;
+      // Six ADD3 steps from2 have the independent expected final value20 (0x14).
+      // The bounded inter-step delay leaves a genuine unfinished owner task,
+      // without pausing, replacing or mocking any coordinator/transport method.
+      const program = { version: 1, bits: 64, initialValueHex: '0x2',
+        instructions: Array.from({ length: 6 }, () => ({ op: 4, argHex: '0x3' })) };
+      window.stitch.ownerWork = compute.startOrResumeJob({ jobId, program, stepDelayMs: 5000 })
+        .catch(error => errors.push(error.code || error.message));
+      return { key: transport.routingPeerId, label: transport.peerId };
+    }, jobId);
+    expect(owner.key).toMatch(/^key-/);
+    expect(owner.key).not.toBe(owner.label);
+    await expect.poll(() => receiver.evaluate(jobId => {
+      const job = window.stitch.compute.jobs.get(jobId);
+      return !!job && job.status === 'running' && job.verification === 'replayed' && job.stepIndex > 0;
+    }, jobId)).toBe(true);
+    const reachable = await receiver.evaluate(async jobId => {
+      const { transport, compute } = window.stitch;
+      const resumed = await compute.syncAndTakeOverJobs();
+      const job = compute.jobs.get(jobId);
+      return { resumed, runningLocally: compute.running.has(jobId), status: job.status,
+        owner: job.ownerPeerId, step: job.stepIndex, value: job.currentValueHex,
+        reachable: transport.openPeers().some(peer => peer.remoteId === job.ownerPeerId), source: job.sourceTag };
+    }, jobId);
+    expect(reachable).toEqual({ resumed: [], runningLocally: false, status: 'running', owner: owner.key,
+      step: expect.any(Number), value: expect.any(String), reachable: true, source: `webrtc:${owner.key}` });
+    expect(reachable.step).toBeLessThan(6);
+    expect(reachable.value).toBe(`0x${(2 + 3 * reachable.step).toString(16)}`);
+
+    // Closing the actual page destroys its native RTC connection and owner task.
+    await page.close();
+    await expect.poll(() => receiver.evaluate(ownerKey => {
+      const { transport, events } = window.stitch;
+      return transport.openPeers().length === 0 && transport.peers.size === 0 && events.some(event =>
+        ['channel_close', 'peer_disconnected'].includes(event.type) && event.remoteId === ownerKey);
+    }, owner.key), { timeout: 20_000 }).toBe(true);
+    const result = await receiver.evaluate(async jobId => {
+      const { transport, compute, db } = window.stitch;
+      const retained = compute.jobs.get(jobId), step = retained.stepIndex, digest = retained.checkpoint.checkpointDigest;
+      const updates = [];
+      compute.onJobUpdate = job => {
+        if (job.jobId === jobId && job.sourceTag.startsWith('local:')) updates.push({
+          step: job.stepIndex, previous: job.checkpoint.previousDigest, owner: job.ownerPeerId });
+      };
+      const resumed = await compute.syncAndTakeOverJobs();
+      await compute.running.get(jobId);
+      const job = compute.jobs.get(jobId), stored = db.get(job.resultAddressHex);
+      return { resumed, retainedStep: step, retainedDigest: digest, updates,
+        receiverKey: transport.routingPeerId, owner: job.ownerPeerId, status: job.status,
+        verification: job.verification, step: job.stepIndex, value: job.currentValueHex,
+        stored: stored.ok && stored.entry.verified, result: stored.ok ? JSON.parse(stored.text) : null };
+    }, jobId);
+    expect(result.retainedStep).toBeGreaterThan(0);
+    expect(result.retainedStep).toBeLessThan(6);
+    expect(result.resumed).toEqual([jobId]);
+    expect(result.receiverKey).toMatch(/^key-/);
+    expect(result.owner).toBe(result.receiverKey);
+    expect(result.owner).not.toBe(owner.key);
+    expect(result.updates[0]).toEqual({ step: result.retainedStep + 1, previous: result.retainedDigest, owner: result.receiverKey });
+    expect(result).toMatchObject({ status: 'completed', verification: 'replayed', step: 6, value: '0x14', stored: true });
+    expect(result.result.jobId).toBe(jobId);
+    expect(result.result.checkpoint).toMatchObject({ stepIndex: 6, stateHex: '0x14' });
+    expect(await receiver.evaluate(() => window.stitch.errors)).toEqual([]);
+  } catch (error) {
+    await attachHostDiagnostics(pages, testInfo).catch(() => {});
+    throw error;
+  } finally {
+    for (const target of pages) if (!target.isClosed()) await target.evaluate(() => window.stitch?.transport.close());
+  }
+});
+
+test('native pre-join store repairs three distinct holders, replaces a departed holder and recovers after writer wipe', async ({ page, context }, testInfo) => {
+  test.setTimeout(90_000);
+  const channel = `placement-repair-${crypto.randomUUID()}`, pages = [page];
+  try {
+    await startNode(page, channel, 'repair-writer');
+    const payload = `retained-before-peers-${crypto.randomUUID()}-é😀`;
+    const address = await page.evaluate(async payload => (await window.stitch.db.put(payload)).addressHex, payload);
+    expect(await page.evaluate(address => window.stitch.db.placementSummary(address).committedFragments, address)).toBe(0);
+    const holders = [];
+    for (let i = 0; i < 3; i++) {
+      const holder = await context.newPage(); pages.push(holder); holders.push(holder);
+      await startNode(holder, channel, `repair-holder-${i}`);
+    }
+    await Promise.all(pages.map(target => connected(target, 3)));
+    await page.evaluate(address => window.stitch.db.repairPlacement(address), address);
+    await expect.poll(() => page.evaluate(address => window.stitch.db.placementSummary(address).committedFragments, address)).toBe(3);
+    const departedId = await holders[0].evaluate(() => window.stitch.transport.routingPeerId);
+    await holders[0].evaluate(() => window.stitch.transport.close());
+    await connected(page, 2);
+    expect(await page.evaluate(address => window.stitch.db.placementSummary(address).committedFragments, address)).toBe(2);
+    const replacement = await context.newPage(); pages.push(replacement);
+    await startNode(replacement, channel, 'repair-replacement');
+    await connected(page, 3);
+    await page.evaluate(address => window.stitch.db.repairPlacement(address), address);
+    await expect.poll(() => page.evaluate(address => window.stitch.db.placementSummary(address).committedFragments, address)).toBe(3);
+    expect(await page.evaluate(({ address, departedId }) => {
+      const { db } = window.stitch;
+      return { copies: db.placementSummary(address).assertedCopies,
+        departed: db.placements.get(address).copies.find(c => c.holder === departedId)?.status };
+    }, { address, departedId })).toEqual({ copies: 4, departed: 'superseded' });
+    await page.evaluate(async () => { await window.stitch.db.clearLocal(); await window.stitch.db.syncFromNetwork(); });
+    await expect.poll(() => page.evaluate(address => window.stitch.db.get(address).ok, address)).toBe(true);
+    expect(await page.evaluate(address => window.stitch.db.get(address).text, address)).toBe(payload);
+    for (const target of pages) expect(await target.evaluate(() => window.stitch.errors)).toEqual([]);
+  } catch (error) {
+    await attachHostDiagnostics(pages, testInfo).catch(() => {});
+    throw error;
+  } finally {
+    for (const target of pages) if (!target.isClosed()) await target.evaluate(() => window.stitch?.transport.close());
+  }
+});

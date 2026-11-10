@@ -711,3 +711,48 @@ test('actual browser saved-key rotation is explicit, leaves the pin unchanged an
   assert.equal(JSON.parse(field('pointerJsonInput').value).authorityKey, field('pointerAuthorityInput').value);
   assert.deepEqual(h.dnsCalls, []);
 });
+
+test('actual browser repairs only an exact selected retained object after peers join and makes changing custody visible', async () => {
+  const h = await browserHarness(), get = id => h.document.getElementById(id);
+  h.mesh.openPeers = () => [];
+  await h.click('dbPutBtn');
+  const entry = [...h.db.objects.values()][0];
+  assert.ok(entry.verified);
+  assert.equal(get('repairPlacementBtn').disabled, true);
+  assert.equal(get('placementObject').value, '');
+  get('placementObject').value = entry.addressHex;
+  get('placementObject').listeners.change();
+  assert.equal(get('repairPlacementBtn').disabled, true, 'no peers means no placement operation');
+  const initial = h.mesh.sent.length;
+  await h.click('repairPlacementBtn');
+  assert.equal(h.mesh.sent.length, initial, 'forced click still uses the source guard');
+  let peers = ['h0', 'h1', 'h2'];
+  h.mesh.openPeers = () => peers.map(remoteId => ({ remoteId }));
+  h.tick();
+  assert.equal(get('repairPlacementBtn').disabled, false);
+  await h.click('repairPlacementBtn');
+  const packets = h.mesh.sent.filter(p => p.type === 'uor_shard');
+  assert.equal(packets.length, 3);
+  assert.equal(get('placementObject').value, entry.addressHex);
+  assert.match(get('placementEvidence').textContent, /0\/3.*3 awaiting ACK/);
+  for (const packet of packets) await h.db.handleMeshMessage(packet.holder, {
+    type: 'uor_shard_ack', version: 1, requestId: packet.requestId, index: packet.shardIndex,
+    holder: packet.holder, manifestDigest: packet.manifest.manifestDigest,
+    fragmentDigest: packet.manifest.fragments.digests[packet.shardIndex], leaseExpiresAt: packet.leaseExpiresAt,
+  });
+  assert.match(get('placementEvidence').textContent, /3\/3 current distinct-holder receipts/);
+  get('placementReplaceHolder').value = 'h0';
+  await h.click('repairPlacementBtn');
+  assert.equal(h.mesh.sent.filter(p => p.type === 'uor_shard').length, 3);
+  assert.match(get('objectsActionStatus').textContent, /No spare distinct-holder route/);
+  peers = ['h1', 'h2', 'h3']; h.tick();
+  assert.match(get('placementEvidence').textContent, /2\/3/);
+  await h.click('repairPlacementBtn');
+  assert.equal(h.mesh.sent.filter(p => p.type === 'uor_shard').length, 4);
+  assert.equal(h.db.placementSummary(entry.addressHex).committedFragments, 2);
+  assert.match(get('objectsActionStatus').textContent, /1 awaiting ACK/);
+  await h.click('dbWipeLocalBtn');
+  assert.equal(get('placementObject').value, '');
+  assert.equal(get('repairPlacementBtn').disabled, true);
+  assert.match(get('placementEvidence').textContent, /No retained verified object/);
+});

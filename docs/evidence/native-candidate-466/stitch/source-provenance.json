@@ -1,0 +1,105 @@
+{
+  "source_commit": "dad91e429ffbf8248ae6ed9f9319dd90e229a299",
+  "files": [
+    {
+      "path": "app/src/Foundation/Arch.lex.tex",
+      "sha256": "54fdc8eb15c46707e445ff99814d6cbd1731967f801bf064a6c1f4cc01c45394"
+    },
+    {
+      "path": "app/src/Foundation/Bytes.lex.tex",
+      "sha256": "ce16e5b439128db3231979381f4599d3ff0617f62c2bf00c348bba35393abcd6"
+    },
+    {
+      "path": "app/src/Foundation/View/Text/V1/Model.lex.tex",
+      "sha256": "db124343ad8fe1295bc8eb305c7f59f83cf6ad76d46a5cabea500fe66f3ad5dc"
+    },
+    {
+      "path": "app/src/Product/Architecture.lex.tex",
+      "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
+    },
+    {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
+    },
+    {
+      "path": "app/src/Product/Host.lex.tex",
+      "sha256": "3bb2a621868dc683e776c9b65c58cc60cc2b89e5d007d54c4c152bedd4878871"
+    },
+    {
+      "path": "app/src/Product/Model.lex.tex",
+      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
+    },
+    {
+      "path": "app/src/Stitch/Budget.lex.tex",
+      "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
+    },
+    {
+      "path": "app/src/Stitch/Compute.lex.tex",
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
+    },
+    {
+      "path": "app/src/Stitch/Custody.lex.tex",
+      "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
+    },
+    {
+      "path": "app/src/Stitch/Encoding.lex.tex",
+      "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
+    },
+    {
+      "path": "app/src/Stitch/Evidence.lex.tex",
+      "sha256": "39011e1cf70295427f716d328b1ab754242d3667f0e70a8a48dffa735465c79e"
+    },
+    {
+      "path": "app/src/Stitch/Fragments.lex.tex",
+      "sha256": "5cd8d0602cbe501ae4ffc5c18dde17fc6e5766d930ac1d9277545d1ef8d88b83"
+    },
+    {
+      "path": "app/src/Stitch/Identity.lex.tex",
+      "sha256": "c4c159234e1623b8f339e86cf47da55c89d197bf21fe334bd893f575ba053870"
+    },
+    {
+      "path": "app/src/Stitch/Observation.lex.tex",
+      "sha256": "fe3205a68576d8c7d82f86b45b78f8b6c8b49a873f00c448cccb2eb459749ae8"
+    },
+    {
+      "path": "app/src/Stitch/Pointer.lex.tex",
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
+    },
+    {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
+    },
+    {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
+      "path": "app/src/Stitch/System.lex.tex",
+      "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
+    },
+    {
+      "path": "app/src/StitchApp.lex.tex",
+      "sha256": "ffd8a4b6b9072b27b06d67d61e1c11d085a6b82e84be4610f27f3805d87f675b"
+    }
+  ]
+}

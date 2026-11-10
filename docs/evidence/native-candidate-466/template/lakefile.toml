@@ -1,0 +1,7 @@
+name = "prismpm_verify"
+version = "0.1.0"
+
+[[lean_lib]]
+name = "PrismGenerated"
+roots = ["LexLeanRuntime.Portable", "PrismTemplateContract.Contract", "PrismTemplateContract.Foundation.Bytes", "PrismTemplateContract.Foundation.View.Text.V1.Model"]
+moreLeanArgs = ["-j2"]

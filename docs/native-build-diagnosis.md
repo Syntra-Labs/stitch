@@ -63,3 +63,20 @@ Do not remove Laws imports, replace the native gate with object-only compilation
 accept diagnostic artifacts as official outputs, or call a longer timeout a fix.
 Full browser/provider/VM qualification and redistribution obligations remain
 separate product requirements even after native verification passes.
+
+## Proposed compiler tested on actual project sources
+
+The actual compiler built from [LexLean PR #466](https://github.com/UOR-Foundation/LexLean/pull/466)
+at `cc5561203de8fa5594d573904147a306b2b8bbbf` passed its integrated native
+regression, then generated and verified the unchanged 25-module Stitch
+checkpoint at `2f1fde8`. Its cold native graph passed all 30 Lake jobs in
+16.355 seconds; the three-module template comparison passed six jobs in
+11.097 seconds. [The diagnostic report, original logs and input hashes](evidence/native-candidate-466/README.md)
+record the exact scope and reproduction. This used candidate-generated runtime
+sources, not edited runtime text. The accepted SDK lock remains unchanged
+pending upstream qualification and publication.
+
+After the placement model changed, the same actual candidate regenerated the
+25-module closure at local source checkpoint `c99dc0d` and passed all 30 cold
+native jobs again in 16.093 seconds. The separate `stitch-placement/` evidence
+records those new input hashes; no earlier source attestation is reused for it.

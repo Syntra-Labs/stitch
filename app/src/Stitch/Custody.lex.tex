@@ -150,6 +150,32 @@ definition{
 }
 
 definition{
+  name: activationAllowed,
+  parameters: [
+    requestCurrent : Bool,
+    reservationCurrent : Bool,
+    leaseLive : Bool,
+    routeCurrent : Bool
+  ],
+  result: Bool,
+  body: (requestCurrent && (reservationCurrent && (leaseLive && routeCurrent)))
+}
+
+theorem{
+  name: expiredReservationCannotActivate,
+  parameters: [],
+  statement: (forall (requestCurrent : Bool), (forall (leaseLive : Bool), (forall (routeCurrent : Bool), ((activationAllowed requestCurrent false leaseLive routeCurrent) = false)))),
+  proof: decide{}
+}
+
+theorem{
+  name: replacedRouteCannotActivate,
+  parameters: [],
+  statement: (forall (requestCurrent : Bool), (forall (reservationCurrent : Bool), (forall (leaseLive : Bool), ((activationAllowed requestCurrent reservationCurrent leaseLive false) = false)))),
+  proof: decide{}
+}
+
+definition{
   name: retireAllowed,
   parameters: [targetCommitted : Bool, remainingDistinctIndices : Nat, threshold : Nat],
   result: Bool,

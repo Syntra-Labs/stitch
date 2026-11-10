@@ -114,3 +114,52 @@ test('live coordinator rejects forged/legacy checkpoints and replays takeover wi
   assert.equal(warm.length, 0);
   assert.equal(sent.length, 6);
 });
+
+test('live compute publishes stable authenticated owners and takes over only absent routing identities', async () => {
+  let initialized = false;
+  const sent = [];
+  const peers = [{ remoteId: 'key-remote' }];
+  const transport = { peerId: 'friendly-local',
+    get routingPeerId() { return initialized ? 'key-local' : this.peerId; },
+    signaling: { async identity() { initialized = true; return { id: 'key-local' }; } },
+    openPeers: () => peers,
+    broadcast: packet => sent.push(packet)
+  };
+  const coordinator = new LiveDistributedComputeCoordinator({ transport,
+    liveDb: { put: async () => ({ addressHex: 'result' }) } });
+  await coordinator.startOrResumeJob({ jobId: 'own', totalSteps: 0, stepDelayMs: 0 });
+  assert.equal(sent[0].ownerPeerId, 'key-local', 'initial work must not publish a transient display identity');
+  assert.equal(coordinator.jobs.get('own').sourceTag, 'local:friendly-local');
+  const program = demoProgram(3), checkpoint = await createCheckpoint(program, 1);
+  assert.equal(await coordinator.ingestCheckpoint({ type: 'compute_ckpt', jobId: 'remote', program,
+    checkpoint, ownerPeerId: 'key-remote' }), true);
+  assert.equal(await coordinator.ingestCheckpoint({ type: 'compute_ckpt', jobId: 'retained-own', program,
+    checkpoint, ownerPeerId: 'key-local' }), true);
+  assert.deepEqual(await coordinator.syncAndTakeOverJobs(), [], 'a connected authenticated owner and our own owner are present');
+  peers.length = 0;
+  assert.deepEqual(await coordinator.syncAndTakeOverJobs(), ['remote']);
+  await coordinator.running.get('remote');
+  assert.equal(coordinator.jobs.get('remote').status, 'completed');
+  assert.equal(coordinator.jobs.get('remote').ownerPeerId, 'key-local');
+  assert.equal(coordinator.jobs.get('retained-own').stepIndex, 1, 'local pending work is not a missing remote owner');
+});
+
+test('replaced signaling session cannot publish a transient owner while identity resolves', async () => {
+  let releaseIdentity, enteredIdentity;
+  const gate = new Promise(resolve => { releaseIdentity = resolve; });
+  const entered = new Promise(resolve => { enteredIdentity = resolve; });
+  const sent = [];
+  const transport = { peerId: 'label', routingPeerId: 'key-new',
+    signaling: { async identity() { enteredIdentity(); await gate; } },
+    openPeers: () => [], broadcast: packet => sent.push(packet)
+  };
+  const coordinator = new LiveDistributedComputeCoordinator({ transport,
+    liveDb: { put: async () => { throw Error('No completed result may be stored'); } } });
+  const work = coordinator.startOrResumeJob({ jobId: 'changed-session', totalSteps: 0, stepDelayMs: 0 });
+  await entered;
+  transport.signaling = { async identity() {} };
+  releaseIdentity();
+  await assert.rejects(work, code('transport-session-changed'));
+  assert.equal(sent.length, 0);
+  assert.equal(coordinator.jobs.size, 0);
+});

@@ -1,0 +1,1 @@
+DIAGNOSTIC ONLY. Not a released compiler, qualified SDK, or acceptance substitute. Source is PR466 cc5561203. No product gate has been weakened. RT-03 result and source provenance must accompany any rehearsal.

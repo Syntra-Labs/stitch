@@ -709,6 +709,15 @@ export class LiveDistributedComputeCoordinator {
     this.maxPendingIngress = 128;
   }
 
+  async ownerIdentity() {
+    // Initialize the authenticated route before publishing an owner. Display labels
+    // may differ across peers and must not masquerade as reachability identities.
+    const session = this.transport.signaling;
+    await session?.identity?.();
+    if (session !== this.transport.signaling) refuse('transport-session-changed');
+    return this.transport.routingPeerId ?? this.transport.peerId;
+  }
+
   async handleMeshMessage(fromPeerId, msg) {
     if (!msg || msg.type !== 'compute_ckpt') return false;
     return this.ingestCheckpoint(msg, `webrtc:${fromPeerId}`);
@@ -782,7 +791,7 @@ export class LiveDistributedComputeCoordinator {
       if (step < program.instructions.length) step++;
       else if (checkpoint !== null) break;
       checkpoint = await createCheckpoint(program, step, checkpoint, { admission: this.admission });
-      const packet = { type: 'compute_ckpt', jobId, program, checkpoint, ownerPeerId: this.transport.peerId };
+      const packet = { type: 'compute_ckpt', jobId, program, checkpoint, ownerPeerId: await this.ownerIdentity() };
       if (!await this.ingestCheckpoint(packet, `local:${this.transport.peerId}`)) {
         const head = this.jobs.get(jobId);
         if (!head || head.checkpoint.jobId !== checkpoint.jobId || head.stepIndex < step) refuse('checkpoint-refused');
@@ -827,10 +836,11 @@ export class LiveDistributedComputeCoordinator {
         } catch { this.onJobUpdate({ type: 'checkpoint_refused', code: 'invalid-checkpoint' }); }
       }
     }
+    const ownIdentity = await this.ownerIdentity();
     const active = new Set(this.transport.openPeers().map(p => p.remoteId));
     const resumed = [];
     for (const job of this.jobs.values()) {
-      if (job.status === 'running' && job.ownerPeerId !== this.transport.peerId && !active.has(job.ownerPeerId)) {
+      if (job.status === 'running' && job.ownerPeerId !== ownIdentity && !active.has(job.ownerPeerId)) {
         resumed.push(job.jobId);
         // Reachability loss is an observation, not proof of death or exclusive ownership.
         this.startOrResumeJob({ jobId: job.jobId, stepDelayMs: 0 }).catch(error =>
