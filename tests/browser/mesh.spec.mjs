@@ -24,11 +24,39 @@ async function startNode(page, channelKey, label) {
   }, { channelKey, label });
 }
 
+async function attachHostDiagnostics(pages, testInfo) {
+  const snapshots = [];
+  for (const [index, page] of pages.entries()) {
+    if (page.isClosed()) { snapshots.push({ page: index, closed: true }); continue; }
+    try {
+      snapshots.push(await page.evaluate(index => {
+        const state = window.stitch;
+        if (!state) return { page: index, initialized: false };
+        const { transport, events, errors } = state;
+        return {
+          page: index, routingPeerId: transport.routingPeerId, generation: transport.generation,
+          closed: transport.closed, bytesSent: transport.bytesSent, bytesReceived: transport.bytesReceived,
+          peers: [...transport.peers].map(([remoteId, peer]) => ({
+            remoteId, connection: peer.pc.connectionState, signaling: peer.pc.signalingState,
+            ice: peer.pc.iceConnectionState, flow: peer.flow?.state,
+            channel: peer.dc && { id: peer.dc.id, state: peer.dc.readyState, protocol: peer.dc.protocol,
+              buffered: peer.dc.bufferedAmount, label: peer.dc.label },
+          })),
+          events: events.slice(-32).map(({ type, code, reason, outcome, remoteId, from, frames, bytes }) =>
+            ({ type, code, reason, outcome, remoteId, from, frames, bytes })),
+          errors: errors.slice(-32),
+        };
+      }, index));
+    } catch (error) { snapshots.push({ page: index, diagnosticError: error.message }); }
+  }
+  await testInfo.attach('mesh-host-diagnostics', { body: Buffer.from(JSON.stringify(snapshots, null, 2)), contentType: 'application/json' });
+}
+
 async function connected(page, count = 1) {
   await expect.poll(() => page.evaluate(() => window.stitch.transport.openPeers().length), { timeout: 20_000 }).toBe(count);
 }
 
-test('native authenticated local RTC carries fragmented bytes, custody receipts and replayed checkpoints; reconnect fences old sessions', async ({ page, context }) => {
+test('native authenticated local RTC carries fragmented bytes, custody receipts and replayed checkpoints; reconnect fences old sessions', async ({ page, context }, testInfo) => {
   test.setTimeout(60_000);
   const other = await context.newPage();
   const channel = `browser-${crypto.randomUUID()}`;
@@ -114,13 +142,16 @@ test('native authenticated local RTC carries fragmented bytes, custody receipts 
       expect(await target.evaluate(() => window.stitch.errors)).toEqual([]);
       expect(await target.evaluate(() => window.stitch.events.filter(x => x.type === 'signal_error'))).toEqual([]);
     }
+  } catch (error) {
+    await attachHostDiagnostics([page, other], testInfo).catch(() => {});
+    throw error;
   } finally {
     for (const target of [page, other]) if (!target.isClosed()) await target.evaluate(() => window.stitch?.transport.close());
   }
 });
 
 
-test('native two-holder custody restores exact object bytes after writer RAM is cleared', async ({ page, context }) => {
+test('native two-holder custody restores exact object bytes after writer RAM is cleared', async ({ page, context }, testInfo) => {
   test.setTimeout(50_000);
   const holders = [await context.newPage(), await context.newPage()];
   const pages = [page, ...holders], channel = `recovery-${crypto.randomUUID()}`;
@@ -149,6 +180,9 @@ test('native two-holder custody restores exact object bytes after writer RAM is 
       return { text: recovered.text, address: recovered.entry.addressHex, source: recovered.entry.source };
     }, address)).toEqual({ text: payload, address, source: expect.stringMatching(/^webrtc:key-/) });
     for (const target of pages) expect(await target.evaluate(() => window.stitch.errors)).toEqual([]);
+  } catch (error) {
+    await attachHostDiagnostics(pages, testInfo).catch(() => {});
+    throw error;
   } finally {
     for (const target of pages) if (!target.isClosed()) await target.evaluate(() => window.stitch?.transport.close());
   }

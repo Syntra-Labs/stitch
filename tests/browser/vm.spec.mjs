@@ -10,6 +10,8 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await selectJourney(page, 'vm');
   await expect(page.locator('#bootVmBtn')).toBeEnabled();
   await expect(page.locator('#runVmCmdBtn')).toBeDisabled();
+  await page.locator('#vmLimitsPanel > summary').click();
+  await expect(page.locator('#vmRuntimeSeconds')).toBeVisible();
   await page.locator('#vmRuntimeSeconds').fill('120');
   await page.locator('#bootVmBtn').click();
   await expect(page.locator('#bootVmBtn')).toBeDisabled();

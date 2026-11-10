@@ -59,9 +59,10 @@ test('live transport rejects unsigned SDP before allocating RTC peers', async ()
 });
 
 test('two transport nodes negotiate using only authenticated relay envelopes', async t => {
+  let dataChannelsCreated = 0;
   class Peer {
     signalingState = 'stable'; connectionState = 'new';
-    createDataChannel() { return { readyState:'connecting',close(){} }; }
+    createDataChannel() { dataChannelsCreated++; return { readyState:'connecting',close(){} }; }
     async createOffer() { return {type:'offer',sdp:'offer'}; }
     async createAnswer() { return {type:'answer',sdp:'answer'}; }
     async setLocalDescription(sdp) { this.localDescription=sdp; this.signalingState=sdp.type==='offer'?'have-local-offer':'stable'; }
@@ -83,6 +84,7 @@ test('two transport nodes negotiate using only authenticated relay envelopes', a
     const [node,message]=queue.shift(); await node.handleSignal(message);
   }
   assert.equal(queue.length,0);
+  assert.equal(dataChannelsCreated,1, 'a pair must negotiate exactly one application channel, not crossing channels');
   assert.equal(a.peers.size,1);assert.equal(b.peers.size,1);
   assert.ok(a.peers.get(b.signaling.id).pc.remoteDescription);
   assert.ok(b.peers.get(a.signaling.id).pc.remoteDescription);

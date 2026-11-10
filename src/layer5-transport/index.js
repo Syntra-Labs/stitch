@@ -1101,6 +1101,10 @@ export class WebRtcTransportNode {
     }
 
     if (msg.kind === 'announce') {
+      // Both authenticated handshake endpoints discover each other. Only one
+      // key may offer/create the application channel: two crossing channels
+      // make each ondatachannel replace the other's still-live receive flow.
+      if (this.routingPeerId >= remoteId || existing?.pc.localDescription) return;
       const entry = this.getOrCreatePeer(remoteId, true);
       const offer = await entry.pc.createOffer();
       if (!current(entry)) return;

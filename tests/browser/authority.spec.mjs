@@ -59,11 +59,18 @@ test('real cross-tab Web Lock blocks another owner and tab termination releases 
       window.secondAcquired = true;
     });
   }, { database, scope });
-  const lockName = `stitch-dns:${database}:${scope}`;
-  await expect.poll(() => second.evaluate(async name => {
+  const lockNames = { authority: `stitch-authority:${database}`, publication: `stitch-dns:${database}:${scope}` };
+  await expect.poll(() => second.evaluate(async names => {
     const state = await navigator.locks.query();
-    return { held: state.held.filter(x => x.name === name).length, pending: state.pending.filter(x => x.name === name).length };
-  }, lockName)).toEqual({ held: 1, pending: 1 });
+    // Publication first owns the lifecycle lock, preventing rotation/revocation
+    // during dispatch. The waiter must stop there, before requesting its DNS lock.
+    return {
+      authorityHeld: state.held.filter(x => x.name === names.authority).length,
+      authorityPending: state.pending.filter(x => x.name === names.authority).length,
+      publicationHeld: state.held.filter(x => x.name === names.publication).length,
+      publicationPending: state.pending.filter(x => x.name === names.publication).length,
+    };
+  }, lockNames)).toEqual({ authorityHeld: 1, authorityPending: 1, publicationHeld: 1, publicationPending: 0 });
   expect(await second.evaluate(() => window.secondAcquired)).toBe(false);
   await page.close();
   await expect.poll(() => second.evaluate(() => window.secondAcquired)).toBe(true);
