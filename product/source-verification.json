@@ -2,18 +2,18 @@
   "format": "Stitch exact-source verification summary",
   "version": 1,
   "assurance": "Summary of actual pinned LexLean/Lean/leanchecker/axiom verification; not a native Prism artifact certificate or whole-host guarantee",
-  "attestation_id": "f1cb436709eda8ab54b708b38abf3a480c3047c8b6fdef7ac9aa8367737a2ff2",
-  "attestation_sha256": "edfea193bd375945da1739d9a91ae7449169c71fa917412701b247453e8bb4df",
-  "source_id": "ada0a0ef80223459ce37073dec610d25e9ae52153d3f5f190912487b247bbb44",
-  "semantic_id": "6c9ba713277d41522913884e7e065d65506b7e5bfae392738770fdafefcdc99c",
-  "build_id": "52583255627b3ec133d2896038d717544216b29e8ba50f7525767815a9090145",
+  "attestation_id": "b743f3aafe677b3e6b548055d5207e7c48693a57d9bb41a35a9b9175b8b1f411",
+  "attestation_sha256": "1d330d6df203727a1c31aad6a98f16611ac60e1a38566445c4544c92f7c48a91",
+  "source_id": "ab46b91b8a0b718489f615e94154a20a78148075d2eead2729bca03e73c8765a",
+  "semantic_id": "f92c8babc81f3d780b85d3dea620adf237116b92aee1270ce7556c4bc0914f9c",
+  "build_id": "82503992cae7d30927b6e0f67529f33f29811821d0fd21c70407494daeed7fee",
   "status": "verified",
-  "module_count": 20,
-  "declaration_audits": 1179,
-  "successful_processes": 70,
+  "module_count": 23,
+  "declaration_audits": 1221,
+  "successful_processes": 79,
   "processes_by_tool": {
-    "lean": 47,
-    "leanchecker": 23
+    "lean": 53,
+    "leanchecker": 26
   },
   "sources": [
     {
@@ -145,6 +145,14 @@
       "sha256": "6b9d7544b96a6c0bbeacb5dd9972377ffa4f9ef23dffc92eb191bd90e39cc98d"
     },
     {
+      "path": "app/lexlean.lock",
+      "sha256": "a01e216d1b072ff279e5f5eb2dfb89f42e40fb8af377324ffdef22ae870cbc44"
+    },
+    {
+      "path": "app/lexlean.toml",
+      "sha256": "36c3b0a51d4360d77f4752d517595d1365ee39861966bd789efab89c2ce65c80"
+    },
+    {
       "path": "app/src/Foundation/Arch.lex.tex",
       "sha256": "54fdc8eb15c46707e445ff99814d6cbd1731967f801bf064a6c1f4cc01c45394"
     },
@@ -162,7 +170,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -170,11 +178,15 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "6adf8c24a0ec7a678e4cece4009b0067aa60f5fb045ac367fe459a8d5ee45ad5"
+      "sha256": "cec7acba23cff425cb45ab21fb609f15e63fc5a517b92551c1edc2b524d193ef"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
       "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
@@ -213,6 +225,10 @@
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
       "path": "app/src/Stitch/Relay.lex.tex",
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
@@ -221,16 +237,12 @@
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+    },
+    {
       "path": "app/src/StitchApp.lex.tex",
       "sha256": "ffd8a4b6b9072b27b06d67d61e1c11d085a6b82e84be4610f27f3805d87f675b"
-    },
-    {
-      "path": "app/lexlean.toml",
-      "sha256": "9cbc88eb5837e79daa448eadfebada3d5c1cce90c184c4fa79d6825454e0d77d"
-    },
-    {
-      "path": "app/lexlean.lock",
-      "sha256": "8686e77b687496a1b849e5021e49a0ab3b87d84d009faeb29e94c57fbef55ade"
     }
   ],
   "not_covered": [
@@ -238,5 +250,7 @@
     "Browser/provider/VM correctness and physical network trials",
     "Licensing and release qualification",
     "Handwritten host-code representation correspondence beyond named runtime tests"
-  ]
+  ],
+  "attestation_path": "product/source-attestation.json",
+  "build_manifest_path": "product/source-build-manifest.json"
 }

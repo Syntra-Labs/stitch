@@ -4,13 +4,15 @@
  * Layer-2 Ethernet Frame Bridge (for v86 Linux VMs), and RFC 8484 DoH + Lightweight DNS TXT Writer.
  */
 
-import { ResourceAdmission, reserveNetwork, wireBytes } from '../layer2-schedulers/policy.js';
+import { ResourceAdmission, wireBytes } from '../layer2-schedulers/policy.js';
 import { refuse } from '../layer1-uor/contracts.js';
 import { parseCanonicalJson } from '../layer1-uor/custody.js';
 import { queryDnsMessage } from './dns-wire.js';
 import { captureTransport, transportCanSend, transportSessionCurrent, transportPeerCurrent, transportChannelCurrent,
   transportSignalAllowed, transportPeerAllocationAllowed, closeTransport, openTransport,
   observeC1Probe, c1ConnectionQualified, c1DirectSuccess, c1SampleQualified, c1SampleStructurallyValid } from '../layer1-uor/effects.js';
+
+import { ChannelFlow, CHANNEL_PROTOCOL } from './channel-flow.js';
 
 import { RELAY_EVENT_BYTES, RELAY_LIMITS, RelayReassembler, snapshotRelayMessage, frameRelayMessage,
   newRelaySession, relayCapacity, relayAdmissionAllowed, relayEffectAllowed } from './relay-framing.js';
@@ -504,6 +506,7 @@ function validateTransportIdentity(peerId, channelKey) {
 export class WebRtcTransportNode {
   constructor(options = {}) {
     this.admission = options.admission ?? new ResourceAdmission();
+    this.channelPool = { queued: 0, messages: 0, receiving: 0, assemblies: 0 };
     this.relayPending = new Map();
     this.relayVerificationPool = new Map();
     this.relaySession = null;
@@ -576,6 +579,8 @@ export class WebRtcTransportNode {
 
     if (!transportPeerAllocationAllowed(this)) refuse('peer-capacity');
     if (entry) {
+      entry.flow?.dispose('peer-replaced');
+      entry.dc?.close();
       if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
       if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
       entry.c1Logged = true;
@@ -628,6 +633,8 @@ export class WebRtcTransportNode {
       this.emit('ice_state', { remoteId, state });
       if (state === 'disconnected' || state === 'failed' || state === 'closed') {
         this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, `ice_${state}`);
+        entry.flow?.dispose(`ice_${state}`);
+        entry.dc?.close();
         this.peers.delete(remoteId);
         this.emit('peer_disconnected', { remoteId, state });
       }
@@ -639,7 +646,7 @@ export class WebRtcTransportNode {
     };
 
     if (initiator) {
-      const dc = pc.createDataChannel('uor-mesh', { ordered: true });
+      const dc = pc.createDataChannel('uor-mesh', { ordered: true, protocol: CHANNEL_PROTOCOL });
       this.bindDataChannel(remoteId, dc);
     }
 
@@ -649,15 +656,23 @@ export class WebRtcTransportNode {
   bindDataChannel(remoteId, channel) {
     const entry = this.peers.get(remoteId);
     if (!entry || this.closed) { channel.close(); return; }
+    entry.flow?.dispose('channel-replaced');
     entry.dc = channel;
+    entry.pendingHeartbeats ??= new Map();
     entry.pendingHeartbeats.clear();
     entry.lastHeartbeatSeq = null;
     entry.heartbeatsPassed = 0;
     const callback = captureTransport(this, remoteId);
     const current = () => transportChannelCurrent(this, callback, remoteId, entry, channel);
+    const flow = new ChannelFlow({ channel, pc: entry.pc, current, admission: this.admission, pool: this.channelPool,
+      onMessage: msg => { if (current()) this.handleDataMessage(remoteId, msg); },
+      onSent: bytes => { this.bytesSent += bytes; },
+      onResult: result => { this.emit('channel_send_result', { remoteId, generation: callback.generation, ...result }); } });
+    entry.flow = flow;
 
     channel.onopen = () => {
       if (!current()) return;
+      flow.drain();
       if (entry && entry.iceSetupSec === null) {
         entry.iceSetupSec = (performance.now() - entry.startedAtMs) / 1000;
       }
@@ -667,23 +682,19 @@ export class WebRtcTransportNode {
 
     channel.onclose = () => {
       if (!current()) return;
+      flow.dispose('channel-closed');
       this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, 'channel-closed');
       this.peers.delete(remoteId);
       this.emit('channel_close', { remoteId });
     };
 
+    channel.onerror = () => { if (current()) flow.fail('channel-error-unknown'); };
+
     channel.onmessage = e => {
       if (!current()) return;
       const rawLen = typeof e.data === 'string' ? wireBytes(e.data) : (e.data?.byteLength || 0);
       this.bytesReceived += rawLen;
-      try {
-        if (rawLen > this.maxDataMessageBytes) return;
-        if (typeof e.data !== 'string') return;
-        const msg = parseCanonicalJson(e.data, { maxBytes: this.maxDataMessageBytes, maxEntries: this.maxDataMessageBytes, maxStringLength: this.maxDataMessageBytes });
-        this.handleDataMessage(remoteId, msg);
-      } catch {
-        // Ignore malformed frame
-      }
+      flow.receive(e.data);
     };
   }
 
@@ -794,31 +805,21 @@ export class WebRtcTransportNode {
     }
   }
 
-  sendToPeer(remoteId, payloadObj) {
+  sendToPeer(remoteId, payloadObj, options = {}) {
     const entry = this.peers.get(remoteId);
     if (!entry || !entry.dc || entry.dc.readyState !== 'open') return false;
-    const raw = JSON.stringify(payloadObj);
-    reserveNetwork(this.admission, 'place', raw);
-    this.rememberHeartbeatProbe(entry, payloadObj);
-    try { entry.dc.send(raw); } catch (error) { entry.pendingHeartbeats?.delete(payloadObj.seq); throw error; }
-    this.bytesSent += raw.length;
-    return true;
+    if (!entry.flow) this.bindDataChannel(remoteId, entry.dc);
+    return entry.flow.enqueue(payloadObj, { ...options, onSubmitted: snapshot => this.rememberHeartbeatProbe(entry, snapshot) });
   }
 
-  broadcast(payloadObj) {
-    const raw = JSON.stringify(payloadObj);
-    let sentCount = 0;
-    for (const entry of this.openPeers()) {
-      const { dc } = entry;
-      try {
-        reserveNetwork(this.admission, 'place', raw);
-        this.rememberHeartbeatProbe(entry, payloadObj);
-        try { dc.send(raw); } catch (error) { entry.pendingHeartbeats?.delete(payloadObj.seq); throw error; }
-        this.bytesSent += raw.length;
-        sentCount++;
-      } catch {}
+  /** Count means accepted into bounded local queues, never delivered. */
+  broadcast(payloadObj, options = {}) {
+    let accepted = 0;
+    for (const { remoteId } of this.openPeers()) {
+      try { if (this.sendToPeer(remoteId, payloadObj, options)) accepted++; }
+      catch (error) { this.emit('policy_refused', { remoteId, code: error.code || 'channel-send-refused' }); }
     }
-    return sentCount;
+    return accepted;
   }
 
   /** Queue is an in-flight memory bound, not a second resource ledger. */
@@ -1082,6 +1083,7 @@ export class WebRtcTransportNode {
     this.peers.clear();
     for (const entry of peers) {
       const { dc, pc } = entry;
+      entry.flow?.dispose('transport-closed');
       if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
       if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
       entry.c1Logged = true;

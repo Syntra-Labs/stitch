@@ -5035,6 +5035,383 @@ const definitions = {
       }
     }
   },
+  "Stitch.ChannelFlow.queueAllowed": {
+    "module": "Stitch.ChannelFlow",
+    "name": "queueAllowed",
+    "params": [
+      {
+        "name": "entries",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "retained",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "var",
+          "name": "entries"
+        },
+        "right": {
+          "k": "nat",
+          "value": "64"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "nat",
+            "value": "0"
+          },
+          "right": {
+            "k": "var",
+            "name": "bytes"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "bytes"
+            },
+            "right": {
+              "k": "nat",
+              "value": "524288"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "binary",
+              "op": "+",
+              "left": {
+                "k": "var",
+                "name": "retained"
+              },
+              "right": {
+                "k": "var",
+                "name": "bytes"
+              }
+            },
+            "right": {
+              "k": "nat",
+              "value": "2097152"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.ChannelFlow.sendAllowed": {
+    "module": "Stitch.ChannelFlow",
+    "name": "sendAllowed",
+    "params": [
+      {
+        "name": "current",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "open",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "buffered",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "maximum",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "current"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "open"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "nat",
+              "value": "0"
+            },
+            "right": {
+              "k": "var",
+              "name": "bytes"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "var",
+                "name": "bytes"
+              },
+              "right": {
+                "k": "var",
+                "name": "maximum"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "var",
+                  "name": "buffered"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "bytes"
+                }
+              },
+              "right": {
+                "k": "nat",
+                "value": "1048576"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.ChannelFlow.appendAllowed": {
+    "module": "Stitch.ChannelFlow",
+    "name": "appendAllowed",
+    "params": [
+      {
+        "name": "received",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "offset",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "total",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "received"
+        },
+        "right": {
+          "k": "var",
+          "name": "offset"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "nat",
+            "value": "0"
+          },
+          "right": {
+            "k": "var",
+            "name": "bytes"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "var",
+              "name": "total"
+            },
+            "right": {
+              "k": "nat",
+              "value": "524288"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "binary",
+              "op": "+",
+              "left": {
+                "k": "var",
+                "name": "received"
+              },
+              "right": {
+                "k": "var",
+                "name": "bytes"
+              }
+            },
+            "right": {
+              "k": "var",
+              "name": "total"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.ChannelFlow.append": {
+    "module": "Stitch.ChannelFlow",
+    "name": "append",
+    "params": [
+      {
+        "name": "received",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "offset",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "total",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "appendAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "received"
+          },
+          {
+            "k": "var",
+            "name": "offset"
+          },
+          {
+            "k": "var",
+            "name": "bytes"
+          },
+          {
+            "k": "var",
+            "name": "total"
+          }
+        ]
+      },
+      "yes": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "var",
+          "name": "received"
+        },
+        "right": {
+          "k": "var",
+          "name": "bytes"
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "received"
+      }
+    }
+  },
   "Stitch.Compute.instructionAllowed": {
     "module": "Stitch.Compute",
     "name": "instructionAllowed",
@@ -24150,6 +24527,446 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Recovery.admitted": {
+    "module": "Stitch.Recovery",
+    "name": "admitted",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "verified",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "verified"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "current"
+            },
+            "field": "generation"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "generation"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "candidate"
+              },
+              "field": "wireBytes"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "bounds"
+              },
+              "field": "wireBytes"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "entries"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "bounds"
+                },
+                "field": "entries"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "replaySteps"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "bounds"
+                },
+                "field": "replaySteps"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Recovery.commit": {
+    "module": "Stitch.Recovery",
+    "name": "commit",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "verified",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "State"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "admitted",
+        "args": [
+          {
+            "k": "var",
+            "name": "bounds"
+          },
+          {
+            "k": "var",
+            "name": "current"
+          },
+          {
+            "k": "var",
+            "name": "candidate"
+          },
+          {
+            "k": "var",
+            "name": "verified"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "State",
+        "values": {
+          "root": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "root"
+          },
+          "generation": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "current"
+              },
+              "field": "generation"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "wireBytes": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "wireBytes"
+          },
+          "entries": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "entries"
+          },
+          "replaySteps": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "replaySteps"
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "current"
+      }
+    }
+  },
+  "Stitch.Recovery.anchorAllowed": {
+    "module": "Stitch.Recovery",
+    "name": "anchorAllowed",
+    "params": [
+      {
+        "name": "suppliedDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "expectedDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "validFrom",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "validUntil",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "retainedRevision",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "candidateRevision",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "sameRetained",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "prim",
+        "operation": "equal",
+        "args": [
+          {
+            "k": "var",
+            "name": "suppliedDigest"
+          },
+          {
+            "k": "var",
+            "name": "expectedDigest"
+          }
+        ],
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "var",
+            "name": "validFrom"
+          },
+          "right": {
+            "k": "var",
+            "name": "now"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "var",
+              "name": "now"
+            },
+            "right": {
+              "k": "var",
+              "name": "validUntil"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "var",
+                "name": "retainedRevision"
+              },
+              "right": {
+                "k": "var",
+                "name": "candidateRevision"
+              }
+            },
+            "right": {
+              "k": "var",
+              "name": "sameRetained"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Recovery.progressAllowed": {
+    "module": "Stitch.Recovery",
+    "name": "progressAllowed",
+    "params": [
+      {
+        "name": "retained",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "sameIdentity",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "linked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "sameIdentity"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "linked"
+        },
+        "right": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "var",
+            "name": "retained"
+          },
+          "right": {
+            "k": "var",
+            "name": "candidate"
+          }
+        }
+      }
+    }
+  },
   "Stitch.Relay.limits": {
     "module": "Stitch.Relay",
     "name": "limits",
@@ -28280,6 +29097,379 @@ const definitions = {
       }
     }
   },
+  "Stitch.VmAdministration.shareAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "shareAllowed",
+    "params": [
+      {
+        "name": "granted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "granted"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "current"
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "blocked"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.ethernetAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "ethernetAllowed",
+    "params": [
+      {
+        "name": "granted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "ready",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "open",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "valid",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "granted"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "ready"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "current"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "open"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "valid"
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "var",
+                  "name": "blocked"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.commandAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "commandAllowed",
+    "params": [
+      {
+        "name": "ready",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "capacity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "ready"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "busy"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "var",
+              "name": "blocked"
+            }
+          },
+          "right": {
+            "k": "var",
+            "name": "capacity"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.observationAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "observationAllowed",
+    "params": [
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "captured",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "sameInstance",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "dispatched",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "generation"
+        },
+        "right": {
+          "k": "var",
+          "name": "captured"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "sameInstance"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "dispatched"
+          },
+          "right": {
+            "k": "not",
+            "value": {
+              "k": "var",
+              "name": "blocked"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.administrationAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "administrationAllowed",
+    "params": [
+      {
+        "name": "instancePresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "instancePresent"
+      },
+      "right": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "busy"
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.forgetAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "forgetAllowed",
+    "params": [
+      {
+        "name": "present",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "resolved",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "present"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "resolved"
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "busy"
+          }
+        }
+      }
+    }
+  },
   "Product.Experience.initialFacts": {
     "module": "Product.Experience",
     "name": "initialFacts",
@@ -28291,6 +29481,66 @@ const definitions = {
       "k": "record",
       "name": "Facts",
       "values": {
+        "recoveryBusy": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryFileSelected": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasEvidence": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasObjects": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasAnchors": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryAnchorConsent": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryAcceptedAnchor": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanBoot": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanExecute": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanAdminister": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanCancelObservation": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanForgetCommand": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanReconcileCommand": {
+          "k": "bool",
+          "value": false
+        },
+        "vmAdminBlocked": {
+          "k": "bool",
+          "value": false
+        },
         "disclosureAccepted": {
           "k": "bool",
           "value": false
@@ -30047,6 +31297,424 @@ const definitions = {
       }
     }
   },
+  "Product.Experience.actionRecoveryExport": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryExport",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "16"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryExport"
+        },
+        "control": {
+          "k": "string",
+          "value": "exportRecoveryBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Export Live Evidence"
+        },
+        "help": {
+          "k": "string",
+          "value": "Export complete local objects, pure checkpoints and supplied pointer evidence; no keys."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecoveryImport": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryImport",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "17"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryImport"
+        },
+        "control": {
+          "k": "string",
+          "value": "importRecoveryBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Verify and Import Locally"
+        },
+        "help": {
+          "k": "string",
+          "value": "Validate the complete bounded file before committing session-only evidence; no host effects."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecoverySave": {
+    "module": "Product.Experience",
+    "name": "actionRecoverySave",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "18"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoverySave"
+        },
+        "control": {
+          "k": "string",
+          "value": "exportRecoveredBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Export Recovery Vault"
+        },
+        "help": {
+          "k": "string",
+          "value": "Save verified evidence externally; accepted trust is never transferred by a file."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecoveryDownload": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryDownload",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "19"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryDownload"
+        },
+        "control": {
+          "k": "string",
+          "value": "downloadRecoveredObjectBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Download Verified Object"
+        },
+        "help": {
+          "k": "string",
+          "value": "Download checked local bytes without mounting or publishing them."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecoveryFinish": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryFinish",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "20"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryFinish"
+        },
+        "control": {
+          "k": "string",
+          "value": "resumeRecoveredJobBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Finish Pure Job Locally"
+        },
+        "help": {
+          "k": "string",
+          "value": "Explicitly finish deterministic ring work only; no VM or external effects."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecoveryTrust": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryTrust",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "21"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryTrust"
+        },
+        "control": {
+          "k": "string",
+          "value": "acceptRecoveryAnchorBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Accept Exact Recent Anchor"
+        },
+        "help": {
+          "k": "string",
+          "value": "Requires independently obtained exact recent digest and writer key, current validity and explicit consent."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionVmStop": {
+    "module": "Product.Experience",
+    "name": "actionVmStop",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "22"
+        },
+        "id": {
+          "k": "string",
+          "value": "VmStop"
+        },
+        "control": {
+          "k": "string",
+          "value": "stopVmBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Stop VM"
+        },
+        "help": {
+          "k": "string",
+          "value": "Stop the current guest; an unconfirmed stop remains quarantined."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionVmDestroy": {
+    "module": "Product.Experience",
+    "name": "actionVmDestroy",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "23"
+        },
+        "id": {
+          "k": "string",
+          "value": "VmDestroy"
+        },
+        "control": {
+          "k": "string",
+          "value": "destroyVmBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Destroy VM"
+        },
+        "help": {
+          "k": "string",
+          "value": "Destroy the guest instance, revoke its grants and refuse stale callbacks."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionVmCancel": {
+    "module": "Product.Experience",
+    "name": "actionVmCancel",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "24"
+        },
+        "id": {
+          "k": "string",
+          "value": "VmCancel"
+        },
+        "control": {
+          "k": "string",
+          "value": "cancelVmObservationBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Cancel Command Wait"
+        },
+        "help": {
+          "k": "string",
+          "value": "Stop observing, not the guest command; dispatched effects remain unknown."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionVmReconcile": {
+    "module": "Product.Experience",
+    "name": "actionVmReconcile",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "25"
+        },
+        "id": {
+          "k": "string",
+          "value": "VmReconcile"
+        },
+        "control": {
+          "k": "string",
+          "value": "reconcileVmCommandBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Observe Last Command Result"
+        },
+        "help": {
+          "k": "string",
+          "value": "Observe the same command result without executing the command again."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionVmForget": {
+    "module": "Product.Experience",
+    "name": "actionVmForget",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "26"
+        },
+        "id": {
+          "k": "string",
+          "value": "VmForget"
+        },
+        "control": {
+          "k": "string",
+          "value": "forgetVmCommandBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Forget Resolved Command Evidence"
+        },
+        "help": {
+          "k": "string",
+          "value": "Free retained host command output only when resolved. Unknown effects stay retained; guest files are unchanged."
+        }
+      }
+    }
+  },
   "Product.Experience.actions": {
     "module": "Product.Experience",
     "name": "actions",
@@ -30170,9 +31838,97 @@ const definitions = {
                                       "args": []
                                     },
                                     "tail": {
-                                      "k": "nil",
-                                      "type": {
-                                        "kind": "Action"
+                                      "k": "cons",
+                                      "head": {
+                                        "k": "call",
+                                        "name": "actionRecoveryExport",
+                                        "args": []
+                                      },
+                                      "tail": {
+                                        "k": "cons",
+                                        "head": {
+                                          "k": "call",
+                                          "name": "actionRecoveryImport",
+                                          "args": []
+                                        },
+                                        "tail": {
+                                          "k": "cons",
+                                          "head": {
+                                            "k": "call",
+                                            "name": "actionRecoverySave",
+                                            "args": []
+                                          },
+                                          "tail": {
+                                            "k": "cons",
+                                            "head": {
+                                              "k": "call",
+                                              "name": "actionRecoveryDownload",
+                                              "args": []
+                                            },
+                                            "tail": {
+                                              "k": "cons",
+                                              "head": {
+                                                "k": "call",
+                                                "name": "actionRecoveryFinish",
+                                                "args": []
+                                              },
+                                              "tail": {
+                                                "k": "cons",
+                                                "head": {
+                                                  "k": "call",
+                                                  "name": "actionRecoveryTrust",
+                                                  "args": []
+                                                },
+                                                "tail": {
+                                                  "k": "cons",
+                                                  "head": {
+                                                    "k": "call",
+                                                    "name": "actionVmStop",
+                                                    "args": []
+                                                  },
+                                                  "tail": {
+                                                    "k": "cons",
+                                                    "head": {
+                                                      "k": "call",
+                                                      "name": "actionVmDestroy",
+                                                      "args": []
+                                                    },
+                                                    "tail": {
+                                                      "k": "cons",
+                                                      "head": {
+                                                        "k": "call",
+                                                        "name": "actionVmCancel",
+                                                        "args": []
+                                                      },
+                                                      "tail": {
+                                                        "k": "cons",
+                                                        "head": {
+                                                          "k": "call",
+                                                          "name": "actionVmReconcile",
+                                                          "args": []
+                                                        },
+                                                        "tail": {
+                                                          "k": "cons",
+                                                          "head": {
+                                                            "k": "call",
+                                                            "name": "actionVmForget",
+                                                            "args": []
+                                                          },
+                                                          "tail": {
+                                                            "k": "nil",
+                                                            "type": {
+                                                              "kind": "Action"
+                                                            }
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
                                       }
                                     }
                                   }
@@ -30187,6 +31943,244 @@ const definitions = {
                 }
               }
             }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryEmpty": {
+    "module": "Product.Experience",
+    "name": "recoveryEmpty",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "recoveryEmpty"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "No imported recovery evidence"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NO RESTORE EVIDENCE"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Export complete live evidence before losing RAM, or choose a retained file. No recovery can survive loss of every required byte."
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryChecking": {
+    "module": "Product.Experience",
+    "name": "recoveryChecking",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "recoveryChecking"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Checking recovery evidence"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NOT YET COMMITTED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The candidate is being validated. Existing evidence remains unchanged until the complete bounded operation commits."
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryChecked": {
+    "module": "Product.Experience",
+    "name": "recoveryChecked",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "recoveryChecked"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Recovery evidence checked locally"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "SESSION-ONLY VERIFIED EVIDENCE"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Download restored objects or explicitly finish pure jobs. Imported pointer anchors remain untrusted; no mesh, VM or DNS effects ran."
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryTrusted": {
+    "module": "Product.Experience",
+    "name": "recoveryTrusted",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "recoveryTrusted"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Exact anchor accepted locally"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "OPERATOR-ACCEPTED RECENT ANCHOR"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The operator accepted an independently obtained exact digest and writer. This is not global latest-state evidence or durable authority recovery."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmQuarantined": {
+    "module": "Product.Experience",
+    "name": "vmQuarantined",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmQuarantined"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "Guest administration unresolved"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST OUTCOME UNKNOWN"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The guest instance is quarantined. Stop or destroy it explicitly; do not repeat an unknown command or boot another instance."
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryView": {
+    "module": "Product.Experience",
+    "name": "recoveryView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "recoveryBusy"
+      },
+      "yes": {
+        "k": "call",
+        "name": "recoveryChecking",
+        "args": []
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "recoveryAcceptedAnchor"
+        },
+        "yes": {
+          "k": "call",
+          "name": "recoveryTrusted",
+          "args": []
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "recoveryHasEvidence"
+          },
+          "yes": {
+            "k": "call",
+            "name": "recoveryChecked",
+            "args": []
+          },
+          "no": {
+            "k": "call",
+            "name": "recoveryEmpty",
+            "args": []
           }
         }
       }
@@ -30418,11 +32412,11 @@ const definitions = {
           "k": "var",
           "name": "facts"
         },
-        "field": "vmBooting"
+        "field": "vmAdminBlocked"
       },
       "yes": {
         "k": "call",
-        "name": "vmBooting",
+        "name": "vmQuarantined",
         "args": []
       },
       "no": {
@@ -30433,11 +32427,11 @@ const definitions = {
             "k": "var",
             "name": "facts"
           },
-          "field": "vmReady"
+          "field": "vmBooting"
         },
         "yes": {
           "k": "call",
-          "name": "vmReady",
+          "name": "vmBooting",
           "args": []
         },
         "no": {
@@ -30448,17 +32442,33 @@ const definitions = {
               "k": "var",
               "name": "facts"
             },
-            "field": "vmFailed"
+            "field": "vmReady"
           },
           "yes": {
             "k": "call",
-            "name": "vmFailed",
+            "name": "vmReady",
             "args": []
           },
           "no": {
-            "k": "call",
-            "name": "vmIdle",
-            "args": []
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "vmFailed"
+            },
+            "yes": {
+              "k": "call",
+              "name": "vmFailed",
+              "args": []
+            },
+            "no": {
+              "k": "call",
+              "name": "vmIdle",
+              "args": []
+            }
           }
         }
       }
@@ -31105,25 +33115,37 @@ const definitions = {
                     "k": "binary",
                     "op": "&&",
                     "left": {
-                      "k": "not",
+                      "k": "project",
                       "value": {
-                        "k": "project",
-                        "value": {
-                          "k": "var",
-                          "name": "facts"
-                        },
-                        "field": "vmReady"
-                      }
+                        "k": "var",
+                        "name": "facts"
+                      },
+                      "field": "vmCanBoot"
                     },
                     "right": {
-                      "k": "not",
-                      "value": {
-                        "k": "project",
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "not",
                         "value": {
-                          "k": "var",
-                          "name": "facts"
-                        },
-                        "field": "vmBooting"
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "vmReady"
+                        }
+                      },
+                      "right": {
+                        "k": "not",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "vmBooting"
+                        }
                       }
                     }
                   },
@@ -31142,26 +33164,38 @@ const definitions = {
                       }
                     },
                     "yes": {
-                      "k": "call",
-                      "name": "executionAllowed",
-                      "args": [
-                        {
-                          "k": "project",
-                          "value": {
-                            "k": "var",
-                            "name": "facts"
-                          },
-                          "field": "vmReady"
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
                         },
-                        {
-                          "k": "project",
-                          "value": {
-                            "k": "var",
-                            "name": "facts"
+                        "field": "vmCanExecute"
+                      },
+                      "right": {
+                        "k": "call",
+                        "name": "executionAllowed",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "facts"
+                            },
+                            "field": "vmReady"
                           },
-                          "field": "policyBlocked"
-                        }
-                      ]
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "facts"
+                            },
+                            "field": "policyBlocked"
+                          }
+                        ]
+                      }
                     },
                     "no": {
                       "k": "if",
@@ -31437,8 +33471,387 @@ const definitions = {
                                       "value": true
                                     },
                                     "no": {
-                                      "k": "bool",
-                                      "value": false
+                                      "k": "if",
+                                      "cond": {
+                                        "k": "binary",
+                                        "op": "=?",
+                                        "left": {
+                                          "k": "var",
+                                          "name": "action"
+                                        },
+                                        "right": {
+                                          "k": "nat",
+                                          "value": "16"
+                                        }
+                                      },
+                                      "yes": {
+                                        "k": "binary",
+                                        "op": "&&",
+                                        "left": {
+                                          "k": "not",
+                                          "value": {
+                                            "k": "project",
+                                            "value": {
+                                              "k": "var",
+                                              "name": "facts"
+                                            },
+                                            "field": "recoveryBusy"
+                                          }
+                                        },
+                                        "right": {
+                                          "k": "binary",
+                                          "op": "||",
+                                          "left": {
+                                            "k": "project",
+                                            "value": {
+                                              "k": "var",
+                                              "name": "facts"
+                                            },
+                                            "field": "hasObject"
+                                          },
+                                          "right": {
+                                            "k": "binary",
+                                            "op": "||",
+                                            "left": {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "facts"
+                                              },
+                                              "field": "hasJobs"
+                                            },
+                                            "right": {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "facts"
+                                              },
+                                              "field": "headRetained"
+                                            }
+                                          }
+                                        }
+                                      },
+                                      "no": {
+                                        "k": "if",
+                                        "cond": {
+                                          "k": "binary",
+                                          "op": "=?",
+                                          "left": {
+                                            "k": "var",
+                                            "name": "action"
+                                          },
+                                          "right": {
+                                            "k": "nat",
+                                            "value": "17"
+                                          }
+                                        },
+                                        "yes": {
+                                          "k": "binary",
+                                          "op": "&&",
+                                          "left": {
+                                            "k": "not",
+                                            "value": {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "facts"
+                                              },
+                                              "field": "recoveryBusy"
+                                            }
+                                          },
+                                          "right": {
+                                            "k": "project",
+                                            "value": {
+                                              "k": "var",
+                                              "name": "facts"
+                                            },
+                                            "field": "recoveryFileSelected"
+                                          }
+                                        },
+                                        "no": {
+                                          "k": "if",
+                                          "cond": {
+                                            "k": "binary",
+                                            "op": "=?",
+                                            "left": {
+                                              "k": "var",
+                                              "name": "action"
+                                            },
+                                            "right": {
+                                              "k": "nat",
+                                              "value": "18"
+                                            }
+                                          },
+                                          "yes": {
+                                            "k": "binary",
+                                            "op": "&&",
+                                            "left": {
+                                              "k": "not",
+                                              "value": {
+                                                "k": "project",
+                                                "value": {
+                                                  "k": "var",
+                                                  "name": "facts"
+                                                },
+                                                "field": "recoveryBusy"
+                                              }
+                                            },
+                                            "right": {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "facts"
+                                              },
+                                              "field": "recoveryHasEvidence"
+                                            }
+                                          },
+                                          "no": {
+                                            "k": "if",
+                                            "cond": {
+                                              "k": "binary",
+                                              "op": "=?",
+                                              "left": {
+                                                "k": "var",
+                                                "name": "action"
+                                              },
+                                              "right": {
+                                                "k": "nat",
+                                                "value": "19"
+                                              }
+                                            },
+                                            "yes": {
+                                              "k": "binary",
+                                              "op": "&&",
+                                              "left": {
+                                                "k": "not",
+                                                "value": {
+                                                  "k": "project",
+                                                  "value": {
+                                                    "k": "var",
+                                                    "name": "facts"
+                                                  },
+                                                  "field": "recoveryBusy"
+                                                }
+                                              },
+                                              "right": {
+                                                "k": "project",
+                                                "value": {
+                                                  "k": "var",
+                                                  "name": "facts"
+                                                },
+                                                "field": "recoveryHasObjects"
+                                              }
+                                            },
+                                            "no": {
+                                              "k": "if",
+                                              "cond": {
+                                                "k": "binary",
+                                                "op": "=?",
+                                                "left": {
+                                                  "k": "var",
+                                                  "name": "action"
+                                                },
+                                                "right": {
+                                                  "k": "nat",
+                                                  "value": "20"
+                                                }
+                                              },
+                                              "yes": {
+                                                "k": "binary",
+                                                "op": "&&",
+                                                "left": {
+                                                  "k": "not",
+                                                  "value": {
+                                                    "k": "project",
+                                                    "value": {
+                                                      "k": "var",
+                                                      "name": "facts"
+                                                    },
+                                                    "field": "recoveryBusy"
+                                                  }
+                                                },
+                                                "right": {
+                                                  "k": "project",
+                                                  "value": {
+                                                    "k": "var",
+                                                    "name": "facts"
+                                                  },
+                                                  "field": "recoveryHasJobs"
+                                                }
+                                              },
+                                              "no": {
+                                                "k": "if",
+                                                "cond": {
+                                                  "k": "binary",
+                                                  "op": "=?",
+                                                  "left": {
+                                                    "k": "var",
+                                                    "name": "action"
+                                                  },
+                                                  "right": {
+                                                    "k": "nat",
+                                                    "value": "21"
+                                                  }
+                                                },
+                                                "yes": {
+                                                  "k": "binary",
+                                                  "op": "&&",
+                                                  "left": {
+                                                    "k": "not",
+                                                    "value": {
+                                                      "k": "project",
+                                                      "value": {
+                                                        "k": "var",
+                                                        "name": "facts"
+                                                      },
+                                                      "field": "recoveryBusy"
+                                                    }
+                                                  },
+                                                  "right": {
+                                                    "k": "binary",
+                                                    "op": "&&",
+                                                    "left": {
+                                                      "k": "project",
+                                                      "value": {
+                                                        "k": "var",
+                                                        "name": "facts"
+                                                      },
+                                                      "field": "recoveryHasAnchors"
+                                                    },
+                                                    "right": {
+                                                      "k": "project",
+                                                      "value": {
+                                                        "k": "var",
+                                                        "name": "facts"
+                                                      },
+                                                      "field": "recoveryAnchorConsent"
+                                                    }
+                                                  }
+                                                },
+                                                "no": {
+                                                  "k": "if",
+                                                  "cond": {
+                                                    "k": "binary",
+                                                    "op": "=?",
+                                                    "left": {
+                                                      "k": "var",
+                                                      "name": "action"
+                                                    },
+                                                    "right": {
+                                                      "k": "nat",
+                                                      "value": "22"
+                                                    }
+                                                  },
+                                                  "yes": {
+                                                    "k": "project",
+                                                    "value": {
+                                                      "k": "var",
+                                                      "name": "facts"
+                                                    },
+                                                    "field": "vmCanAdminister"
+                                                  },
+                                                  "no": {
+                                                    "k": "if",
+                                                    "cond": {
+                                                      "k": "binary",
+                                                      "op": "=?",
+                                                      "left": {
+                                                        "k": "var",
+                                                        "name": "action"
+                                                      },
+                                                      "right": {
+                                                        "k": "nat",
+                                                        "value": "23"
+                                                      }
+                                                    },
+                                                    "yes": {
+                                                      "k": "project",
+                                                      "value": {
+                                                        "k": "var",
+                                                        "name": "facts"
+                                                      },
+                                                      "field": "vmCanAdminister"
+                                                    },
+                                                    "no": {
+                                                      "k": "if",
+                                                      "cond": {
+                                                        "k": "binary",
+                                                        "op": "=?",
+                                                        "left": {
+                                                          "k": "var",
+                                                          "name": "action"
+                                                        },
+                                                        "right": {
+                                                          "k": "nat",
+                                                          "value": "24"
+                                                        }
+                                                      },
+                                                      "yes": {
+                                                        "k": "project",
+                                                        "value": {
+                                                          "k": "var",
+                                                          "name": "facts"
+                                                        },
+                                                        "field": "vmCanCancelObservation"
+                                                      },
+                                                      "no": {
+                                                        "k": "if",
+                                                        "cond": {
+                                                          "k": "binary",
+                                                          "op": "=?",
+                                                          "left": {
+                                                            "k": "var",
+                                                            "name": "action"
+                                                          },
+                                                          "right": {
+                                                            "k": "nat",
+                                                            "value": "25"
+                                                          }
+                                                        },
+                                                        "yes": {
+                                                          "k": "project",
+                                                          "value": {
+                                                            "k": "var",
+                                                            "name": "facts"
+                                                          },
+                                                          "field": "vmCanReconcileCommand"
+                                                        },
+                                                        "no": {
+                                                          "k": "if",
+                                                          "cond": {
+                                                            "k": "binary",
+                                                            "op": "=?",
+                                                            "left": {
+                                                              "k": "var",
+                                                              "name": "action"
+                                                            },
+                                                            "right": {
+                                                              "k": "nat",
+                                                              "value": "26"
+                                                            }
+                                                          },
+                                                          "yes": {
+                                                            "k": "project",
+                                                            "value": {
+                                                              "k": "var",
+                                                              "name": "facts"
+                                                            },
+                                                            "field": "vmCanForgetCommand"
+                                                          },
+                                                          "no": {
+                                                            "k": "bool",
+                                                            "value": false
+                                                          }
+                                                        }
+                                                      }
+                                                    }
+                                                  }
+                                                }
+                                              }
+                                            }
+                                          }
+                                        }
+                                      }
                                     }
                                   }
                                 }
@@ -31576,6 +33989,66 @@ const definitions = {
       "k": "record",
       "name": "Facts",
       "values": {
+        "recoveryBusy": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryFileSelected": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasEvidence": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasObjects": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryHasAnchors": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryAnchorConsent": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryAcceptedAnchor": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanBoot": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanExecute": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanAdminister": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanCancelObservation": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanForgetCommand": {
+          "k": "bool",
+          "value": false
+        },
+        "vmCanReconcileCommand": {
+          "k": "bool",
+          "value": false
+        },
+        "vmAdminBlocked": {
+          "k": "bool",
+          "value": false
+        },
         "disclosureAccepted": {
           "k": "bool",
           "value": false
@@ -34634,6 +37107,70 @@ const types = {
       }
     ]
   },
+  "Stitch.Recovery.Limits": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "wireBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "entries",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "objectBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "replaySteps",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Recovery.State": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "root",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "wireBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "entries",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "replaySteps",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
   "Stitch.Relay.Limits": {
     "kind": "structure",
     "fields": [
@@ -35002,6 +37539,96 @@ const types = {
     "kind": "structure",
     "fields": [
       {
+        "name": "recoveryBusy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryFileSelected",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryHasEvidence",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryHasObjects",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryHasJobs",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryHasAnchors",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryAnchorConsent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryAcceptedAnchor",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanBoot",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanExecute",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanAdminister",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanCancelObservation",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanForgetCommand",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmCanReconcileCommand",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmAdminBlocked",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
         "name": "disclosureAccepted",
         "type": {
           "kind": "Bool"
@@ -35252,13 +37879,13 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:04c94807cd975660d4fce50e6e4e9e9a7c4f00ba73275b72091191f4970ef9a7";
-export const modelExecutionDigest = "sha256:ecc091631fc927eb537b65f7ec6c57deaf65be4263e4b5734ad9272c4f898c10";
+export const modelSourceDigest = "sha256:409419a81ccd90d64737adc46522e75e70317853f24c5bbb7c096175b2f9ba03";
+export const modelExecutionDigest = "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:04c94807cd975660d4fce50e6e4e9e9a7c4f00ba73275b72091191f4970ef9a7",
-  "executionDigest": "sha256:ecc091631fc927eb537b65f7ec6c57deaf65be4263e4b5734ad9272c4f898c10",
+  "sourceDigest": "sha256:409419a81ccd90d64737adc46522e75e70317853f24c5bbb7c096175b2f9ba03",
+  "executionDigest": "sha256:1628388397b4c46f9375f27a18a0a336224f5392d944ebe0be89a9324beb9acc",
   "executionIdentity": {
     "adapterSources": [
       {
@@ -35267,7 +37894,7 @@ export const MODEL_SOURCE = Object.freeze({
       },
       {
         "path": "src/layer1-uor/custody.js",
-        "sha256": "ea422b9fe6422ff95ea2759616bf048e9480a65396a7747b379b0951fee7e6ec"
+        "sha256": "597b34d6740b6b371e30af24ee18cd10f8c4142da38e616b9ec5e04d042ab74c"
       },
       {
         "path": "src/layer1-uor/index.js",
@@ -36519,7 +39146,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -36527,11 +39154,15 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "6adf8c24a0ec7a678e4cece4009b0067aa60f5fb045ac367fe459a8d5ee45ad5"
+      "sha256": "cec7acba23cff425cb45ab21fb609f15e63fc5a517b92551c1edc2b524d193ef"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
       "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
@@ -36570,12 +39201,20 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
       "path": "app/src/Stitch/Relay.lex.tex",
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
@@ -36716,6 +39355,10 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
     },
     {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
+    },
+    {
       "path": "app/src/Stitch/Compute.lex.tex",
       "sha256": "fd6d51e797ffcf5d230842046d398e03b8e1da3c4b23233bc746f9d12fc500bc"
     },
@@ -36752,6 +39395,10 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
       "path": "app/src/Stitch/Relay.lex.tex",
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
@@ -36760,8 +39407,12 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+    },
+    {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
     }
   ],
   "theorems": [
@@ -37354,6 +40005,12 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.ChannelFlow.staleCannotSend",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/ChannelFlow.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Compute.semanticTamperingRefused",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Compute.lex.tex",
@@ -37858,6 +40515,30 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Recovery.rollbackProgressRefused",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Recovery.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Recovery.unverifiedImportPreservesState",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Recovery.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Recovery.acceptedCandidateWithinBounds",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Recovery.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Recovery.staleGenerationRefused",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Recovery.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Relay.duplicateDoesNotAdvanceAssembly",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Relay.lex.tex",
@@ -38122,12 +40803,23 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.actionPublish",
     "Product.Experience.actionReconcile",
     "Product.Experience.actionRecover",
+    "Product.Experience.actionRecoveryDownload",
+    "Product.Experience.actionRecoveryExport",
+    "Product.Experience.actionRecoveryFinish",
+    "Product.Experience.actionRecoveryImport",
+    "Product.Experience.actionRecoverySave",
+    "Product.Experience.actionRecoveryTrust",
     "Product.Experience.actionRenew",
     "Product.Experience.actionResume",
     "Product.Experience.actionSrv",
     "Product.Experience.actionStart",
     "Product.Experience.actionStore",
     "Product.Experience.actionTxt",
+    "Product.Experience.actionVmCancel",
+    "Product.Experience.actionVmDestroy",
+    "Product.Experience.actionVmForget",
+    "Product.Experience.actionVmReconcile",
+    "Product.Experience.actionVmStop",
     "Product.Experience.actions",
     "Product.Experience.admissionInputVisible",
     "Product.Experience.computeDone",
@@ -38178,8 +40870,13 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.publicationSetupInitiallyOpen",
     "Product.Experience.publicationSetupVisible",
     "Product.Experience.reconciliationAllowed",
+    "Product.Experience.recoveryChecked",
+    "Product.Experience.recoveryChecking",
+    "Product.Experience.recoveryEmpty",
     "Product.Experience.recoveryPolicyLabel",
     "Product.Experience.recoveryPolicyVisible",
+    "Product.Experience.recoveryTrusted",
+    "Product.Experience.recoveryView",
     "Product.Experience.relayLabel",
     "Product.Experience.resourcesActive",
     "Product.Experience.resourcesBlocked",
@@ -38191,6 +40888,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.vmCommandVisible",
     "Product.Experience.vmFailed",
     "Product.Experience.vmIdle",
+    "Product.Experience.vmQuarantined",
     "Product.Experience.vmReady",
     "Product.Experience.vmView",
     "Stitch.Budget.addResources",
@@ -38245,6 +40943,10 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Budget.spentTotal",
     "Stitch.Budget.updateSettlementRecord",
     "Stitch.Budget.zeroResources",
+    "Stitch.ChannelFlow.append",
+    "Stitch.ChannelFlow.appendAllowed",
+    "Stitch.ChannelFlow.queueAllowed",
+    "Stitch.ChannelFlow.sendAllowed",
     "Stitch.Compute.advanceCheckpoint",
     "Stitch.Compute.appendProgram",
     "Stitch.Compute.checkpointCommitted",
@@ -38390,6 +41092,10 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Observation.updateObservation",
     "Stitch.Pointer.acceptPointer",
     "Stitch.Pointer.successorAllowed",
+    "Stitch.Recovery.admitted",
+    "Stitch.Recovery.anchorAllowed",
+    "Stitch.Recovery.commit",
+    "Stitch.Recovery.progressAllowed",
     "Stitch.Relay.admissionAllowed",
     "Stitch.Relay.admitCapacity",
     "Stitch.Relay.append",
@@ -38423,7 +41129,13 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.System.settleAction",
     "Stitch.System.settleActionAllowed",
     "Stitch.System.valid",
-    "Stitch.System.validAt"
+    "Stitch.System.validAt",
+    "Stitch.VmAdministration.administrationAllowed",
+    "Stitch.VmAdministration.commandAllowed",
+    "Stitch.VmAdministration.ethernetAllowed",
+    "Stitch.VmAdministration.forgetAllowed",
+    "Stitch.VmAdministration.observationAllowed",
+    "Stitch.VmAdministration.shareAllowed"
   ],
   "aliases": {
     "budgetReserveAllowed": "Stitch.Budget.reserveAllowed",

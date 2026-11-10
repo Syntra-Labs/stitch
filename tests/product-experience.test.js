@@ -38,7 +38,9 @@ test('actual browser controls, journey targets and source provenance cover proje
   }
   for (const action of operatorActions) {
     assert.ok(html.includes(`id="${action.control}"`), action.control);
-    assert.ok(html.includes(`bindModelAction('${action.control}',`), action.control);
+    const recoveryAdapter = readFileSync(resolve(root, 'src/recovery-ui.js'), 'utf8');
+    assert.ok(html.includes(`bindModelAction('${action.control}',`) ||
+      (recoveryAdapter.includes(`bind('${action.control}',`) && recoveryAdapter.includes('bindModelAction(id,')), action.control);
   }
   const digest = createHash('sha256').update(readFileSync(resolve(root, experienceProvenance.source))).digest('hex');
   assert.equal(experienceProvenance.sourceSha256, digest);
@@ -153,4 +155,21 @@ test('Experience source edits change the real generated semantic projection and 
     const facts = changed.model['Product.Experience.initialFacts'](); facts.disclosureAccepted = true;
     assert.equal(changed.model['Product.Experience.actionAllowed'](0, facts), false);
   } finally { rmSync(temporary, { recursive: true, force: true }); }
+});
+
+test('recovery and guest administration context is source-owned and refuses inappropriate actions', () => {
+  const base = experienceFacts();
+  assert.equal(experienceView('recovery', base).id, 'recoveryEmpty');
+  assert.equal(experienceView('recovery', { ...base, recoveryBusy: true }).id, 'recoveryChecking');
+  assert.equal(experienceView('recovery', { ...base, recoveryHasEvidence: true }).id, 'recoveryChecked');
+  assert.equal(experienceView('recovery', { ...base, recoveryAcceptedAnchor: true }).id, 'recoveryTrusted');
+  assert.equal(experienceActionAllowed('importRecoveryBtn', base), false);
+  assert.equal(experienceActionAllowed('importRecoveryBtn', { ...base, recoveryFileSelected: true }), true);
+  assert.equal(experienceActionAllowed('importRecoveryBtn', { ...base, recoveryFileSelected: true, recoveryBusy: true }), false);
+  assert.equal(experienceActionAllowed('acceptRecoveryAnchorBtn', { ...base, recoveryHasAnchors: true }), false);
+  assert.equal(experienceActionAllowed('acceptRecoveryAnchorBtn', { ...base, recoveryHasAnchors: true, recoveryAnchorConsent: true }), true);
+  assert.equal(experienceView('vm', { ...base, vmAdminBlocked: true }).id, 'vmQuarantined');
+  assert.equal(experienceActionAllowed('stopVmBtn', { ...base, vmCanAdminister: true, vmAdminBlocked: true }), true);
+  assert.equal(experienceActionAllowed('bootVmBtn', { ...base, vmAdminBlocked: true }), false);
+  assert.equal(experienceActionAllowed('reconcileVmCommandBtn', { ...base, vmCanReconcileCommand: true }), true);
 });

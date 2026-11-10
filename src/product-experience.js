@@ -101,6 +101,8 @@ export function createOperatorExperience({ document, snapshot, onRefused = () =>
           project('actionAllowed', a.code, observation)).map(a => a.label).join(' · ') || view.detail;
       }
     }
+    const recovery = project('recoveryView', observation);
+    get('recoveryEvidence').textContent = `${recovery.title}. ${recovery.evidence}. ${recovery.detail}`;
     get('reviewResourcePolicyBtn').hidden = !project('recoveryPolicyVisible', observation);
     get('pointerPublicationSetup').hidden = !project('publicationSetupVisible', observation);
     get('pointerAdmissionControls').hidden = !project('admissionInputVisible', observation);

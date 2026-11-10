@@ -72,18 +72,26 @@ function validString(value, maxLength = CUSTODY_LIMITS.maxStringLength) {
  * The caller must supply an already valid value; use parseCanonicalJson on wire JSON
  * so duplicate properties are rejected before a normal JSON parser can erase them.
  */
-export function canonicalBytes(value) {
+export function canonicalBytes(value, {
+  maxBytes = CUSTODY_LIMITS.maxCanonicalBytes,
+  maxDepth = CUSTODY_LIMITS.maxDepth,
+  maxEntries = CUSTODY_LIMITS.maxEntries,
+  maxStringLength = CUSTODY_LIMITS.maxStringLength,
+} = {}) {
+  for (const limit of [maxBytes, maxDepth, maxEntries, maxStringLength]) {
+    if (!Number.isSafeInteger(limit) || limit < 0) fail('SizeLimit', 'Invalid JSON resource bound');
+  }
   const seen = new Set();
   let entries = 0;
   let outputLength = 0;
   const append = value => {
     outputLength += value.length;
-    if (outputLength > CUSTODY_LIMITS.maxCanonicalBytes) fail('SizeLimit', 'Canonical record too large');
+    if (outputLength > maxBytes) fail('SizeLimit', 'Canonical record too large');
     return value;
   };
   function encode(v, depth) {
-    if (depth > CUSTODY_LIMITS.maxDepth) fail('SizeLimit', 'Canonical record too deep');
-    if (++entries > CUSTODY_LIMITS.maxEntries) fail('SizeLimit', 'Too many canonical values');
+    if (depth > maxDepth) fail('SizeLimit', 'Canonical record too deep');
+    if (++entries > maxEntries) fail('SizeLimit', 'Too many canonical values');
     if (v === null) return append('null');
     if (typeof v === 'boolean') return append(v ? 'true' : 'false');
     if (typeof v === 'number') {
@@ -91,7 +99,7 @@ export function canonicalBytes(value) {
       return append(JSON.stringify(v));
     }
     if (typeof v === 'string') {
-      validString(v);
+      validString(v, maxStringLength);
       return append(JSON.stringify(v));
     }
     if (typeof v !== 'object' || seen.has(v)) fail('InvalidCanonicalValue', 'Non-JSON value or cycle');
@@ -102,7 +110,7 @@ export function canonicalBytes(value) {
     }
     const keys = Reflect.ownKeys(v);
     // Check count before enumerating or allocating any output for a large array.
-    if (keys.length > CUSTODY_LIMITS.maxEntries + (array ? 1 : 0)) fail('SizeLimit', 'Too many keys');
+    if (keys.length > maxEntries + (array ? 1 : 0)) fail('SizeLimit', 'Too many keys');
     if (keys.some(k => typeof k !== 'string')) fail('InvalidCanonicalValue', 'Symbol key');
     const descriptors = Object.getOwnPropertyDescriptors(v);
     for (const key of keys) {
@@ -114,7 +122,7 @@ export function canonicalBytes(value) {
     seen.add(v);
     let result;
     if (array) {
-      if (v.length > CUSTODY_LIMITS.maxEntries || keys.length !== v.length + 1) {
+      if (v.length > maxEntries || keys.length !== v.length + 1) {
         fail('InvalidCanonicalValue', 'Sparse or extended array');
       }
       const items = [];
@@ -127,7 +135,7 @@ export function canonicalBytes(value) {
     } else {
       const items = [];
       for (const key of keys.sort()) {
-        validString(key);
+        validString(key, maxStringLength);
         const name = append(JSON.stringify(key));
         items.push(name + append(':') + encode(descriptors[key].value, depth + 1));
       }
@@ -138,7 +146,7 @@ export function canonicalBytes(value) {
     return result;
   }
   const result = utf8.encode(encode(value, 0));
-  if (result.length > CUSTODY_LIMITS.maxCanonicalBytes) fail('SizeLimit', 'Canonical UTF-8 record too large');
+  if (result.length > maxBytes) fail('SizeLimit', 'Canonical UTF-8 record too large');
   return result;
 }
 

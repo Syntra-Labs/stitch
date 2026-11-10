@@ -57,10 +57,12 @@
       "role": "Interactive five-layer Stitch product",
       "implementation": [
         "index.html",
-        "src/product-experience.js"
+        "src/product-experience.js",
+        "src/recovery-ui.js"
       ],
       "models": [
         "Product.Experience",
+        "Stitch.Recovery",
         "Product.Host",
         "Product.Model"
       ],
@@ -241,11 +243,13 @@
       "role": "Ephemeral local cache and conditional peer custody",
       "implementation": [
         "src/layer3-storage/custody.js",
-        "src/layer3-storage/index.js"
+        "src/layer3-storage/index.js",
+        "src/recovery.js"
       ],
       "models": [
         "Stitch.Custody",
-        "Stitch.System"
+        "Stitch.System",
+        "Stitch.Recovery"
       ],
       "trustBoundary": false
     },
@@ -255,10 +259,12 @@
       "id": "transport",
       "role": "WebRTC channels, bounded messages and VM Ethernet bridge",
       "implementation": [
-        "src/layer5-transport/index.js"
+        "src/layer5-transport/index.js",
+        "src/layer5-transport/channel-flow.js"
       ],
       "models": [
         "Stitch.Observation",
+        "Stitch.ChannelFlow",
         "Product.Host"
       ],
       "trustBoundary": true
@@ -270,6 +276,7 @@
       "role": "v86 x86 Linux guest and 9p filesystem bridge",
       "implementation": [
         "src/layer4-compute/index.js",
+        "src/layer4-compute/vm-administration.js",
         "v86/libv86.js",
         "v86/v86.wasm",
         "v86/seabios.bin",
@@ -277,7 +284,8 @@
         "images/buildroot-bzimage.bin"
       ],
       "models": [
-        "Product.Host"
+        "Product.Host",
+        "Stitch.VmAdministration"
       ],
       "trustBoundary": true
     }
@@ -997,8 +1005,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 53284,
-      "sha256": "5a9bf29d9cc82b1c9c90fff221e2d84581bb451ae8e7d623b848e3fbe4712b3c"
+      "bytes": 59874,
+      "sha256": "88becaa2ca789944edb772587228741704726a84f0b99b54ebad3e01293a506d"
     },
     {
       "declaration": "assetFile1",
@@ -1019,8 +1027,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 16574,
-      "sha256": "ea422b9fe6422ff95ea2759616bf048e9480a65396a7747b379b0951fee7e6ec"
+      "bytes": 16869,
+      "sha256": "597b34d6740b6b371e30af24ee18cd10f8c4142da38e616b9ec5e04d042ab74c"
     },
     {
       "declaration": "assetLifecycleEffects",
@@ -1041,8 +1049,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 948569,
-      "sha256": "c52eef6dde168f83baa93947735fd033079619dedab10fe4cad83bbf51d74f50"
+      "bytes": 1024906,
+      "sha256": "beafbae848403bf04df2032fd13ad05f2382ff0d95481ee29e72494cda244ea0"
     },
     {
       "declaration": "assetFile4",
@@ -1118,8 +1126,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 24484,
-      "sha256": "d9408fd913fcadca1f20621501bb4e632c443977b933ad6062620e75ee7edecd"
+      "bytes": 31833,
+      "sha256": "6aa43a18eccff26ebf58fc05d7bc524c64b793098ff10d6f8557722e82b08658"
     },
     {
       "declaration": "assetFile11",
@@ -1131,6 +1139,28 @@
       "redistributionCleared": true,
       "bytes": 6681,
       "sha256": "9abda982b5a9fa0ede365212c7398e7d98ad4c380c561ed22b93b5384bf5ed5a"
+    },
+    {
+      "declaration": "assetVmAdministration",
+      "type": "Asset",
+      "path": "src/layer4-compute/vm-administration.js",
+      "role": "Explicit guest grants, bounded command admission and generation-scoped effect observation",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 1951,
+      "sha256": "d940335d2c7bddb3ed8e49bd38696b4ab577d8e97fdbda2941c7420aaaf1ac3b"
+    },
+    {
+      "declaration": "assetChannelFlow",
+      "type": "Asset",
+      "path": "src/layer5-transport/channel-flow.js",
+      "role": "Negotiated DataChannel framing, bounded queues and generation-fenced delivery",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 10835,
+      "sha256": "728ba79197ce0fd73a289a713a7eead42f031deeb55727b720f96e88b5bedaf3"
     },
     {
       "declaration": "assetDnsWire",
@@ -1151,8 +1181,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 50780,
-      "sha256": "c8f50d69303a2734336c963cb15c671073c59921e9aa490ef2f300ff0db8257e"
+      "bytes": 51201,
+      "sha256": "98d60556ada24f2afd997ccc5fcad4ce04f5f27000d520e28c705f4ea5c520dc"
     },
     {
       "declaration": "assetRelayFraming",
@@ -1184,8 +1214,30 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 7560,
-      "sha256": "97883e8fd45cbcbe5afb63e30e06cc3935bd5ef00c813a32e6535ecdb02cc73e"
+      "bytes": 7724,
+      "sha256": "011e79486eda612c5db566b8a39dd9c9194fded27c53b2fb4fe93525c6cdd3b5"
+    },
+    {
+      "declaration": "assetRecoveryUi",
+      "type": "Asset",
+      "path": "src/recovery-ui.js",
+      "role": "Contextual operator recovery controls without network, VM or DNS effects",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 8123,
+      "sha256": "4853e6ffe3deb9a535dbf5f30f67d4196e199cb2c7aceec4361d5d1ad6e8301f"
+    },
+    {
+      "declaration": "assetRecovery",
+      "type": "Asset",
+      "path": "src/recovery.js",
+      "role": "Verified detached object and pure-job recovery bundle import/export; explicit local anchor acceptance",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 10318,
+      "sha256": "7dff9d1e9bdabd8228b60040a6896404921d4c10d2a0e5e19d5387088f694886"
     },
     {
       "declaration": "assetFile13",
@@ -1900,7 +1952,7 @@
     },
     {
       "path": "app/lexlean.toml",
-      "sha256": "9cbc88eb5837e79daa448eadfebada3d5c1cce90c184c4fa79d6825454e0d77d"
+      "sha256": "36c3b0a51d4360d77f4752d517595d1365ee39861966bd789efab89c2ce65c80"
     },
     {
       "path": "app/prism.toml",
@@ -1928,7 +1980,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+      "sha256": "4e3703b7846c74ccee860d17f0a00be74e3f26170db1a03768ff4a8c8cd800a2"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -1936,11 +1988,15 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "6adf8c24a0ec7a678e4cece4009b0067aa60f5fb045ac367fe459a8d5ee45ad5"
+      "sha256": "cec7acba23cff425cb45ab21fb609f15e63fc5a517b92551c1edc2b524d193ef"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
       "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
     },
     {
       "path": "app/src/Stitch/Compute.lex.tex",
@@ -1979,12 +2035,20 @@
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
       "path": "app/src/Stitch/Relay.lex.tex",
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
@@ -2007,5 +2071,5 @@
       "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
     }
   ],
-  "sourceDigest": "sha256:ec960e4071f2be6645a64d1ac701cd88f2ef5df0fa965e8867f0f782636bcecf"
+  "sourceDigest": "sha256:0668736d6ec9544b82ab1c1d486dd5cb1c49907a7653393914cdf331f536b67f"
 }

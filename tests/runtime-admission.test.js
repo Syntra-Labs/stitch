@@ -1,6 +1,8 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { installRecoveryControls } from '../src/recovery-ui.js';
+import { exportRecoveryBundle, recoveryObject } from '../src/recovery.js';
 import { createOperatorExperience, integrityLabel, executionLabel } from '../src/product-experience.js';
 import { placementStatus } from '../src/layer3-storage/custody.js';
 import { parseCanonicalJson } from '../src/layer1-uor/custody.js';
@@ -83,14 +85,19 @@ test('live compute reserves every replay, and refusal prevents publishing or sto
 
 test('real WebRTC and DNS adapters share request/UTF-8 limits, including failed sends', async () => {
   const policy = admission({ requests: 1, transferBytes: 1000 });
-  const node = new WebRtcTransportNode({ peerId: 'p', admission: policy });
+  const events = [];
+  const node = new WebRtcTransportNode({ peerId: 'p', admission: policy, onEvent: e => events.push(e) });
   let sends = 0, fetches = 0;
-  node.peers.set('r', { dc: { readyState: 'open', send: () => { sends++; throw Error('uncertain'); } } });
+  node.peers.set('r', { dc: { readyState: 'open', send: () => { sends++; throw Error('uncertain'); }, close() { this.readyState = 'closed'; } } });
   const packet = { type: 'data', value: '☃' };
-  assert.throws(() => node.sendToPeer('r', packet), /uncertain/);
+  assert.equal(node.sendToPeer('r', packet), true, 'accepted queue reports the unknown browser send outcome separately');
+  assert.ok(events.some(e => e.type === 'channel_send_result' && e.outcome === 'unknown'));
+  assert.equal(node.sendToPeer('r', packet), false, 'poisoned channel is not replayed');
   assert.equal(policy.state.spent.transferBytes, wireBytes(packet));
   assert.equal(policy.state.spent.requests, 1);
+  node.peers.set('r', { dc: { readyState: 'open', send: () => { sends++; }, close() { this.readyState = 'closed'; } } });
   assert.throws(() => node.sendToPeer('r', packet), code('budget-exhausted'));
+  node.close();
   const dns = new DohResolver({ admission: policy, fetchImpl: async () => { fetches++; return new Response('{}'); } });
   await assert.rejects(dns.resolve('example.test'), code('budget-exhausted'));
   await assert.rejects(dns.writeCloudflareRecord({ zoneId: 'z', apiToken: 't', name: 'example.test' }), code('budget-exhausted'));
@@ -159,11 +166,20 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1]
     .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
   const elements = new Map();
-  const element = () => ({ value: '', checked: false, textContent: '', style: {}, listeners: {}, attributes: {}, children: [],
+  const element = (tagName = '') => ({ tagName: tagName.toUpperCase(), value: '', checked: false, files: [], selected: false, textContent: '', style: {}, listeners: {}, attributes: {}, children: [],
+    get selectedOptions() { return this.children.filter(node => node.selected); },
+    querySelectorAll(selector) {
+      if (selector !== 'button') throw Error(`Unsupported harness selector ${selector}`);
+      const section = html.slice(html.indexOf('id="recoveryControls"'), html.indexOf('<!-- LIVE PANEL B:'));
+      return [...section.matchAll(/<button[^>]*id="([^"]+)"/g)].map(match => document.getElementById(match[1]));
+    },
     addEventListener(type, callback) { this.listeners[type] = callback; },
     setAttribute(key, value) { this.attributes[key] = String(value); },
-    replaceChildren(...nodes) { this.children = nodes; }, append() {}, click() {}, focus() { this.focused = true; }, scrollIntoView() {} });
-  const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element };
+    replaceChildren(...nodes) { this.children = nodes; if (this.tagName === 'SELECT') this.value = nodes[0]?.value ?? ''; }, append() {}, click() {}, focus() { this.focused = true; }, scrollIntoView() {} });
+  const document = { getElementById(id) { if (!elements.has(id)) {
+    const tag = html.match(new RegExp(`<([a-z]+)[^>]*id="${id}"`))?.[1] || '';
+    elements.set(id, element(tag));
+  } return elements.get(id); }, createElement: element };
   document.getElementById('meshKeyInput').value = 'test';
   document.getElementById('dnsQueryInput').value = 'state.example.test';
   document.getElementById('dbPayloadInput').value = 'browser object';
@@ -197,14 +213,15 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
   const bindings = { document, window: { addEventListener() {} }, location: { hash: '' }, navigator: {},
     fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
     URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
-    createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
+    installRecoveryControls, createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
     ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
     BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,
     LinuxVmNode: class {
       constructor(options) { vm = this; this.options = options; this.phase = 'idle'; this.boots = 0; this.commands = 0; }
-      get lifecycle() { return { phase: this.phase }; }
+      get lifecycle() { return { phase: this.phase, canBoot: !['ready', 'booting'].includes(this.phase), canExecute: this.phase === 'ready' }; }
+      commandEvidence() { return null; }
       boot() { this.boots++; this.setPhase('booting'); }
       setPhase(phase) { this.phase = phase; this.options.onStatus({ state: phase === 'ready' ? 'online' : phase, ip: 'test' }); }
       async executeShellCommand() { this.commands++; return new TextEncoder().encode('observed guest stdout'); }
@@ -485,4 +502,32 @@ test('actual pasted-pointer journey refuses duplicate JSON names before trust ad
   const input = h.document.getElementById('pointerJsonInput');
   input.value = '{"version":1,"\\u0076ersion":1}';
   await assert.rejects(h.click('admitPointerBtn'), code('InvalidCanonicalValue'));
+});
+
+test('actual browser recovery controls admit bounded files locally and model their evidence', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  assert.equal(field('importRecoveryBtn').disabled, true);
+  const program = demoProgram(3);
+  const wire = await exportRecoveryBundle({ version: 1, objects: [await recoveryObject(new Uint8Array([5, 6]))],
+    jobs: [{ program, checkpoint: await createCheckpoint(program, 1) }], anchors: [] });
+  const bytes = new TextEncoder().encode(wire);
+  let reads = 0;
+  field('recoveryFile').files = [{ size: bytes.length, arrayBuffer: async () => { reads++; return bytes.buffer; } }];
+  field('recoveryFile').listeners.change();
+  assert.equal(field('importRecoveryBtn').disabled, false);
+  const sent = h.mesh.sent.length, liveObjects = h.db.objects.size, liveJobs = h.coordinator.jobs.size;
+  await h.click('importRecoveryBtn');
+  assert.equal(reads, 1);
+  assert.match(field('recoveryEvidence').textContent, /SESSION-ONLY VERIFIED EVIDENCE/);
+  assert.equal(field('recoveryObjects').children.length, 1);
+  assert.equal(field('recoveryJobs').children.length, 1);
+  assert.equal(field('resumeRecoveredJobBtn').disabled, false);
+  await h.click('resumeRecoveredJobBtn');
+  assert.match(field('recoveryStatus').textContent, /Pure local replay finished at step 3/);
+  assert.equal(h.mesh.sent.length, sent); assert.equal(h.db.objects.size, liveObjects);
+  assert.equal(h.coordinator.jobs.size, liveJobs); assert.equal(h.vm.commands, 0); assert.equal(h.published.length, 0);
+  field('recoveryByteLimit').value = '1';
+  await h.click('importRecoveryBtn'); assert.equal(reads, 1);
+  assert.match(field('recoveryStatus').textContent, /Refused/);
+  assert.equal(field('recoveryObjects').children.length, 1);
 });

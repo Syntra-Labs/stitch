@@ -1,0 +1,62 @@
+\begin{lexlean}{Stitch.VmAdministration}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+definition{
+  name: shareAllowed,
+  parameters: [granted : Bool, current : Bool, blocked : Bool],
+  result: Bool,
+  body: (granted && (current && (not blocked)))
+}
+
+definition{
+  name: ethernetAllowed,
+  parameters: [
+    granted : Bool,
+    ready : Bool,
+    current : Bool,
+    open : Bool,
+    valid : Bool,
+    blocked : Bool
+  ],
+  result: Bool,
+  body: (granted && (ready && (current && (open && (valid && (not blocked))))))
+}
+
+definition{
+  name: commandAllowed,
+  parameters: [ready : Bool, busy : Bool, blocked : Bool, capacity : Bool],
+  result: Bool,
+  body: (ready && ((not busy) && ((not blocked) && capacity)))
+}
+
+definition{
+  name: observationAllowed,
+  parameters: [
+    generation : Nat,
+    captured : Nat,
+    sameInstance : Bool,
+    dispatched : Bool,
+    blocked : Bool
+  ],
+  result: Bool,
+  body: ((generation =? captured) && (sameInstance && (dispatched && (not blocked))))
+}
+
+definition{
+  name: administrationAllowed,
+  parameters: [instancePresent : Bool, busy : Bool],
+  result: Bool,
+  body: (instancePresent && (not busy))
+}
+
+definition{
+  name: forgetAllowed,
+  parameters: [present : Bool, resolved : Bool, busy : Bool],
+  result: Bool,
+  body: (present && (resolved && (not busy)))
+}
+\end{semanticmodule}
+\end{lexlean}

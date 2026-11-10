@@ -1,0 +1,29 @@
+# Operator-controlled recovery evidence
+
+The object journey's **Export and restore recovery evidence** controls provide a real local backup/restore path. Export copies complete live objects, replay checkpoints and retained signed pointer heads into canonical JSON. Import reconstructs and verifies every object, replays every supplied checkpoint against its exact current execution identity, and verifies supplied pointer signatures. Unknown fields (including keys, grants and journals) are refused.
+
+Import commits an entire checked candidate to a separate session-only recovery vault. It does not call mesh transport, mount guest files, resume live coordinators, mutate a DNS observer, retry pending writes, or restore authority keys. Download a recovered object or explicitly finish an imported pure ring job locally. The result is volatile until saved externally. Losing all bytes, keys or independently trusted recent anchors cannot be repaired by this feature.
+
+## Wire and resource contract
+
+Version 1 has exactly `version`, `objects`, `jobs`, `anchors` fields. Each object contains its complete manifest and two or three `{index, hex}` fragments. Jobs contain the exact program and checkpoint. Anchors are complete signed pointers. Canonical UTF-8 JSON is required; duplicate names, noncanonical spelling, malformed Unicode, unknown schemas and trailing bytes fail closed.
+
+The default envelope supports up to 32 entries and each object's full live 128 KiB maximum. Hex carries twice the decoded bytes. The wire ceiling is derived as 32 × (2 × 128 KiB + 64 KiB), allowing fragment data and program/manifest overhead. The default replay ceiling is 32 × the existing 1,024-instruction program maximum. Operators can lower the wire and replay allowances. These are bounded operation/storage admission limits, not a measurement or guarantee of total browser memory. JSON depth, string and parsed-value counts are separately bounded. The local canonical codec accepts explicit caller bounds while preserving its previous default bounds and exact JCS bytes.
+
+Preflight checks the aggregate replay count before executing supplied programs. Only incoming jobs are replayed, not all retained history on every import. Canonical serialization of the merged bounded vault is linear in retained wire size. Concurrent imports use a generation comparison at commit; a stale operation fails instead of losing another update. Exact already-retained entries are idempotent. Conflicting object representations, rollback and same-step forks are refused. Strictly later checkpoints of the same exact program replace older replay evidence; an adjacent step must bind the retained predecessor. Newer same-authority signed anchors can update supplied evidence, with adjacent revision linkage checked. Previously accepted trust stays unchanged until the operator independently confirms the exact newer anchor. Missing intermediate links are not claimed verified. No unknown predecessor checkpoint is represented as a checked chain link: checkpoint verification remains independent replay.
+
+All imported evidence is snapshotted. No retained vault mutation occurs until validation, conflict checks, bounds and generation checks succeed. Failed checks leave existing vault and accepted anchors unchanged. SHA-256 of canonical merged evidence binds the modeled state root; cryptographic verification and exact host-to-model correspondence remain explicit host assumptions.
+
+## Trust is not transferred by a backup
+
+A bundle's signed anchor is **untrusted supplied evidence**, even if its self-declared key verifies its signature. The operator must separately supply an independently trusted writer key and exact recent pointer digest, explicitly accept that decision, and satisfy the pointer validity interval at the supplied wall-clock observation. Exact retained-anchor conflicts and revision rollback fail closed. Signature validity or a file timestamp does not establish freshness or a globally latest state.
+
+Acceptance records that decision in this vault only; existing DNS observers do not change. Export never serializes accepted trust status. Re-importing a previously accepted anchor requires a new independent decision. A complete operational trusted-head restart lifecycle and durable signing-key management are still unfinished.
+
+## Verification and boundaries
+
+`tests/recovery.test.js` covers exact round trips, the live maximum object size, corruption, incomplete fragments, duplicate/unknown fields, recomputed forged checkpoints, foreign execution identity, conflicting snapshots, aggregate limits, stale/untrusted anchors and concurrent imports. `Stitch.Recovery` models atomic accepted bundle-root/capacity/generation transitions and recent-anchor admission. Kernel results apply only to the exact source verified by the release workflow, not to browser effects or cryptography.
+
+The canonical-codec adapter change conservatively changes the execution identity. Checkpoints from earlier execution identities are refused; there is no silent migration or claim that changing a model digest revalidates an old checkpoint. A future migration must explicitly revalidate and generate a new identified pure checkpoint.
+
+Remaining operational work includes durable keys and recent-head retention, restart-safe unknown-write journals, browser quota/eviction management and field qualification. Exporting a local file is not a durability certificate or a cleared whole-product release.

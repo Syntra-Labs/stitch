@@ -264,6 +264,36 @@
           <tr><td colspan="6" class="muted">No local object bytes.</td></tr>
         </tbody>
       </table>
+      <details id="recoveryControls">
+        <summary>Export and restore recovery evidence</summary>
+        <p>Keep a separate backup before clearing RAM. Import checks objects and pure jobs in a local recovery vault, without sending packets, mounting files or retrying writes. Closing this tab loses the vault. Signing keys and pending-write journals are not included.</p>
+        <div class="controls">
+          <label>Wire byte allowance <input id="recoveryByteLimit" type="number" min="0" step="1" /></label>
+          <label>Replay step allowance <input id="recoveryStepLimit" type="number" min="0" step="1" /></label>
+          <label>Live evidence to export (up to 32 entries) <select id="recoveryExportSelection" multiple size="5"></select></label>
+          <button id="exportRecoveryBtn" class="secondary">Export Live Evidence</button>
+          <label>Recovery file <input id="recoveryFile" type="file" accept="application/json,.json" /></label>
+          <button id="importRecoveryBtn" class="secondary">Verify and Import Locally</button>
+          <button id="exportRecoveredBtn" class="secondary">Export Recovery Vault</button>
+        </div>
+        <p class="muted">At most 32 entries, each object up to the live 128 KiB limit. Default wire allowance includes hex fragments and job overhead. Limits bound this operation, not total browser memory; replay is pure computation, not VM execution.</p>
+        <div class="controls">
+          <label>Recovered object <select id="recoveryObjects"></select></label>
+          <button id="downloadRecoveredObjectBtn" class="secondary">Download Verified Object</button>
+          <label>Recovered job <select id="recoveryJobs"></select></label>
+          <button id="resumeRecoveredJobBtn" class="secondary">Finish Pure Job Locally</button>
+        </div>
+        <details><summary>Review supplied pointer anchors</summary>
+          <p>Signatures inside a file do not establish trust or freshness. Independently obtain the exact recent pointer digest and writer key. Accepting here records a local decision only; it does not change the running DNS observer.</p>
+          <label>Supplied anchor <select id="recoveryAnchors"></select></label>
+          <label>Independently trusted writer key <input id="recoveryAuthority" type="text" autocomplete="off" /></label>
+          <label>Independently trusted recent digest <input id="recoveryDigest" type="text" autocomplete="off" /></label>
+          <label><input id="recoveryAnchorConsent" type="checkbox" />I independently verified this exact anchor is recent and trust its writer.</label>
+          <button id="acceptRecoveryAnchorBtn" class="secondary">Accept Exact Recent Anchor</button>
+        </details>
+        <p id="recoveryEvidence" role="status" aria-live="polite"></p>
+        <p id="recoveryStatus" role="status" aria-live="polite">No recovery file imported.</p>
+      </details>
     </section>
 
     <!-- LIVE PANEL B: REAL DISTRIBUTED COMPUTE & FAILOVER TAKEOVER -->
@@ -312,15 +342,26 @@
 
       <div class="controls">
         <button id="bootVmBtn">Boot Linux 5.6 VM</button>
+        <button id="stopVmBtn" class="secondary">Stop VM</button>
+        <button id="destroyVmBtn" class="secondary">Destroy VM</button>
+        <label><input type="checkbox" id="vmShareObjects" /> Share new database objects with this guest</label>
+        <label><input type="checkbox" id="vmShareEthernet" /> Bridge guest Ethernet to mesh peers</label>
         <div id="vmCommandControls" class="controls" hidden>
         <input type="text" id="vmCmdInput" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
         <button id="runVmCmdBtn" class="secondary">Run in VM & Store Output in UOR DB</button>
         </div>
       </div>
 
+      <p id="vmCommandOutcome" role="status" aria-live="polite">No guest command submitted.</p>
+      <div class="controls">
+        <button id="cancelVmObservationBtn" class="secondary">Cancel command wait</button>
+        <button id="forgetVmCommandBtn" class="secondary">Forget Resolved Command Evidence</button>
+        <button id="reconcileVmCommandBtn" class="secondary">Observe last command result</button>
+      </div>
+      <p class="muted">Observation cancellation does not stop guest effects. Unknown commands are never automatically replayed. Stop and destroy revoke grants; failures retain the instance for destroy retry. These controls do not certify guest isolation.</p>
       <div id="vmScreenContainer">
         <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux 5.6 VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
-All UOR database objects are automatically mounted inside /mnt/ in the VM, and eth0 is bridged over WebRTC.</div>
+Object sharing and Ethernet bridging start off. Grants expose data to the guest or mesh peers. Revocation blocks future transfers; it does not erase guest copies or undo effects.</div>
         <canvas style="display: none;"></canvas>
       </div>
     </section>
@@ -451,6 +492,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     import { placementStatus } from './src/layer3-storage/custody.js';
     import { parseCanonicalJson } from './src/layer1-uor/custody.js';
     import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
+    import { installRecoveryControls } from './src/recovery-ui.js';
     import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
 
     // One stable handle is shared by every adapter. Only the explicit renewal
@@ -721,6 +763,35 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logWire('RESUME', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No unfinished jobs ready to resume.');
     });
 
+    document.getElementById('vmShareObjects').addEventListener('change', event => vmNode.setObjectSharing(event.target.checked));
+    document.getElementById('vmShareEthernet').addEventListener('change', event => vmNode.setEthernetSharing(event.target.checked));
+    async function administerVm(action) {
+      await vmNode[action]();
+      document.getElementById('vmShareObjects').checked = vmNode.objectSharing;
+      document.getElementById('vmShareEthernet').checked = vmNode.ethernetSharing;
+    }
+    bindModelAction('stopVmBtn', () => administerVm('stop'));
+    bindModelAction('destroyVmBtn', () => administerVm('destroy'));
+    function showVmCommand() {
+      const evidence = vmNode.commandEvidence(vmNode.lastCommandId);
+      document.getElementById('vmCommandOutcome').textContent = evidence
+        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}). Retained evidence: ${vmNode.commands.size}/128. Unknown effects stay retained; destroying the VM does not resolve them.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
+    }
+    bindModelAction('cancelVmObservationBtn', () => {
+      vmNode.cancelCommandObservation(vmNode.lastCommandId); showVmCommand();
+    });
+    bindModelAction('forgetVmCommandBtn', () => { vmNode.forgetCommand(vmNode.lastCommandId); showVmCommand(); });
+    bindModelAction('reconcileVmCommandBtn', async () => {
+      try {
+        const bytes = await vmNode.reconcileCommand(vmNode.lastCommandId);
+        if (bytes !== null) {
+          const entry = await liveDb.put(bytes, { label: 'vm_stdout.txt', persistWarm: false, publicData: false });
+          renderLiveDbTable(); logWire('VM-OBSERVED', `Stored observed output locally at ${entry.addressHex}`);
+        }
+      } catch (error) { logWire('VM-ERR', error.message); }
+      showVmCommand();
+    });
+
     bindModelAction('bootVmBtn', () => {
       vmNode.boot();
     });
@@ -730,13 +801,15 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       if (!cmd) return;
       try {
         logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
-        const outBytes = await vmNode.executeShellCommand(cmd, 8000);
+        const pending = vmNode.executeShellCommand(cmd, 8000);
+        showVmCommand();
+        const outBytes = await pending;
         const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
         renderLiveDbTable();
         logWire('VM-DONE', `Stored VM stdout in UOR DB at ${entry.addressHex}`);
       } catch (e) {
         logWire('VM-ERR', e.message);
-      }
+      } finally { showVmCommand(); }
     });
 
     const policyFields = {
@@ -925,6 +998,8 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     bindModelAction('writeSignedDnsBtn', publishOrReconcilePointer);
     bindModelAction('reconcilePointerBtn', publishOrReconcilePointer);
 
+    const recoveryControls = installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, bindModelAction, onChange: renderExperience });
+
     document.getElementById('exportJsonlBtn').addEventListener('click', () => {
       const jsonl = trialLogger.toJsonl();
       const blob = new Blob([jsonl || JSON.stringify({ info: 'no_trials_logged_yet' }) + '\n'], { type: 'application/x-ndjson' });
@@ -998,6 +1073,10 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
           Math.max(0, scheduler.refreshCount - 1) >= scheduler.maxRefreshBudget;
         const unfinished = jobs.filter(j => j.status !== 'completed');
         return {
+          ...recoveryControls.facts(),
+          vmCanBoot: Boolean(vm?.canBoot), vmCanExecute: Boolean(vm?.canExecute),
+          vmCanAdminister: Boolean(vm?.canAdminister), vmCanCancelObservation: Boolean(vm?.canCancelObservation),
+          vmCanForgetCommand: Boolean(vm?.canForgetCommand), vmCanReconcileCommand: Boolean(vm?.canReconcileCommand), vmAdminBlocked: Boolean(vm?.adminBlocked),
           disclosureAccepted: document.getElementById('allowMeshSignalingInput').checked,
           meshJoined: Boolean(mesh && !mesh.closed && mesh.generation > 0),
           peersReachable: transport.openPeers().length > 0,
