@@ -58,5 +58,45 @@ definition{
   result: Bool,
   body: (present && (resolved && (not busy)))
 }
+
+definition{
+  name: allocationAllowed,
+  parameters: [used : Nat, requested : Nat, limit : Nat],
+  result: Bool,
+  body: ((used + requested) <=? limit)
+}
+
+definition{
+  name: metadataAllowed,
+  parameters: [used : Nat, limit : Nat],
+  result: Bool,
+  body: (used <? limit)
+}
+
+definition{
+  name: resultReadAllowed,
+  parameters: [size : Nat, limit : Nat, regular : Bool],
+  result: Bool,
+  body: (regular && (size <=? limit))
+}
+
+definition{
+  name: terminationRequired,
+  parameters: [cancelled : Bool, expired : Bool, exceeded : Bool],
+  result: Bool,
+  body: (cancelled || (expired || exceeded))
+}
+
+definition{name: filesystemAllocationLimit, parameters: [], result: Nat, body: 67108864}
+
+definition{name: filesystemFileLimit, parameters: [], result: Nat, body: 16777216}
+
+definition{name: filesystemMetadataLimit, parameters: [], result: Nat, body: 4096}
+
+definition{name: outputLimit, parameters: [], result: Nat, body: 4194304}
+
+definition{name: retainedOutputLimit, parameters: [], result: Nat, body: 16777216}
+
+definition{name: runtimeLimitMs, parameters: [], result: Nat, body: 300000}
 \end{semanticmodule}
 \end{lexlean}

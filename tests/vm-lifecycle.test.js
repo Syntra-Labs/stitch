@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { filesystemFixture } from './helpers/vm-filesystem.js';
 import { LinuxVmNode } from '../src/layer4-compute/index.js';
 
 function fixture(t) {
@@ -15,9 +16,11 @@ function fixture(t) {
   t.mock.method(globalThis, 'setTimeout', fn => { const id = next++; deadlines.set(id, fn); return id; });
   t.mock.method(globalThis, 'clearTimeout', id => deadlines.delete(id));
   class FakeVm {
-    listeners = new Map(); commands = []; files = []; destroyed = 0;
-    constructor() { instances.push(this); }
-    add_listener(name, callback) { this.listeners.set(name, callback); }
+    listeners = new Map(); commands = []; files = []; destroyed = 0; stopped = 0; started = 0; fs9p = filesystemFixture();
+    constructor(options) { this.options = options; instances.push(this); }
+    run() { this.started++; }
+    stop() { this.stopped++; }
+    add_listener(name, callback) { this.listeners.set(name, callback); if (name === 'emulator-loaded') callback(); }
     keyboard_send_text(command) { this.commands.push(command); }
     destroy() { this.destroyed++; this.listeners.get('net0-send')?.([99]); }
     async create_file(name) { this.files.push(name); }
@@ -29,7 +32,7 @@ function fixture(t) {
     onStatus: status => statuses.push(status), bootTimeoutMs: 1000 });
   return { node, statuses, sent, instances, intervals, deadlines, FakeVm,
     poll: () => [...intervals.values()].forEach(fn => fn()),
-    expire: () => [...deadlines.values()].forEach(fn => fn()),
+    expire: () => deadlines.get(node.bootDeadline)?.(),
     ready: () => { prompt = 'root:~# '; } };
 }
 
@@ -49,12 +52,12 @@ test('missing and throwing constructors report failure and allow explicit retry'
   f.ready(); f.poll();
   assert.equal(f.node.booted, true); assert.equal(f.node.booting, false);
   assert.equal(f.statuses.at(-1).state, 'online');
-  assert.equal(f.intervals.size, 0); assert.equal(f.deadlines.size, 0);
+  assert.equal(f.intervals.size, 0); assert.equal(f.deadlines.size, 1);
 });
 
 test('boot deadline cleans up and stale listeners cannot affect retry', t => {
   const f = fixture(t); f.node.boot();
-  const old = f.node.v86, stalePoll = [...f.intervals.values()][0], staleDeadline = [...f.deadlines.values()][0];
+  const old = f.node.v86, stalePoll = [...f.intervals.values()][0], staleDeadline = f.deadlines.get(f.node.bootDeadline);
   f.expire();
   assert.equal(old.destroyed, 1); assert.equal(f.node.v86, null);
   assert.equal(f.node.booting, false); assert.equal(f.node.booted, false);
@@ -159,7 +162,9 @@ test('timeout retains a unique handle that can observe completion without anothe
   let id; await assert.rejects(f.node.executeShellCommand('echo one', 0), error => { id = error.commandId; return error.outcome === 'unknown'; });
   assert.equal(f.node.commandEvidence(id).outcome, 'unknown');
   const before = f.node.v86.commands.length;
-  f.node.v86.read_file = async name => new Uint8Array(name.endsWith('.flag') ? [1] : [42]);
+  const handle = f.node.commands.get(id);
+  f.node.v86.fs9p.setResult(handle.doneName, Uint8Array.of(1));
+  f.node.v86.fs9p.setResult(handle.outName, Uint8Array.of(42));
   assert.deepEqual(await f.node.reconcileCommand(id), Uint8Array.of(42));
   assert.equal(f.node.v86.commands.length, before);
   assert.equal(f.node.commandEvidence(id).outcome, 'completed');
@@ -168,13 +173,16 @@ test('timeout retains a unique handle that can observe completion without anothe
 test('replacement fences asynchronous command completion and double-click dispatch', async t => {
   const f = fixture(t); f.node.boot(); f.ready(); f.poll();
   const old = f.node.v86; let resume;
-  old.read_file = () => new Promise(resolve => { resume = resolve; });
+  old.fs9p.setResult('placeholder', Uint8Array.of(1));
+  old.fs9p.SearchPath = () => ({ id: 1 });
+  old.fs9p.Read = () => new Promise(resolve => { resume = resolve; });
   const pending = f.node.executeShellCommand('echo old', 1000);
-  await Promise.resolve(); await Promise.resolve();
+  const rejected = assert.rejects(pending, /replaced/);
+  for (let i = 0; i < 12; i++) await Promise.resolve();
   await assert.rejects(f.node.executeShellCommand('echo duplicate'), /busy/);
   await f.node.destroy(); f.node.boot(); f.ready(); f.poll();
   resume(Uint8Array.of(1));
-  await assert.rejects(pending, /replaced/);
+  await rejected;
   assert.equal(f.node.commandEvidence(f.node.lastCommandId).outcome, 'unknown');
   assert.equal(f.node.v86.commands.length, 1);
 });
@@ -244,4 +252,118 @@ test('retained command admission can be inspected by handle without mutating the
   assert.equal(f.node.lastCommandId, 'latest');
   f.node.bootGeneration++;
   assert.equal(f.node.commandLifecycle('prior').canReconcileCommand, false);
+});
+
+test('boot installs filesystem controls before run and refuses an unsupported v86 boundary', async t => {
+  const f = fixture(t); f.node.boot(); const vm = f.node.v86;
+  assert.equal(vm.options.autostart, false); assert.equal(vm.started, 1);
+  assert.ok(f.node.filesystemUsage);
+  const usage = f.node.filesystemUsage;
+  vm.listeners.get('emulator-loaded')(); assert.equal(vm.started, 1); assert.equal(f.node.filesystemUsage, usage);
+  await f.node.destroy();
+  globalThis.V86 = class extends f.FakeVm { fs9p = {}; };
+  f.node.boot();
+  assert.equal(f.instances.at(-1).started, 0);
+  assert.equal(f.instances.at(-1).destroyed, 1);
+  assert.match(f.statuses.at(-1).message, /controls are unavailable/);
+});
+
+test('cancellation after dispatch stops the whole VM, revokes bridges and retains unknown effects', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  await assert.rejects(f.node.executeShellCommand('while true; do :; done', 0), /unknown/);
+  const id = f.node.lastCommandId, vm = f.node.v86;
+  f.node.setObjectSharing(true); f.node.setEthernetSharing(true);
+  assert.equal(await f.node.cancelCommand(id), true);
+  assert.equal(vm.stopped, 1); assert.equal(f.node.booted, false);
+  assert.equal(f.node.objectSharing, false); assert.equal(f.node.ethernetSharing, false);
+  assert.equal(f.node.commandEvidence(id).outcome, 'unknown');
+  assert.equal(f.node.commandEvidence(id).termination, 'vm-stopped');
+  assert.equal(f.node.lifecycle.canBoot, false);
+  assert.equal(await f.node.cancelCommand(id), false); assert.equal(vm.stopped, 1);
+  assert.equal(f.node.forgetCommand(id), false);
+});
+
+test('cancel interrupts a stalled host result read and a failed stop is explicitly unknown', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); const vm = f.node.v86;
+  vm.fs9p.SearchPath = () => ({ id: vm.fs9p.setResult('done', Uint8Array.of(1)) });
+  vm.fs9p.Read = () => new Promise(() => {});
+  vm.stop = () => { throw Error('stop failed'); };
+  const pending = f.node.executeShellCommand('sleep 1000');
+  const rejected = assert.rejects(pending, /stopped.*unknown/);
+  for (let i = 0; i < 10; i++) await Promise.resolve();
+  assert.equal(await f.node.cancelCommand(f.node.lastCommandId), false);
+  await rejected;
+  assert.equal(f.node.commandBusy, false);
+  assert.equal(f.node.commandEvidence(f.node.lastCommandId).termination, 'stop-unknown');
+  assert.equal(f.node.adminBlocked, true); assert.equal(f.node.v86, vm);
+});
+
+test('VM runtime expiry is separate from command observation and stops background work', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  const vm = f.node.v86, expire = f.deadlines.get(f.node.runtimeDeadline);
+  await assert.rejects(f.node.executeShellCommand('sleep 1000 &', 0), /not cancelled/);
+  assert.equal(f.node.booted, true);
+  expire(); await f.node.boundaryStop;
+  assert.equal(vm.stopped, 1); assert.equal(f.node.booted, false);
+  assert.match(f.node.boundaryReason, /runtime allowance/);
+  expire(); assert.equal(vm.stopped, 1);
+});
+
+test('oversized guest output is rejected before range read and fail-stops the VM', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  await assert.rejects(f.node.executeShellCommand('echo output', 0));
+  const vm = f.node.v86, command = f.node.commands.get(f.node.lastCommandId);
+  vm.fs9p.setResult(command.doneName, Uint8Array.of(1));
+  const id = vm.fs9p.setResult(command.outName, Uint8Array.of(42)); vm.fs9p.inodes[id].size = 4194305;
+  await assert.rejects(f.node.reconcileCommand(command.id), error => error.code === 'vm-output-limit');
+  assert.equal(vm.fs9p.reads.some(read => read.id === id), false);
+  assert.equal(vm.stopped, 1); assert.equal(f.node.commandEvidence(command.id).outcome, 'unknown');
+});
+
+test('filesystem overflow stops the running VM before allocation and host bridge continuations are fenced', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); const vm = f.node.v86;
+  f.node.setEthernetSharing(true); f.node.setObjectSharing(true);
+  const id = vm.fs9p.CreateFile('large', 0);
+  assert.throws(() => vm.fs9p.ChangeSize(id, 16777217), error => error.code === 'vm-filesystem-limit');
+  assert.equal(vm.fs9p.allocations.length, 0); assert.equal(f.node.adminBlocked, true);
+  vm.listeners.get('net0-send')(new Uint8Array(14)); assert.equal(f.sent.length, 0);
+  await f.node.boundaryStop; assert.equal(vm.stopped, 1);
+});
+
+test('runtime allowances validate before boot and cannot renew an existing guest instance', async t => {
+  const f = fixture(t);
+  for (const vmRuntimeMs of [0, 999, 300001, Infinity, NaN]) {
+    assert.throws(() => new LinuxVmNode({ vmRuntimeMs }), error => error.code === 'vm-runtime-limit-invalid');
+    assert.throws(() => f.node.setRuntimeAllowance(vmRuntimeMs), error => error.code === 'vm-runtime-limit-invalid');
+  }
+  f.node.setRuntimeAllowance(1000); f.node.boot();
+  assert.equal(f.node.vmRuntimeMs, 1000);
+  assert.throws(() => f.node.setRuntimeAllowance(300000), error => error.code === 'vm-runtime-active');
+  await f.node.destroy(); f.node.setRuntimeAllowance(2000);
+  assert.equal(f.node.vmRuntimeMs, 2000);
+});
+
+test('pending VM termination is reported as pending, not confirmed success', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll(); let finish;
+  f.node.v86.stop = () => new Promise(resolve => { finish = resolve; });
+  const pending = f.node.stop();
+  assert.equal(f.node.adminBusy, true); assert.equal(f.statuses.at(-1).state, 'stopping');
+  assert.match(f.statuses.at(-1).message, /awaiting emulator confirmation/);
+  assert.equal(await f.node.destroy(), false);
+  finish(); await pending;
+  assert.equal(f.statuses.at(-1).state, 'offline');
+});
+
+test('aggregate retained-output ceiling is checked before oversized read and missing output does not resolve a command', async t => {
+  const f = fixture(t); f.node.boot(); f.ready(); f.poll();
+  await assert.rejects(f.node.executeShellCommand('echo result', 0));
+  const vm = f.node.v86, command = f.node.commands.get(f.node.lastCommandId);
+  vm.fs9p.setResult(command.doneName, Uint8Array.of(1));
+  assert.equal(await f.node.reconcileCommand(command.id), null);
+  assert.equal(f.node.commandEvidence(command.id).outcome, 'unknown');
+  f.node.commands.set('retained', { outcome: 'completed', output: new Uint8Array(16777216), vm });
+  const outputId = vm.fs9p.setResult(command.outName, Uint8Array.of(1));
+  await assert.rejects(f.node.reconcileCommand(command.id), error => error.code === 'vm-output-limit');
+  assert.equal(vm.fs9p.reads.some(read => read.id === outputId), false);
+  assert.equal(vm.stopped, 1);
 });

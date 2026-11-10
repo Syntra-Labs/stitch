@@ -65,12 +65,12 @@ export async function admitPointer(current, candidate, { name, trustedAuthorityK
 export class PointerObserver {
   #head = null;
   #pending = Promise.resolve();
-  constructor({ name, trustedAuthorityKey, clock = Date.now, admission = null }) {
+  constructor({ name, trustedAuthorityKey, clock = Date.now, admission = null, trustStore = null }) {
     identifier(name); unhex(trustedAuthorityKey, 32);
     // A recovery action can never repin or rename an existing observer.
     Object.defineProperties(this, { name: { value: name, enumerable: true },
       trustedAuthorityKey: { value: trustedAuthorityKey, enumerable: true } });
-    this.clock = clock; this.admission = admission;
+    this.clock = clock; this.admission = admission; this.trustStore = trustStore;
   }
   get head() { return this.#head === null ? null : structuredClone(this.#head); }
   /** Explicit local trust-bootstrap, never ordinary imported evidence admission.
@@ -81,6 +81,7 @@ export class PointerObserver {
   restoreFromRecovery(vault, { expectedDigest, scopeStillCurrent = () => true }) {
     const scope = { name: this.name, authorityKey: this.trustedAuthorityKey, expectedDigest };
     const work = this.#pending.then(async () => {
+      await this.trustStore?.assertTrustedAuthority(this.name, this.trustedAuthorityKey);
       const anchor = acceptedRecoveryAnchor(vault, scope);
       await verifyPointer(anchor, this.trustedAuthorityKey);
       // Recheck acceptance and the wall clock after asynchronous crypto. A newer
@@ -93,6 +94,8 @@ export class PointerObserver {
         this.#head !== null, this.#head?.pointerDigest === anchor.pointerDigest)) refuse('pointer-restore-conflict-or-stale');
       // Exact repetition is idempotent, including its storage reservation.
       if (this.#head === null) {
+        const saved = await this.trustStore?.assertTrustedAuthority(this.name, this.trustedAuthorityKey);
+        if (saved && saved.head.pointerDigest !== anchor.pointerDigest) refuse('pointer-saved-anchor-changed');
         this.admission?.reserve('refresh', { storageBytes: canonicalBytes(anchor).length });
         this.#head = anchor;
       }
@@ -101,13 +104,36 @@ export class PointerObserver {
     this.#pending = work.catch(() => {});
     return work;
   }
+  /** Explicit restoration from operator-saved origin-local trust. Never repins
+   * this observer and never replaces a different retained head. */
+  restoreFromTrustedAnchor({ expectedDigest, scopeStillCurrent = () => true }) {
+    const work = this.#pending.then(async () => {
+      if (!this.trustStore) refuse('pointer-trust-storage-unavailable');
+      const anchor = await this.trustStore.assertTrustedAuthority(this.name, this.trustedAuthorityKey);
+      if (!anchor || anchor.head.pointerDigest !== expectedDigest) refuse('pointer-saved-anchor-changed');
+      await verifyPointer(anchor.head, this.trustedAuthorityKey);
+      const current = await this.trustStore.assertTrustedAuthority(this.name, this.trustedAuthorityKey);
+      const now = this.clock(); natural(now);
+      if (!model['Stitch.Pointer.restoreAllowed'](current?.head.pointerDigest === expectedDigest,
+        scopeStillCurrent() === true, anchor.head.pointerDigest === expectedDigest, true,
+        anchor.head.validFromMs, anchor.head.validUntilMs, now, this.#head !== null, this.#head?.pointerDigest === expectedDigest)) refuse('pointer-restore-conflict-or-stale');
+      if (this.#head === null) {
+        this.admission?.reserve('refresh', { storageBytes: canonicalBytes(anchor.head).length });
+        this.#head = structuredClone(anchor.head);
+      }
+      return this.head;
+    });
+    this.#pending = work.catch(() => {}); return work;
+  }
   admit(candidate) {
     // Snapshot synchronously and serialize compare-and-swap plus head retention.
     try { candidate = snapshot(candidate); } catch (error) { return Promise.reject(error); }
     const work = this.#pending.then(async () => {
+      const savedTrust = await this.trustStore?.assertTrustedAuthority(this.name, this.trustedAuthorityKey);
       const admitted = await admitPointer(this.#head, candidate, { name: this.name,
         trustedAuthorityKey: this.trustedAuthorityKey, nowMs: this.clock() });
       this.admission?.reserve('refresh', { storageBytes: canonicalBytes(admitted).length });
+      if (savedTrust) await this.trustStore.retainTrustedHead({ name: this.name, expectedPointerDigest: this.#head?.pointerDigest ?? null, candidate: admitted, nowMs: this.clock() });
       this.#head = admitted;
       return this.head;
     });

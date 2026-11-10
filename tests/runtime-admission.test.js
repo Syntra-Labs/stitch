@@ -1,7 +1,9 @@
+import { filesystemFixture } from './helpers/vm-filesystem.js';
 import { SyntheticAuthorityStore } from './helpers/transactional-authority.js';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { installAuthorityControls } from '../src/authority-ui.js';
 import { installRecoveryControls } from '../src/recovery-ui.js';
 import { exportRecoveryBundle, recoveryObject } from '../src/recovery.js';
 import { createOperatorExperience, integrityLabel, executionLabel } from '../src/product-experience.js';
@@ -185,6 +187,7 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityCla
   document.getElementById('dnsQueryInput').value = 'state.example.test';
   document.getElementById('dbPayloadInput').value = 'browser object';
   document.getElementById('dbLabelInput').value = 'state.txt';
+  document.getElementById('vmRuntimeSeconds').value = '300';
   let mesh, db, coordinator, vm, tick, exportedBlob; const published = [], dnsCalls = [];
   class FakeTransport {
     constructor(options) { Object.assign(this, transport(), options); this.sendToPeer = FakeTransport.prototype.sendToPeer; this.broadcast = FakeTransport.prototype.broadcast; mesh = this; }
@@ -214,7 +217,7 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityCla
   const bindings = { document, window: { addEventListener() {} }, location: { hash: '' }, navigator: {},
     fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
     URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
-    installRecoveryControls, createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
+    installAuthorityControls, installRecoveryControls, createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
     BrowserAuthorityStore: AuthorityClass, ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
     BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
@@ -223,6 +226,7 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, AuthorityCla
       constructor(options) { vm = this; this.options = options; this.phase = 'idle'; this.boots = 0; this.commands = 0; }
       get lifecycle() { return { phase: this.phase, canBoot: !['ready', 'booting'].includes(this.phase), canExecute: this.phase === 'ready' }; }
       commandEvidence() { return null; }
+      setRuntimeAllowance(milliseconds) { this.vmRuntimeMs = milliseconds; }
       boot() { this.boots++; this.setPhase('booting'); }
       setPhase(phase) { this.phase = phase; this.options.onStatus({ state: phase === 'ready' ? 'online' : phase, ip: 'test' }); }
       async executeShellCommand() { this.commands++; return new TextEncoder().encode('observed guest stdout'); }
@@ -298,7 +302,7 @@ test('joining another mesh closes old holders before any new-key sync and bounds
     globalThis.BroadcastChannel = class { close() {} postMessage() { signalingWrites++; } };
     globalThis.WebSocket = class { close() {} };
     globalThis.fetch = async () => { signalingWrites++; return new Response(''); };
-    const node = new WebRtcTransportNode({ channelKey: 'old', admission: admission() });
+    const node = new WebRtcTransportNode({ channelKey: 'old', admission: admission(), publicSignaling: false });
     node.peers.set('old-holder', { pc: { close() { closed++; } }, dc: { readyState: 'open', close() { closed++; } } });
     node.connect('new');
     assert.equal(node.channelKey, 'new'); assert.equal(closed, 2); assert.equal(node.peers.size, 0);
@@ -306,7 +310,8 @@ test('joining another mesh closes old holders before any new-key sync and bounds
     assert.equal(signalingWrites, 0);
     node.maxPeers = 0;
     assert.throws(() => node.getOrCreatePeer('remote'), code('peer-capacity'));
-    node.bc?.close(); node.ws?.close();
+    // Cancel asynchronous signing before restoring global provider adapters.
+    node.close();
   } finally { Object.assign(globalThis, saved); }
 });
 
@@ -577,8 +582,9 @@ test('browser can reconcile an earlier retained command without selecting or rep
   class RetainedVm extends LinuxVmNode {
     constructor(options) {
       super(options); this.vmPhase = 'Ready'; this.bootGeneration = 4;
-      this.v86 = { read_file: async name => name.startsWith('done') ? Uint8Array.of(1) : new TextEncoder().encode('earlier result'),
-        keyboard_send_text() { dispatches++; } };
+      this.v86 = { fs9p: filesystemFixture(), keyboard_send_text() { dispatches++; } };
+      this.v86.fs9p.setResult('done_earlier', Uint8Array.of(1));
+      this.v86.fs9p.setResult('out_earlier', new TextEncoder().encode('earlier result'));
       for (const [id, outcome] of [['earlier', 'unknown'], ['latest', 'completed']]) {
         this.commands.set(id, { id, outcome, generation: 4, vm: this.v86, dispatched: true, outName: `out_${id}`, doneName: `done_${id}`, output: Uint8Array.of(9) });
       }
@@ -647,4 +653,61 @@ test('actual browser script restores an explicitly accepted recent anchor only i
   assert.equal(h.mesh.sent.length, sent); assert.equal(h.db.admission.state.spent.requests, requests);
   assert.deepEqual(h.dnsCalls, []); assert.equal(h.vm.commands, 0); assert.equal(h.vm.boots, 0);
   assert.equal(h.db.objects.size, 0); assert.equal(h.coordinator.jobs.size, 0);
+});
+
+test('browser cancellation reports pending whole-VM stop beside the selected command and never resolves prior effects', async () => {
+  let finish, stops = 0;
+  class CancelVm extends LinuxVmNode {
+    constructor(options) {
+      super(options); this.vmPhase = 'Ready'; this.bootGeneration = 1;
+      this.v86 = { stop: () => { stops++; return new Promise(resolve => { finish = resolve; }); } };
+      this.commands.set('selected', { id: 'selected', vm: this.v86, generation: 1, dispatched: true, outcome: 'unknown' });
+      this.lastCommandId = 'selected';
+    }
+  }
+  const h = await browserHarness({ VmClass: CancelVm }); const field = id => h.document.getElementById(id);
+  field('vmCommandSelection').value = 'selected'; field('vmCommandSelection').listeners.change();
+  assert.equal(field('cancelVmObservationBtn').disabled, false);
+  const pending = h.click('cancelVmObservationBtn');
+  assert.equal(stops, 1); assert.equal(field('cancelVmObservationBtn').disabled, true);
+  assert.match(field('vmStatusLabel').textContent, /awaiting emulator confirmation/);
+  assert.doesNotMatch(field('vmStatusLabel').textContent, /ERROR/);
+  assert.match(field('vmCommandOutcome').textContent, /unknown.*stop-pending/);
+  finish(); await pending;
+  assert.match(field('vmCommandOutcome').textContent, /unknown.*vm-stopped/);
+  assert.equal(field('forgetVmCommandBtn').disabled, true);
+});
+
+test('browser runtime entry validates before boot rather than silently resetting an invalid allowance', async () => {
+  class RuntimeVm extends LinuxVmNode { boots = 0; boot() { this.boots++; } }
+  const h = await browserHarness({ VmClass: RuntimeVm }); const field = id => h.document.getElementById(id);
+  for (const input of ['', '0', '301', 'not a number']) {
+    field('vmRuntimeSeconds').value = input; await h.click('bootVmBtn');
+    assert.equal(h.vm.boots, 0); assert.match(field('vmActionStatus').textContent, /1–300 seconds/);
+  }
+  field('vmRuntimeSeconds').value = '2'; await h.click('bootVmBtn');
+  assert.equal(h.vm.boots, 1); assert.equal(h.vm.vmRuntimeMs, 2000);
+});
+
+test('actual browser saved-key rotation is explicit, leaves the pin unchanged and requires a fresh explicit pin before signing', async () => {
+  const h = await browserHarness(), field = id => h.document.getElementById(id);
+  await h.click('saveAuthorityBtn');
+  const original = field('pointerAuthorityInput').value;
+  field('authorityLifecyclePanel').open = true;
+  await field('authorityLifecyclePanel').listeners.toggle();
+  // Toggle schedules inspection; an explicit storage inspection also waits for its render.
+  await h.click('inspectAuthorityStorageBtn');
+  field('authorityExpectedKey').value = original; field('authorityLifecycleConsent').checked = true;
+  await h.click('rotateAuthorityBtn');
+  assert.match(field('authorityLifecycleStatus').textContent, /New saved signer/);
+  assert.equal(field('pointerAuthorityInput').value, original);
+  await h.click('dbPutBtn');
+  await h.click('writeSignedDnsBtn');
+  assert.match(field('wireLogBox').textContent, /does not hold the private key/);
+  assert.equal(field('pointerJsonInput').value, '');
+  await h.click('pinSessionAuthorityBtn');
+  assert.notEqual(field('pointerAuthorityInput').value, original);
+  await h.click('writeSignedDnsBtn');
+  assert.equal(JSON.parse(field('pointerJsonInput').value).authorityKey, field('pointerAuthorityInput').value);
+  assert.deepEqual(h.dnsCalls, []);
 });

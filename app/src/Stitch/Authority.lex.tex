@@ -1,0 +1,187 @@
+\begin{lexlean}{Stitch.Authority}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: State,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: generation, type: Nat}, {name: present, type: Bool}, {name: revoked, type: Bool}]
+}
+
+definition{
+  name: signingAllowed,
+  parameters: [active : Bool, expectedKey : Bool, bodyKey : Bool],
+  result: Bool,
+  body: (active && (expectedKey && bodyKey))
+}
+
+definition{
+  name: rotationAllowed,
+  parameters: [confirmed : Bool, exists : Bool, sameKey : Bool, historyCapacity : Bool],
+  result: Bool,
+  body: (confirmed && (exists && (sameKey && historyCapacity)))
+}
+
+definition{
+  name: revocationAllowed,
+  parameters: [confirmed : Bool, exists : Bool, sameScope : Bool],
+  result: Bool,
+  body: (confirmed && (exists && sameScope))
+}
+
+definition{
+  name: anchorSaveAllowed,
+  parameters: [confirmed : Bool, scopeCurrent : Bool, absent : Bool, identical : Bool],
+  result: Bool,
+  body: (confirmed && (scopeCurrent && (absent || identical)))
+}
+
+definition{
+  name: migrationAllowed,
+  parameters: [
+    confirmed : Bool,
+    scopeCurrent : Bool,
+    exists : Bool,
+    samePrior : Bool,
+    historyCapacity : Bool
+  ],
+  result: Bool,
+  body: (confirmed && (scopeCurrent && (exists && (samePrior && historyCapacity))))
+}
+
+definition{
+  name: anchorChronologyAllowed,
+  parameters: [
+    sameKey : Bool,
+    older : Bool,
+    sameRevision : Bool,
+    sameDigest : Bool,
+    adjacent : Bool,
+    predecessor : Bool
+  ],
+  result: Bool,
+  body: ((not sameKey) || ((not older) && (((not sameRevision) || sameDigest) && ((not adjacent) || predecessor))))
+}
+
+definition{
+  name: publicationAllowed,
+  parameters: [retiredKey : Bool, trustMatches : Bool],
+  result: Bool,
+  body: ((not retiredKey) && trustMatches)
+}
+
+definition{
+  name: journalRemovalAllowed,
+  parameters: [confirmed : Bool, definitelyRefused : Bool, noProviderIdentity : Bool],
+  result: Bool,
+  body: (confirmed && (definitelyRefused && noProviderIdentity))
+}
+
+definition{
+  name: controlAllowed,
+  parameters: [
+    action : Nat,
+    busy : Bool,
+    saved : Bool,
+    active : Bool,
+    hasHead : Bool,
+    hasTrust : Bool
+  ],
+  result: Bool,
+  body: ((not busy) && (if (action =? 1) then saved else (if (action =? 2) then (saved && active) else (if (action =? 3) then hasHead else (if (action =? 4) then hasTrust else (if (action =? 5) then hasTrust else (if (action =? 6) then hasTrust else true)))))))
+}
+
+definition{
+  name: rotate,
+  parameters: [state : State, confirmed : Bool, sameKey : Bool, historyCapacity : Bool],
+  result: State,
+  body: (if (rotationAllowed confirmed (project state present) sameKey historyCapacity) then (record State {generation := ((project state generation) + 1), present := true, revoked := false}) else state)
+}
+
+definition{
+  name: revoke,
+  parameters: [state : State, confirmed : Bool, sameScope : Bool],
+  result: State,
+  body: (if (revocationAllowed confirmed (project state present) sameScope) then (record State {generation := (project state generation), present := true, revoked := true}) else state)
+}
+
+definition{
+  name: migrate,
+  parameters: [
+    state : State,
+    confirmed : Bool,
+    scopeCurrent : Bool,
+    samePrior : Bool,
+    historyCapacity : Bool
+  ],
+  result: State,
+  body: (if (migrationAllowed confirmed scopeCurrent (project state present) samePrior historyCapacity) then (record State {generation := ((project state generation) + 1), present := true, revoked := false}) else state)
+}
+
+definition{
+  name: maySign,
+  parameters: [state : State, expectedKey : Bool, bodyKey : Bool],
+  result: Bool,
+  body: (signingAllowed ((project state present) && (not (project state revoked))) expectedKey bodyKey)
+}
+
+theorem{
+  name: unconfirmedRotationRefused,
+  parameters: [],
+  statement: (forall (exists : Bool), (forall (sameKey : Bool), (forall (historyCapacity : Bool), ((rotationAllowed false exists sameKey historyCapacity) = false)))),
+  proof: decide{}
+}
+
+theorem{
+  name: changedAnchorCannotMigrate,
+  parameters: [],
+  statement: (forall (confirmed : Bool), (forall (scopeCurrent : Bool), (forall (exists : Bool), (forall (historyCapacity : Bool), ((migrationAllowed confirmed scopeCurrent exists false historyCapacity) = false))))),
+  proof: decide{}
+}
+
+theorem{
+  name: retiredAuthorityCannotPublish,
+  parameters: [],
+  statement: (forall (trustMatches : Bool), ((publicationAllowed true trustMatches) = false)),
+  proof: decide{}
+}
+
+theorem{
+  name: uncertainJournalCannotBeRemoved,
+  parameters: [],
+  statement: (forall (confirmed : Bool), (forall (noProviderIdentity : Bool), ((journalRemovalAllowed confirmed false noProviderIdentity) = false))),
+  proof: decide{}
+}
+
+theorem{
+  name: revocationBlocksSigning,
+  parameters: [],
+  statement: (forall (expectedKey : Bool), (forall (bodyKey : Bool), ((maySign (record State {generation := 0, present := true, revoked := true}) expectedKey bodyKey) = false))),
+  proof: decide{}
+}
+
+theorem{
+  name: rotateCreatesNextGeneration,
+  parameters: [generation : Nat],
+  statement: ((rotate (record State {generation := generation, present := true, revoked := false}) true true true) = (record State {generation := (generation + 1), present := true, revoked := false})),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: staleMigrationPreservesState,
+  parameters: [generation : Nat, revoked : Bool],
+  statement: ((migrate (record State {generation := generation, present := true, revoked := revoked}) true true false true) = (record State {generation := generation, present := true, revoked := revoked})),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: sameKeyRollbackRefused,
+  parameters: [],
+  statement: (forall (sameRevision : Bool), (forall (sameDigest : Bool), (forall (adjacent : Bool), (forall (predecessor : Bool), ((anchorChronologyAllowed true true sameRevision sameDigest adjacent predecessor) = false))))),
+  proof: decide{}
+}
+\end{semanticmodule}
+\end{lexlean}

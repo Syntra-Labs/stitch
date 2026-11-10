@@ -1,3 +1,4 @@
+import { SignalSession } from './signaling.js';
 /**
  * @file src/layer5-transport/index.js
  * @description Layer 5: Live Multi-Peer WebRTC DataChannel Mesh, Warm Relay Ring-Buffer,
@@ -45,6 +46,26 @@ const DEFAULT_ICE_SERVERS = [
   { urls: 'stun:stun.l.google.com:19302' },
   { urls: 'stun:stun.cloudflare.com:3478' }
 ];
+
+// Snapshot a bounded, ordinary RTCIceServer list before asynchronous connection
+// setup. An explicit empty list supports a host-only local mesh. Credentials are
+// passed only to the browser's RTC implementation, never emitted as events.
+function iceServerConfiguration(servers) {
+  if (!Array.isArray(servers) || servers.length > 16) throw new TypeError('Invalid ICE server configuration');
+  return servers.map(server => {
+    if (!server || typeof server !== 'object' || Array.isArray(server)
+      || Object.keys(server).some(key => !['urls', 'username', 'credential'].includes(key))) throw new TypeError('Invalid ICE server configuration');
+    const urls = typeof server.urls === 'string' ? [server.urls] : server.urls;
+    if (!Array.isArray(urls) || urls.length < 1 || urls.length > 16
+      || urls.some(url => typeof url !== 'string' || url.length > 2048 || !/^(stun|stuns|turn|turns):[^\s]+$/.test(url))) throw new TypeError('Invalid ICE server configuration');
+    const result = { urls: [...urls] };
+    for (const key of ['username', 'credential']) if (server[key] !== undefined) {
+      if (typeof server[key] !== 'string' || server[key].length > 2048) throw new TypeError('Invalid ICE server configuration');
+      result[key] = server[key];
+    }
+    return result;
+  });
+}
 
 export function parsePointerTxt(rawTxt) {
   const cleaned = String(rawTxt).replace(/^"+|"+$/g, '').trim();
@@ -520,7 +541,13 @@ export class WebRtcTransportNode {
     this.peerId = options.peerId || ('node-' + Math.random().toString(36).slice(2, 8));
     this.channelKey = options.channelKey ?? 'syntra-uor-bus-01';
     validateTransportIdentity(this.peerId, this.channelKey);
+    this.signaling = new SignalSession(this.channelKey, { maxPeers: this.maxPeers });
+    this.signalSigning = new Map();
+    this.signalTail = Promise.resolve();
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5000;
+    this.iceServers = iceServerConfiguration(options.iceServers ?? DEFAULT_ICE_SERVERS);
+    this.publicSignaling = options.publicSignaling ?? true;
+    if (typeof this.publicSignaling !== 'boolean') throw new TypeError('Public signaling requires an explicit Boolean');
     this.networkPairClass = options.networkPairClass ?? 'declared-pair';
     this.trialLogger = options.trialLogger ?? null;
     this.onEvent = options.onEvent ?? (() => {});
@@ -537,6 +564,9 @@ export class WebRtcTransportNode {
     this.bytesSent = 0;
     this.bytesReceived = 0;
   }
+
+  // Display labels are not authenticated routing identities.
+  get routingPeerId() { return this.signaling.id ?? this.peerId; }
 
   get lifecycle() {
     return { generation: this.generation, closed: this.closed, canConnect: true, canSend: transportCanSend(this) };
@@ -586,7 +616,7 @@ export class WebRtcTransportNode {
       entry.c1Logged = true;
     }
     this.admission.reserve('refresh', { requests: 1 });
-    const pc = new RTCPeerConnection({ iceServers: DEFAULT_ICE_SERVERS });
+    const pc = new RTCPeerConnection({ iceServers: this.iceServers });
     entry = {
       pc,
       dc: null,
@@ -706,7 +736,7 @@ export class WebRtcTransportNode {
     if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'ping') {
       if (msg.from !== remoteId || !Number.isSafeInteger(msg.seq) || msg.seq < 0 || !Number.isFinite(msg.sentAtMs)) return;
-      this.sendToPeer(remoteId, { type: 'pong', seq: msg.seq, sentAtMs: msg.sentAtMs, from: this.peerId });
+      this.sendToPeer(remoteId, { type: 'pong', seq: msg.seq, sentAtMs: msg.sentAtMs, from: this.routingPeerId });
       this.recordHeartbeat(remoteId, nowMs, null);
     } else if (msg.type === 'pong') {
       const probe = entry?.pendingHeartbeats.get(msg.seq), observedAt = performance.now();
@@ -794,7 +824,7 @@ export class WebRtcTransportNode {
       if (!transportSessionCurrent(this, callback)) return;
       this.seq++;
       const now = Date.now();
-      this.broadcast({ type: 'ping', seq: this.seq, sentAtMs: now, from: this.peerId });
+      this.broadcast({ type: 'ping', seq: this.seq, sentAtMs: now, from: this.routingPeerId });
     }, this.heartbeatIntervalMs);
   }
 
@@ -830,7 +860,9 @@ export class WebRtcTransportNode {
     if (!relayAdmissionAllowed(relayCapacity(this.relayPending.size, retained), snapshot.byteLength)) refuse('relay-outbound-capacity');
     this.relaySession ??= newRelaySession();
     const job = { snapshot, scope, callback, session: this.relaySession, channelKey: this.channelKey,
-      consentCurrent, localBroadcast, fetchImpl: globalThis.fetch?.bind(globalThis), controller: new AbortController(), timedOut: false,
+      consentCurrent, localBroadcast,
+      fetchImpl: scope === 'signal' && !this.publicSignaling ? null : globalThis.fetch?.bind(globalThis),
+      controller: new AbortController(), timedOut: false,
       url: `https://ntfy.sh/${scope === 'warm' ? this.warmCacheTopic() : this.signalTopic()}` };
     this.relayPending.set(job, job);
     job.deadline = setTimeout(() => { job.timedOut = true; job.controller.abort(); }, RELAY_LIMITS.requestTimeout);
@@ -956,6 +988,7 @@ export class WebRtcTransportNode {
     // Rejoining the same topic is also a new signaling session.
     this.close();
     openTransport(this, channelKey);
+    this.signaling = new SignalSession(channelKey, { maxPeers: this.maxPeers });
     const callback = captureTransport(this);
     const current = () => transportSessionCurrent(this, callback);
     this.signalAssembler = new RelayReassembler({ channelKey: this.channelKey, scope: 'signal',
@@ -973,9 +1006,12 @@ export class WebRtcTransportNode {
       this.bc.onmessage = e => {
         if (current() && e.data && e.data.from !== this.peerId) receive(e.data);
       };
+      // Same-origin peers must not wait for the public signaling provider to
+      // become reachable. Public discovery still announces when its socket opens.
+      this.sendSignal({ kind: 'announce' });
     }
 
-    if (typeof WebSocket !== 'undefined') {
+    if (this.publicSignaling && typeof WebSocket !== 'undefined') {
       const topic = this.signalTopic();
       try {
         this.admission.reserve('refresh', { requests: 1 });
@@ -1001,7 +1037,7 @@ export class WebRtcTransportNode {
       } catch {
         this.sendSignal({ kind: 'announce' });
       }
-    } else {
+    } else if (!this.bc) {
       this.sendSignal({ kind: 'announce' });
     }
   }
@@ -1009,20 +1045,46 @@ export class WebRtcTransportNode {
   /** True means locally queued, not published or delivered. Result events
    * distinguish local-only, HTTP acknowledgements, partial and unknown batches.
    */
-  sendSignal(payload) {
-    if (!transportCanSend(this)) return false;
+  sendSignal(payload) { return this.enqueueSignal(payload) !== null; }
+
+  enqueueSignal(payload) {
+    if (!transportCanSend(this)) return null;
     try {
-      const snapshot = snapshotRelayMessage({ ...payload, from: this.peerId, channelKey: this.channelKey });
-      if (!this.bc && typeof fetch === 'undefined') return false;
-      this._queueRelay(snapshot, 'signal', () => true, this.bc).catch(() => {});
-      return true;
+      // Snapshot caller-owned browser records before asynchronous cryptography.
+      const input = snapshotRelayMessage(payload);
+      const retained = [...this.signalSigning.values()].reduce((n, job) => n + job.bytes, 0)
+        + [...this.relayPending.values()].reduce((n, job) => n + job.snapshot.byteLength, 0);
+      if (this.signalSigning.size + this.relayPending.size >= RELAY_LIMITS.entries
+        || retained + input.byteLength > RELAY_LIMITS.retainedBytes) refuse('signal-queue-limit');
+      if (!this.bc && typeof fetch === 'undefined') return null;
+      const callback = captureTransport(this), session = this.signaling;
+      const job = { bytes: input.byteLength, completion: null };
+      this.signalSigning.set(job, job);
+      job.completion = this.signalTail.then(async () => {
+        const signed = await session.sign(JSON.parse(input.raw));
+        if (!transportSessionCurrent(this, callback) || session !== this.signaling) return null;
+        this.signalSigning.delete(job);
+        return await this._queueRelay(snapshotRelayMessage(signed), 'signal', () => true, this.bc);
+      }).catch(error => {
+        if (transportSessionCurrent(this, callback)) this.emit('policy_refused', { code: error.code || error.message || 'signal-failed' });
+        return null;
+      }).finally(() => this.signalSigning.delete(job));
+      this.signalTail = job.completion;
+      return job.completion;
     } catch (error) {
       this.emit('policy_refused', { code: error.code || 'relay-failed' });
-      return false;
+      return null;
     }
   }
 
   async handleSignal(msg) {
+    const session = this.signaling, invocation = captureTransport(this);
+    return session.receive(msg, async authenticated => {
+    if (!authenticated || !transportSessionCurrent(this, invocation) || this.signaling !== session) return;
+    if (authenticated.reply) await this.enqueueSignal(authenticated.reply);
+    if (!transportSessionCurrent(this, invocation) || this.signaling !== session) return;
+    if (!authenticated.message) return;
+    msg = { ...authenticated.message, to: this.peerId };
     if (!msg || msg.channelKey !== this.channelKey || typeof msg.from !== 'string' || msg.from.length === 0 || msg.from.length > 128) return;
     try {
       parseCanonicalJson(JSON.stringify(msg.from), { maxBytes: 1024, maxDepth: 0, maxEntries: 1, maxStringLength: 128 });
@@ -1046,7 +1108,7 @@ export class WebRtcTransportNode {
       if (!current(entry)) return;
       this.sendSignal({ kind: 'offer', to: remoteId, sdp: entry.pc.localDescription });
     } else if (msg.kind === 'offer') {
-      if (existing && existing.pc.signalingState === 'have-local-offer' && this.peerId < remoteId) {
+      if (existing && existing.pc.signalingState === 'have-local-offer' && (this.routingPeerId) < remoteId) {
         return; // Deterministic glare resolution
       }
       const entry = this.getOrCreatePeer(remoteId, false);
@@ -1068,10 +1130,14 @@ export class WebRtcTransportNode {
         } catch {}
       }
     }
+    });
   }
 
   close() {
     closeTransport(this);
+    this.signaling?.close();
+    this.signalSigning?.clear();
+    this.signalTail = Promise.resolve();
     this.relaySession = null;
     for (const job of this.relayPending.values()) job.controller.abort();
     this.warmPollBusy?.controller.abort();

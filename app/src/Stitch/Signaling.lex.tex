@@ -1,0 +1,34 @@
+\begin{lexlean}{Stitch.Signaling}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+definition{
+  name: admissionAllowed,
+  parameters: [
+    signatureVerified : Bool,
+    current : Bool,
+    destinationMatches : Bool,
+    sessionBound : Bool,
+    sequence : Nat,
+    previous : Nat
+  ],
+  result: Bool,
+  body: (signatureVerified && (current && (destinationMatches && (sessionBound && (previous <? sequence)))))
+}
+
+theorem{
+  name: unverifiedCannotAdmit,
+  parameters: [
+    current : Bool,
+    destinationMatches : Bool,
+    sessionBound : Bool,
+    sequence : Nat,
+    previous : Nat
+  ],
+  statement: ((admissionAllowed false current destinationMatches sessionBound sequence previous) = false),
+  proof: reflexivity{}
+}
+\end{semanticmodule}
+\end{lexlean}

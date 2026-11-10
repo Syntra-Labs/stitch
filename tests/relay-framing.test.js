@@ -21,7 +21,7 @@ const assembler = (options = {}) => new RelayReassembler({ channelKey: 'mesh', s
 const alter = (raw, updates) => JSON.stringify({ ...JSON.parse(raw), ...updates });
 const policy = limit => new ResourceAdmission({ limit: { requests: 4096, transferBytes: 16 * 1024 * 1024,
   storageBytes: 16 * 1024 * 1024, computeSteps: 1000000, ...limit } });
-const drain = node => Promise.all([...node.relayPending.values()].map(job => job.completion));
+const drain = node => Promise.all([...node.signalSigning.values(), ...node.relayPending.values()].map(job => job.completion));
 function globals(t, entries) {
   for (const [name, value] of Object.entries(entries)) {
     const previous = Object.getOwnPropertyDescriptor(globalThis, name);
@@ -237,11 +237,11 @@ test('actual signal WebSocket path reassembles large SDP and ignores stale/wrong
   const receiver = new WebRtcTransportNode({ peerId: 'receiver', channelKey: 'mesh' });
   t.after(() => { sender.close(); receiver.close(); });
   receiver.connect(); receiver.handleSignal = async msg => { received.push(normalize(msg)); };
-  const payload = { kind: 'offer', to: 'receiver', sdp: { type: 'offer', sdp: 'v=0\r\n'.repeat(2500) } };
+  const payload = { kind: 'offer', to: (await receiver.signaling.identity()).id, targetSession: receiver.signaling.session, sdp: { type: 'offer', sdp: 'v=0\r\n'.repeat(2500) } };
   assert.equal(sender.sendSignal(payload), true); await drain(sender);
   assert.ok(posts.length > 1 && posts.every(raw => wireBytes(raw) <= 4096));
   for (const raw of [...posts.slice().reverse(), ...posts]) await receiver.ws.onmessage({ data: JSON.stringify({ event: 'message', message: raw }) });
-  assert.equal(received.length, 1); assert.deepEqual(received[0].sdp, payload.sdp);
+  assert.equal(received.length, 1); assert.deepEqual(received[0].payload.sdp, payload.sdp);
   const oldSocket = receiver.ws;
   receiver.connect('different');
   for (const raw of posts) {
@@ -302,7 +302,7 @@ test('in-flight outbound work is bounded before asynchronous framing allocates m
   const node = new WebRtcTransportNode({ peerId: 'writer' });
   for (let index = 0; index < RELAY_LIMITS.entries; index++) assert.equal(node.sendSignal({ kind: 'announce', index }), true);
   assert.equal(node.sendSignal({ kind: 'announce', index: 999 }), false);
-  assert.equal(node.relayPending.size, RELAY_LIMITS.entries);
+  assert.equal(node.signalSigning.size, RELAY_LIMITS.entries);
   node.close(); gate.resolve(); await drain(node);
   assert.equal(node.relayPending.size, 0);
 });

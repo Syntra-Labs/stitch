@@ -16,7 +16,7 @@ Stitch retains its five layers: object/ring operations, scheduling, storage, com
 - **Internet formats are implemented at the byte boundary.** JCS input/encoding, DNS-message DoH and bounded ntfy framing replace the earlier partial formats. Concrete interoperability tests remain distinct from browser/provider qualification.
 - **The public relay is opt-in.** Publishing sufficient fragments or a checkpoint discloses its content. A channel name is not a privacy control.
 
-Origin-local signing authority and publication intent can be restored after reload. This is not a private-key backup, cross-device authority or protection against origin storage loss.
+Origin-local signing authority, explicitly accepted exact trust anchors and publication intent can be restored after reload. [Browser authority controls](docs/browser-authority.md) provide explicit local key rotation/revocation, independently confirmed anchor migration and conservative storage/journal care. This is not a private-key backup, cross-device authority or protection against origin storage loss.
 
 See the [operator journeys](docs/operator-experience.md), [lifecycle bindings](docs/lifecycle-effects.md), [JCS codec](docs/canonical-json.md), [DNS client](docs/dns-client.md), and [relay framing](docs/relay-framing.md).
 

@@ -37,6 +37,19 @@ function fixture(t) {
     t.after(() => old ? Object.defineProperty(globalThis, name, old) : delete globalThis[name]);
   }
   const node = new WebRtcTransportNode({ peerId: 'local', channelKey: 'old', onEvent: ev => events.push(ev) });
+  // These tests isolate lifecycle continuations after authentication. The real
+  // wire boundary is exercised separately in authenticated-signaling.test.js.
+  const authenticateFixture = () => {
+    t.mock.method(node.signaling, 'receive', async (message, consume) => {
+      const authenticated = { message };
+      await consume(authenticated);
+      return authenticated;
+    });
+    t.mock.method(node.signaling, 'sign', async payload => ({ ...payload, from: node.peerId, channelKey: node.channelKey }));
+  };
+  authenticateFixture();
+  const connect = node.connect.bind(node);
+  t.mock.method(node, 'connect', (...args) => { connect(...args); authenticateFixture(); });
   t.after(() => node.close());
   return { node, effects, events, Channel };
 }
@@ -124,7 +137,7 @@ test('close invalidates pending work and same-topic reconnect starts a fresh ses
   node.connect('old');
   await node.handleSignal({ kind: 'announce', from: 'remote', channelKey: 'old' });
   assert.notEqual(node.peers.get('remote'), old);
-  await Promise.all([...node.relayPending.values()].map(job => job.completion));
+  await Promise.all([...node.signalSigning.values(), ...node.relayPending.values()].map(job => job.completion));
   assert.ok(effects.some(([type, frame]) => type === 'signal' && frame.kind === 'offer' && frame.channelKey === 'old'));
 });
 

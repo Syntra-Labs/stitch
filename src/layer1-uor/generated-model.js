@@ -3,6 +3,1007 @@
  * This is NOT a Prism compiler, proof certificate, or whole-runtime certification.
  */
 const definitions = {
+  "Stitch.Authority.signingAllowed": {
+    "module": "Stitch.Authority",
+    "name": "signingAllowed",
+    "params": [
+      {
+        "name": "active",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "expectedKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "bodyKey",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "active"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "expectedKey"
+        },
+        "right": {
+          "k": "var",
+          "name": "bodyKey"
+        }
+      }
+    }
+  },
+  "Stitch.Authority.rotationAllowed": {
+    "module": "Stitch.Authority",
+    "name": "rotationAllowed",
+    "params": [
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "exists",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "historyCapacity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "confirmed"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "exists"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "sameKey"
+          },
+          "right": {
+            "k": "var",
+            "name": "historyCapacity"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Authority.revocationAllowed": {
+    "module": "Stitch.Authority",
+    "name": "revocationAllowed",
+    "params": [
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "exists",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameScope",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "confirmed"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "exists"
+        },
+        "right": {
+          "k": "var",
+          "name": "sameScope"
+        }
+      }
+    }
+  },
+  "Stitch.Authority.anchorSaveAllowed": {
+    "module": "Stitch.Authority",
+    "name": "anchorSaveAllowed",
+    "params": [
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "scopeCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "absent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "identical",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "confirmed"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "scopeCurrent"
+        },
+        "right": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "var",
+            "name": "absent"
+          },
+          "right": {
+            "k": "var",
+            "name": "identical"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Authority.migrationAllowed": {
+    "module": "Stitch.Authority",
+    "name": "migrationAllowed",
+    "params": [
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "scopeCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "exists",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "samePrior",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "historyCapacity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "confirmed"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "scopeCurrent"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "exists"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "samePrior"
+            },
+            "right": {
+              "k": "var",
+              "name": "historyCapacity"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Authority.anchorChronologyAllowed": {
+    "module": "Stitch.Authority",
+    "name": "anchorChronologyAllowed",
+    "params": [
+      {
+        "name": "sameKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "older",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameRevision",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameDigest",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "adjacent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "predecessor",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "sameKey"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "older"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "sameRevision"
+              }
+            },
+            "right": {
+              "k": "var",
+              "name": "sameDigest"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "adjacent"
+              }
+            },
+            "right": {
+              "k": "var",
+              "name": "predecessor"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Authority.publicationAllowed": {
+    "module": "Stitch.Authority",
+    "name": "publicationAllowed",
+    "params": [
+      {
+        "name": "retiredKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "trustMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "retiredKey"
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "trustMatches"
+      }
+    }
+  },
+  "Stitch.Authority.journalRemovalAllowed": {
+    "module": "Stitch.Authority",
+    "name": "journalRemovalAllowed",
+    "params": [
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "definitelyRefused",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "noProviderIdentity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "confirmed"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "definitelyRefused"
+        },
+        "right": {
+          "k": "var",
+          "name": "noProviderIdentity"
+        }
+      }
+    }
+  },
+  "Stitch.Authority.controlAllowed": {
+    "module": "Stitch.Authority",
+    "name": "controlAllowed",
+    "params": [
+      {
+        "name": "action",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "saved",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "active",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "hasHead",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "hasTrust",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "busy"
+        }
+      },
+      "right": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "action"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "yes": {
+          "k": "var",
+          "name": "saved"
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "action"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "saved"
+            },
+            "right": {
+              "k": "var",
+              "name": "active"
+            }
+          },
+          "no": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "action"
+              },
+              "right": {
+                "k": "nat",
+                "value": "3"
+              }
+            },
+            "yes": {
+              "k": "var",
+              "name": "hasHead"
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "var",
+                  "name": "action"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "4"
+                }
+              },
+              "yes": {
+                "k": "var",
+                "name": "hasTrust"
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "action"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "5"
+                  }
+                },
+                "yes": {
+                  "k": "var",
+                  "name": "hasTrust"
+                },
+                "no": {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "action"
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "6"
+                    }
+                  },
+                  "yes": {
+                    "k": "var",
+                    "name": "hasTrust"
+                  },
+                  "no": {
+                    "k": "bool",
+                    "value": true
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Authority.rotate": {
+    "module": "Stitch.Authority",
+    "name": "rotate",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "historyCapacity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "State"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "rotationAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "confirmed"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "present"
+          },
+          {
+            "k": "var",
+            "name": "sameKey"
+          },
+          {
+            "k": "var",
+            "name": "historyCapacity"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "State",
+        "values": {
+          "generation": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "generation"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "present": {
+            "k": "bool",
+            "value": true
+          },
+          "revoked": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Authority.revoke": {
+    "module": "Stitch.Authority",
+    "name": "revoke",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameScope",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "State"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "revocationAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "confirmed"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "present"
+          },
+          {
+            "k": "var",
+            "name": "sameScope"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "State",
+        "values": {
+          "generation": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "generation"
+          },
+          "present": {
+            "k": "bool",
+            "value": true
+          },
+          "revoked": {
+            "k": "bool",
+            "value": true
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Authority.migrate": {
+    "module": "Stitch.Authority",
+    "name": "migrate",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "confirmed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "scopeCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "samePrior",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "historyCapacity",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "State"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "migrationAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "confirmed"
+          },
+          {
+            "k": "var",
+            "name": "scopeCurrent"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "present"
+          },
+          {
+            "k": "var",
+            "name": "samePrior"
+          },
+          {
+            "k": "var",
+            "name": "historyCapacity"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "State",
+        "values": {
+          "generation": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "generation"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "present": {
+            "k": "bool",
+            "value": true
+          },
+          "revoked": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Authority.maySign": {
+    "module": "Stitch.Authority",
+    "name": "maySign",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "State"
+        }
+      },
+      {
+        "name": "expectedKey",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "bodyKey",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "call",
+      "name": "signingAllowed",
+      "args": [
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "present"
+          },
+          "right": {
+            "k": "not",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "revoked"
+            }
+          }
+        },
+        {
+          "k": "var",
+          "name": "expectedKey"
+        },
+        {
+          "k": "var",
+          "name": "bodyKey"
+        }
+      ]
+    }
+  },
   "Stitch.Budget.chooseBool": {
     "module": "Stitch.Budget",
     "name": "chooseBool",
@@ -29720,6 +30721,95 @@ const definitions = {
       }
     }
   },
+  "Stitch.Signaling.admissionAllowed": {
+    "module": "Stitch.Signaling",
+    "name": "admissionAllowed",
+    "params": [
+      {
+        "name": "signatureVerified",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "current",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "destinationMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sessionBound",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sequence",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "previous",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "signatureVerified"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "current"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "destinationMatches"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "sessionBound"
+            },
+            "right": {
+              "k": "binary",
+              "op": "<?",
+              "left": {
+                "k": "var",
+                "name": "previous"
+              },
+              "right": {
+                "k": "var",
+                "name": "sequence"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "Stitch.System.admitAction": {
     "module": "Stitch.System",
     "name": "admitAction",
@@ -32378,6 +33468,252 @@ const definitions = {
       }
     }
   },
+  "Stitch.VmAdministration.allocationAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "allocationAllowed",
+    "params": [
+      {
+        "name": "used",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "requested",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "limit",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "<=?",
+      "left": {
+        "k": "binary",
+        "op": "+",
+        "left": {
+          "k": "var",
+          "name": "used"
+        },
+        "right": {
+          "k": "var",
+          "name": "requested"
+        }
+      },
+      "right": {
+        "k": "var",
+        "name": "limit"
+      }
+    }
+  },
+  "Stitch.VmAdministration.metadataAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "metadataAllowed",
+    "params": [
+      {
+        "name": "used",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "limit",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "<?",
+      "left": {
+        "k": "var",
+        "name": "used"
+      },
+      "right": {
+        "k": "var",
+        "name": "limit"
+      }
+    }
+  },
+  "Stitch.VmAdministration.resultReadAllowed": {
+    "module": "Stitch.VmAdministration",
+    "name": "resultReadAllowed",
+    "params": [
+      {
+        "name": "size",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "limit",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "regular",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "regular"
+      },
+      "right": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "var",
+          "name": "size"
+        },
+        "right": {
+          "k": "var",
+          "name": "limit"
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.terminationRequired": {
+    "module": "Stitch.VmAdministration",
+    "name": "terminationRequired",
+    "params": [
+      {
+        "name": "cancelled",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "expired",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "exceeded",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "var",
+        "name": "cancelled"
+      },
+      "right": {
+        "k": "binary",
+        "op": "||",
+        "left": {
+          "k": "var",
+          "name": "expired"
+        },
+        "right": {
+          "k": "var",
+          "name": "exceeded"
+        }
+      }
+    }
+  },
+  "Stitch.VmAdministration.filesystemAllocationLimit": {
+    "module": "Stitch.VmAdministration",
+    "name": "filesystemAllocationLimit",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "67108864"
+    }
+  },
+  "Stitch.VmAdministration.filesystemFileLimit": {
+    "module": "Stitch.VmAdministration",
+    "name": "filesystemFileLimit",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "16777216"
+    }
+  },
+  "Stitch.VmAdministration.filesystemMetadataLimit": {
+    "module": "Stitch.VmAdministration",
+    "name": "filesystemMetadataLimit",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "4096"
+    }
+  },
+  "Stitch.VmAdministration.outputLimit": {
+    "module": "Stitch.VmAdministration",
+    "name": "outputLimit",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "4194304"
+    }
+  },
+  "Stitch.VmAdministration.retainedOutputLimit": {
+    "module": "Stitch.VmAdministration",
+    "name": "retainedOutputLimit",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "16777216"
+    }
+  },
+  "Stitch.VmAdministration.runtimeLimitMs": {
+    "module": "Stitch.VmAdministration",
+    "name": "runtimeLimitMs",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "300000"
+    }
+  },
   "Product.Experience.initialFacts": {
     "module": "Product.Experience",
     "name": "initialFacts",
@@ -34546,11 +35882,11 @@ const definitions = {
         },
         "label": {
           "k": "string",
-          "value": "Cancel Command Wait"
+          "value": "Cancel and Stop VM"
         },
         "help": {
           "k": "string",
-          "value": "Stop observing, not the guest command; dispatched effects remain unknown."
+          "value": "Before dispatch, prevent the command. After dispatch, stop the whole VM, including other guest work; prior effects remain unknown."
         }
       }
     }
@@ -38020,6 +39356,29 @@ const definitions = {
   }
 };
 const types = {
+  "Stitch.Authority.State": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "present",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "revoked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
   "Stitch.Budget.Resources": {
     "kind": "structure",
     "fields": [
@@ -41081,12 +42440,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:c75cae645cabb8faab6b539e9d165fa878959db53d673fe5eb4f639de159cd8a";
+export const modelSourceDigest = "sha256:2a46ef81d180dde1f012e39afa9c414a8654ae3ad7d612c3fadf72f36eeda816";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:c75cae645cabb8faab6b539e9d165fa878959db53d673fe5eb4f639de159cd8a",
+  "sourceDigest": "sha256:2a46ef81d180dde1f012e39afa9c414a8654ae3ad7d612c3fadf72f36eeda816",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -44700,7 +46059,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
+      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -44708,7 +46067,11 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
+      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -44763,12 +46126,16 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
@@ -44905,6 +46272,10 @@ export const MODEL_SOURCE = Object.freeze({
   ],
   "sources": [
     {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
+    },
+    {
       "path": "app/src/Stitch/Budget.lex.tex",
       "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
     },
@@ -44957,19 +46328,71 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
+      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
     }
   ],
   "theorems": [
+    {
+      "id": "Stitch.Authority.unconfirmedRotationRefused",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.changedAnchorCannotMigrate",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.retiredAuthorityCannotPublish",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.uncertainJournalCannotBeRemoved",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.revocationBlocksSigning",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.rotateCreatesNextGeneration",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.staleMigrationPreservesState",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Authority.sameKeyRollbackRefused",
+      "proof": "decide",
+      "source": "app/src/Stitch/Authority.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
     {
       "id": "Stitch.Budget.boolAndFalse",
       "proof": "decide",
@@ -46219,6 +47642,12 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Signaling.unverifiedCannotAdmit",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Signaling.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.System.requestDoesNotChangeObjectCustody",
       "proof": "reflexivity",
       "source": "app/src/Stitch/System.lex.tex",
@@ -46545,6 +47974,19 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.vmQuarantined",
     "Product.Experience.vmReady",
     "Product.Experience.vmView",
+    "Stitch.Authority.anchorChronologyAllowed",
+    "Stitch.Authority.anchorSaveAllowed",
+    "Stitch.Authority.controlAllowed",
+    "Stitch.Authority.journalRemovalAllowed",
+    "Stitch.Authority.maySign",
+    "Stitch.Authority.migrate",
+    "Stitch.Authority.migrationAllowed",
+    "Stitch.Authority.publicationAllowed",
+    "Stitch.Authority.revocationAllowed",
+    "Stitch.Authority.revoke",
+    "Stitch.Authority.rotate",
+    "Stitch.Authority.rotationAllowed",
+    "Stitch.Authority.signingAllowed",
     "Stitch.Budget.addResources",
     "Stitch.Budget.admitAction",
     "Stitch.Budget.budgetValid",
@@ -46792,6 +48234,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Relay.sameIdentity",
     "Stitch.Relay.signalLifetime",
     "Stitch.Relay.warmLifetime",
+    "Stitch.Signaling.admissionAllowed",
     "Stitch.System.admitAction",
     "Stitch.System.applyMigration",
     "Stitch.System.choosePlacement",
@@ -46812,11 +48255,21 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.System.valid",
     "Stitch.System.validAt",
     "Stitch.VmAdministration.administrationAllowed",
+    "Stitch.VmAdministration.allocationAllowed",
     "Stitch.VmAdministration.commandAllowed",
     "Stitch.VmAdministration.ethernetAllowed",
+    "Stitch.VmAdministration.filesystemAllocationLimit",
+    "Stitch.VmAdministration.filesystemFileLimit",
+    "Stitch.VmAdministration.filesystemMetadataLimit",
     "Stitch.VmAdministration.forgetAllowed",
+    "Stitch.VmAdministration.metadataAllowed",
     "Stitch.VmAdministration.observationAllowed",
-    "Stitch.VmAdministration.shareAllowed"
+    "Stitch.VmAdministration.outputLimit",
+    "Stitch.VmAdministration.resultReadAllowed",
+    "Stitch.VmAdministration.retainedOutputLimit",
+    "Stitch.VmAdministration.runtimeLimitMs",
+    "Stitch.VmAdministration.shareAllowed",
+    "Stitch.VmAdministration.terminationRequired"
   ],
   "aliases": {
     "budgetReserveAllowed": "Stitch.Budget.reserveAllowed",

@@ -485,7 +485,7 @@ definition{
   name: actionVmCancel,
   parameters: [],
   result: Action,
-  body: (record Action {code := 24, id := "VmCancel", control := "cancelVmObservationBtn", journey := "vm", label := "Cancel Command Wait", help := "Stop observing, not the guest command; dispatched effects remain unknown."})
+  body: (record Action {code := 24, id := "VmCancel", control := "cancelVmObservationBtn", journey := "vm", label := "Cancel and Stop VM", help := "Before dispatch, prevent the command. After dispatch, stop the whole VM, including other guest work; prior effects remain unknown."})
 }
 
 definition{

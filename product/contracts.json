@@ -18,22 +18,6 @@
     {
       "path": "images/buildroot-bzimage.bin",
       "reason": "Unresolved: release must establish redistribution provenance and license"
-    },
-    {
-      "path": "v86/libv86.js",
-      "reason": "Unresolved: release must establish redistribution provenance and license"
-    },
-    {
-      "path": "v86/seabios.bin",
-      "reason": "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved"
-    },
-    {
-      "path": "v86/v86.wasm",
-      "reason": "Unresolved: release must establish redistribution provenance and license"
-    },
-    {
-      "path": "v86/vgabios.bin",
-      "reason": "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved"
     }
   ],
   "components": [
@@ -58,7 +42,8 @@
       "implementation": [
         "index.html",
         "src/product-experience.js",
-        "src/recovery-ui.js"
+        "src/recovery-ui.js",
+        "src/authority-ui.js"
       ],
       "models": [
         "Product.Experience",
@@ -170,6 +155,7 @@
         "src/layer1-uor/browser-authority.js"
       ],
       "models": [
+        "Stitch.Authority",
         "Stitch.Pointer",
         "Stitch.Effects",
         "Product.Host",
@@ -222,9 +208,11 @@
       "id": "signaling",
       "role": "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin",
       "implementation": [
+        "src/layer5-transport/signaling.js",
         "src/layer5-transport/relay-framing.js"
       ],
       "models": [
+        "Stitch.Signaling",
         "Stitch.Relay",
         "Stitch.Effects",
         "Product.Host"
@@ -626,7 +614,7 @@
         "disclosureConsent",
         "networkAvailability"
       ],
-      "proofScope": "Public metadata disclosure; topic names are not authentication or privacy.",
+      "proofScope": "Ed25519 key-owned session signaling with replay rejection; public metadata disclosure. Keys are not trusted human identity or holder authorization; topics are not privacy.",
       "enabledByDefault": false
     },
     {
@@ -751,19 +739,22 @@
       "preconditions": [
         "explicit VM action",
         "all assets available",
-        "host resource policy"
+        "runtime deadline configured before boot",
+        "guarded local 9p allocation installed before run"
       ],
       "failures": [
         "missing asset",
         "boot failure",
-        "guest timeout",
+        "guest timeout or runtime expiry",
+        "filesystem or bounded-result limit",
+        "stop outcome unknown",
         "bridge failure"
       ],
       "assumptions": [
         "browserSemantics",
         "vmIsolation"
       ],
-      "proofScope": "VM output may become a content-addressed object; arbitrary VM execution is not semantically replayed or metered as ring work.",
+      "proofScope": "Source predicates govern local 9p allocation and bounded result reads. Runtime expiry and dispatched-command cancellation request whole-VM stop; prior effects remain unknown. Browser scheduling and host VM behavior are assumptions, not guest isolation or ring-work metering.",
       "enabledByDefault": false
     },
     {
@@ -1056,7 +1047,7 @@
       "type": "Asset",
       "path": "images/buildroot-bzimage.bin",
       "role": "vendored VM dependency",
-      "origin": "Existing repository bytes; upstream source/revision not established",
+      "origin": "Exact official i.copy.sh/buildroot-bzimage.bin; Linux 5.6.15, original full image build inputs unresolved",
       "licenseStatus": "Unresolved: release must establish redistribution provenance and license",
       "redistributionCleared": false,
       "bytes": 5166352,
@@ -1070,8 +1061,19 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 74391,
-      "sha256": "cf52fc0b2c5f8f1330706bda016ef4f101bd467e29156cf93bbbb96d30d8cd5e"
+      "bytes": 80992,
+      "sha256": "270df6a81f5992c50a40284044e1549f846fdde62972ed54d58f1f06b9db8d70"
+    },
+    {
+      "declaration": "assetAuthorityUi",
+      "type": "Asset",
+      "path": "src/authority-ui.js",
+      "role": "Contextual explicit signing, trust-anchor and browser-storage administration",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 9734,
+      "sha256": "96e76a92918a52dff05780b76f59158916540fd38d1ced986fd6001d3ee1482b"
     },
     {
       "declaration": "assetBrowserAuthority",
@@ -1081,8 +1083,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 5230,
-      "sha256": "6a56e1dbd9e17fccb54c59b6ba910dd2d8999cdcf36310b965c4a1e896269639"
+      "bytes": 22890,
+      "sha256": "3b9ba8d4a23fbe056358791d4e2d5ad377faf5a9a3cc2ac3d2dc1c3906087d09"
     },
     {
       "declaration": "assetFile1",
@@ -1125,8 +1127,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 1177318,
-      "sha256": "aab1f6b6b7d9afb0ea6faee20246b17054915c8283e6517ac42bf68a2db41883"
+      "bytes": 1206899,
+      "sha256": "e4f40dedb4b2bc2e750721469cb2f0c07f7b517038925ee255abafda2a960526"
     },
     {
       "declaration": "assetFile4",
@@ -1147,8 +1149,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 17550,
-      "sha256": "fea31ceaa1929cd3179f99be747dbdb216f25bf90397939826463187b9f090ec"
+      "bytes": 19626,
+      "sha256": "99cce36bc7a981536e1c6df22956b5c34db9689ccc377b0e808b09502d5f09fc"
     },
     {
       "declaration": "assetFile6",
@@ -1191,8 +1193,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 34735,
-      "sha256": "eb93c107e267112bbd631bd3d292f731a3f4e74790c2e4994cb509d0303fee03"
+      "bytes": 34939,
+      "sha256": "edf22a51ebe20b8131fc6d0aa5fa8af0fe8e10f915a52788364a4e6e13a33ae4"
     },
     {
       "declaration": "assetFile10",
@@ -1202,8 +1204,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 31964,
-      "sha256": "0569d17f0c34c48271cfbf47587e2ffbd8b40628b7d35b3ad3582d315dab8c1c"
+      "bytes": 38208,
+      "sha256": "e37ec1f629fb0b0184c32defc5209d68f2dc9b30d59b53a4384f328b6879d8d3"
     },
     {
       "declaration": "assetFile11",
@@ -1224,8 +1226,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 1951,
-      "sha256": "d940335d2c7bddb3ed8e49bd38696b4ab577d8e97fdbda2941c7420aaaf1ac3b"
+      "bytes": 7124,
+      "sha256": "5a7e182990931ca093208e25693701f6daa7ba8bf657d7850101bad0be94d693"
     },
     {
       "declaration": "assetChannelFlow",
@@ -1257,8 +1259,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 51201,
-      "sha256": "98d60556ada24f2afd997ccc5fcad4ce04f5f27000d520e28c705f4ea5c520dc"
+      "bytes": 55342,
+      "sha256": "964c1aa9f859f0d0099c944e2856716f7c8c7ad204ff01dac6e3a0fd15582680"
     },
     {
       "declaration": "assetRelayFraming",
@@ -1270,6 +1272,17 @@
       "redistributionCleared": true,
       "bytes": 15145,
       "sha256": "35672c5720f5f1e5d009f1875a1c63de3a6badea2546d66baf73c77fb7c90ae0"
+    },
+    {
+      "declaration": "assetSignaling",
+      "type": "Asset",
+      "path": "src/layer5-transport/signaling.js",
+      "role": "Signed key-owned signaling with current-session challenge and replay rejection",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 6863,
+      "sha256": "422137184e9a95a55c2c1ec7f9bd8c6a21986675a4041ce62f8451c61bb4b876"
     },
     {
       "declaration": "assetRustConformance",
@@ -1320,9 +1333,9 @@
       "type": "Asset",
       "path": "v86/libv86.js",
       "role": "vendored VM dependency",
-      "origin": "Existing repository bytes; upstream source/revision not established",
-      "licenseStatus": "Unresolved: release must establish redistribution provenance and license",
-      "redistributionCleared": false,
+      "origin": "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed",
+      "licenseStatus": "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution",
+      "redistributionCleared": true,
       "bytes": 353762,
       "sha256": "b80fba71dacb7977e5b46800b3ba194bba7fe13e52fa3d22f80cc060ff015a4e"
     },
@@ -1331,9 +1344,9 @@
       "type": "Asset",
       "path": "v86/seabios.bin",
       "role": "vendored VM dependency",
-      "origin": "Exact Git-blob match to copy/v86 at 315b2b0b758703ef0e6cc7b4088d6068f83f3c20; SeaBIOS rel-1.16.2 build recipe",
-      "licenseStatus": "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved",
-      "redistributionCleared": false,
+      "origin": "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425",
+      "licenseStatus": "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution",
+      "redistributionCleared": true,
       "bytes": 131072,
       "sha256": "73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98"
     },
@@ -1342,9 +1355,9 @@
       "type": "Asset",
       "path": "v86/v86.wasm",
       "role": "vendored VM dependency",
-      "origin": "Existing repository bytes; upstream source/revision not established",
-      "licenseStatus": "Unresolved: release must establish redistribution provenance and license",
-      "redistributionCleared": false,
+      "origin": "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed",
+      "licenseStatus": "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution",
+      "redistributionCleared": true,
       "bytes": 1418156,
       "sha256": "abd512988f39f5c81d4930f564bafa1a6e1e0d5210de9b20e2bdec13fbc318d9"
     },
@@ -1353,9 +1366,9 @@
       "type": "Asset",
       "path": "v86/vgabios.bin",
       "role": "vendored VM dependency",
-      "origin": "Exact Git-blob match to copy/v86 at 315b2b0b758703ef0e6cc7b4088d6068f83f3c20; SeaBIOS rel-1.16.2 build recipe",
-      "licenseStatus": "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved",
-      "redistributionCleared": false,
+      "origin": "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425",
+      "licenseStatus": "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution",
+      "redistributionCleared": true,
       "bytes": 36352,
       "sha256": "a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880"
     }
@@ -2030,7 +2043,7 @@
     },
     {
       "path": "app/lexlean.toml",
-      "sha256": "36c3b0a51d4360d77f4752d517595d1365ee39861966bd789efab89c2ce65c80"
+      "sha256": "48c90de5fb9896bb45b03cc11692ccd1c26c99fadcc0ec4d7c6c2f481da6f56f"
     },
     {
       "path": "app/prism.toml",
@@ -2058,7 +2071,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
+      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -2066,7 +2079,11 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
+      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -2121,12 +2138,16 @@
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
     },
     {
       "path": "app/src/StitchApp.lex.tex",
@@ -2134,11 +2155,11 @@
     },
     {
       "path": "package-lock.json",
-      "sha256": "44684cd8a0a14599e67021fb85aa3a99647ed7de3493790e2ccfb1f887ebc5ad"
+      "sha256": "2b48cacfb23afb0b149221dfb9f2c9736073f4b6886e6c0d83b9899af0ab4425"
     },
     {
       "path": "package.json",
-      "sha256": "49e6bb2f731fe6be7d8b526789657e0000cb5e5e8ab4ec7149f517a5de497f53"
+      "sha256": "c1c89bc6b5fb746218fe6387c6bfdc20bf58deb0f4eb568bbd74f80d96c6f219"
     },
     {
       "path": "prismpm.lock",
@@ -2147,7 +2168,11 @@
     {
       "path": "standards.lock",
       "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
+    },
+    {
+      "path": "vendor/distribution.json",
+      "sha256": "c46831839f4b9aa9b54cc2b9756e78c030ba35715f5ee5b03ef5e77efe87276d"
     }
   ],
-  "sourceDigest": "sha256:7e26cd3f4cd066746326930f22aa9b5fbf93db778492d11f9b9ccdbffda1f13d"
+  "sourceDigest": "sha256:add196aa8e0df77f0182fbca7bfc238c996d5b9a451b4618e74d0700ec4686c6"
 }

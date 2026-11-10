@@ -2,18 +2,18 @@
   "format": "Stitch exact-source verification summary",
   "version": 1,
   "assurance": "Summary of actual pinned LexLean/Lean/leanchecker/axiom verification; not a native Prism artifact certificate or whole-host guarantee",
-  "attestation_id": "aa1f171c520b521c836f5d9f7cac9dc474a9aee61dad06e3a8a4edc0c35521f4",
-  "attestation_sha256": "f3a80f673dce0ef5c47655bdc05719c98e25d2fe420251f021ce7bf5832b9b25",
-  "source_id": "e7f0637e7b95b087938452a17ca6799deba0c30713a584d41931ef6cdd03dc7c",
-  "semantic_id": "965758c689167cdeb1d8acb19a4937f03959eb6c3f1f78971762ed4a1b45b7f6",
-  "build_id": "58a9c439783e65dd97ff4bcf13f3659da8ca13af26e874f4d524092d3e7d1754",
+  "attestation_id": "9de20b322ce51db16684dfa038528652f86c8a63352fe14b1fedb2a0660459fb",
+  "attestation_sha256": "bdeef6e45db43108eb9d62f12dae6a4e89be1436c97c5fdb254ee1d1e9f10f2b",
+  "source_id": "8f982942c31b5bbc38db4379c803503e9fcc54c0c862958fd9bb253ea2af440c",
+  "semantic_id": "71cfdf76263d8d132878eabfe0cf44ec9b20545e697e92f890cb0a9a28502372",
+  "build_id": "f5009ea3daa9cc72843ae3139883f1fc97a2dcf7c3d4e97585764a02d2f065c1",
   "status": "verified",
-  "module_count": 23,
-  "declaration_audits": 1273,
-  "successful_processes": 79,
+  "module_count": 25,
+  "declaration_audits": 1309,
+  "successful_processes": 85,
   "processes_by_tool": {
-    "lean": 53,
-    "leanchecker": 26
+    "lean": 57,
+    "leanchecker": 28
   },
   "sources": [
     {
@@ -158,11 +158,11 @@
     },
     {
       "path": "app/lexlean.lock",
-      "sha256": "a01e216d1b072ff279e5f5eb2dfb89f42e40fb8af377324ffdef22ae870cbc44"
+      "sha256": "b4ad976755fbf8fecba998843d238c57da3bf291bbb142f3cf86f9e125acc3fb"
     },
     {
       "path": "app/lexlean.toml",
-      "sha256": "36c3b0a51d4360d77f4752d517595d1365ee39861966bd789efab89c2ce65c80"
+      "sha256": "48c90de5fb9896bb45b03cc11692ccd1c26c99fadcc0ec4d7c6c2f481da6f56f"
     },
     {
       "path": "app/prism.toml",
@@ -190,7 +190,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
+      "sha256": "9db08ad24811bc6078c3c9def03464fbbd4262ec817c3feffd50cc40f182a664"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -198,7 +198,11 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
+      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -253,12 +257,16 @@
       "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
     {
       "path": "app/src/Stitch/VmAdministration.lex.tex",
-      "sha256": "ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286"
+      "sha256": "4e578e7e5c9a4f1c83d0181acae555a1c184dd72777473465448a7675b2bb32c"
     },
     {
       "path": "app/src/StitchApp.lex.tex",

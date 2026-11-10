@@ -68,7 +68,12 @@ the same instance after asynchronous writes.
 
 The deadline bounds the host's readiness wait, not guest initialization or
 correctness. A shell-command timeout reports unknown completion and does not
-claim to cancel the guest command. The lifecycle is separate from the deterministic
+claim to cancel the guest command. A separate 1–300s whole-VM runtime allowance
+continues after observation ends. Explicit cancellation after dispatch, filesystem
+quota rejection or result-size refusal requests a whole-VM stop, revokes bridges
+and retains unknown prior effects. Guarded local-9p allocation and bounded result
+reads are installed before emulator run; see [VM administration](vm-administration.md).
+The lifecycle is separate from the deterministic
 ring replay model; changing only lifecycle policy preserves that replay execution
 identity while changing exact source provenance.
 

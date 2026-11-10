@@ -11,7 +11,8 @@
     "model:check": "node scripts/check-model.mjs",
     "test:independent": "python3 scripts/verify-custody.py",
     "product:write": "node scripts/check-product.mjs --write",
-    "product:check": "node scripts/check-product.mjs --check"
+    "product:check": "node scripts/check-product.mjs --check",
+    "test:browser": "playwright test --config tests/browser/playwright.config.mjs"
   },
   "repository": {
     "type": "git",
@@ -19,6 +20,7 @@
   },
   "license": "MIT",
   "devDependencies": {
+    "@playwright/test": "1.58.2",
     "prism-code": "0.7.2"
   }
 }

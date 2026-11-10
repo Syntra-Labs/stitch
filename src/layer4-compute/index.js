@@ -22,7 +22,7 @@ import {
   Fnv1aHasher16
 } from '../layer1-uor/index.js';
 import { createCheckpoint, verifyCheckpoint, demoProgram, identifyProgram, MAX_PROGRAM_STEPS } from './replay.js';
-import { shareAllowed, ethernetAllowed, commandAllowed, observationAllowed, administrationAllowed, forgetAllowed, validateCommand } from './vm-administration.js';
+import { shareAllowed, ethernetAllowed, commandAllowed, observationAllowed, administrationAllowed, forgetAllowed, validateCommand, vmLimits, VmBoundaryError, allocationAllowed, terminationRequired, installFilesystemControls, readBoundedVmFile } from './vm-administration.js';
 import { ResourceAdmission, reserveNetwork } from '../layer2-schedulers/policy.js';
 import { snapshotRecord } from '../layer1-uor/custody.js';
 import { record, identifier, natural, digest, refuse } from '../layer1-uor/contracts.js';
@@ -256,8 +256,9 @@ export function benchmarkComputeStrategies({
  *   3. Shell task execution producing UOR-addressed output artifacts
  */
 export class LinuxVmNode {
-  constructor({ transport, screenContainer, onStatus = () => {}, bootTimeoutMs = 60000 }) {
+  constructor({ transport, screenContainer, onStatus = () => {}, bootTimeoutMs = 60000, vmRuntimeMs = vmLimits.runtimeLimitMs }) {
     if (!Number.isFinite(bootTimeoutMs) || bootTimeoutMs <= 0 || bootTimeoutMs > 2147483647) throw new Error('Invalid VM boot timeout');
+    if (!Number.isFinite(vmRuntimeMs) || vmRuntimeMs < 1000 || vmRuntimeMs > vmLimits.runtimeLimitMs) throw new VmBoundaryError('vm-runtime-limit-invalid', 'Invalid VM runtime allowance (1000–300000ms).');
     this.transport = transport;
     this.screenContainer = screenContainer;
     this.onStatus = onStatus;
@@ -265,6 +266,11 @@ export class LinuxVmNode {
     this.vmPhase = 'Idle';
     this.bootTimeoutMs = bootTimeoutMs;
     this.bootGeneration = 0;
+    this.vmRuntimeMs = vmRuntimeMs;
+    this.runtimeDeadline = null;
+    this.filesystemUsage = null;
+    this.boundaryReason = null;
+    this.boundaryStop = null;
     this.bootPoll = null;
     this.bootDeadline = null;
     this.shareGeneration = 0;
@@ -286,6 +292,7 @@ export class LinuxVmNode {
   get booting() { return vmIsBooting(this); }
   get lifecycle() {
     return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: !this.adminBlocked && !this.adminBusy && vmCanBoot(this), canExecute: vmCanExecute(this), instancePresent: !!this.v86, adminBusy: this.adminBusy, adminBlocked: this.adminBlocked, commandBusy: this.commandBusy, commandCapacity: this.commands.size < 128,
+      runtimeAllowanceMs: this.vmRuntimeMs, filesystemUsage: this.filesystemUsage ? { ...this.filesystemUsage } : null, boundaryReason: this.boundaryReason,
       canAdminister: administrationAllowed(this), ...this.commandLifecycle(this.lastCommandId) };
   }
 
@@ -294,10 +301,17 @@ export class LinuxVmNode {
   commandLifecycle(id) {
     const command = this.commands.get(id);
     return {
-      canCancelObservation: !!command && !['completed', 'failed-before-dispatch', 'cancelled-before-dispatch'].includes(command.outcome),
+      canCancelObservation: !!command && !command.cancelled && !this.adminBusy && !['completed', 'failed-before-dispatch', 'cancelled-before-dispatch'].includes(command.outcome) && (!command.dispatched || observationAllowed(this, command)),
       canForgetCommand: forgetAllowed(this, command),
       canReconcileCommand: !!command && (command.outcome === 'completed' || observationAllowed(this, command))
     };
+  }
+
+  setRuntimeAllowance(milliseconds) {
+    if (!Number.isFinite(milliseconds) || milliseconds < 1000 || milliseconds > vmLimits.runtimeLimitMs)
+      throw new VmBoundaryError('vm-runtime-limit-invalid', 'VM runtime allowance must be 1–300 seconds.');
+    if (this.v86 || this.adminBusy) throw new VmBoundaryError('vm-runtime-active', 'Destroy the current instance before changing its runtime allowance.');
+    this.vmRuntimeMs = milliseconds;
   }
 
   clearBootTimers() {
@@ -307,11 +321,25 @@ export class LinuxVmNode {
     this.bootDeadline = null;
   }
 
+  clearRuntimeDeadline() {
+    if (this.runtimeDeadline !== null) clearTimeout(this.runtimeDeadline);
+    this.runtimeDeadline = null;
+  }
+
+  enforceBoundary(reason) {
+    if (this.boundaryStop || !this.v86) return this.boundaryStop;
+    this.boundaryReason = reason;
+    // administer synchronously fences grants and callbacks before its first await.
+    this.boundaryStop = this.stop();
+    return this.boundaryStop;
+  }
+
   failBoot(generation, message) {
     if (!vmFailAllowed(this, generation)) return;
     // Invalidate listeners before cleanup, which may dispatch synchronous events.
     failVm(this, generation);
     this.clearBootTimers();
+    this.clearRuntimeDeadline();
     const failed = this.v86;
     this.objectSharing = false;
     this.ethernetSharing = false;
@@ -340,6 +368,9 @@ export class LinuxVmNode {
 
   boot() {
     if (this.adminBlocked || this.adminBusy || !vmCanBoot(this)) return;
+    this.boundaryReason = null;
+    this.boundaryStop = null;
+    this.filesystemUsage = null;
     startVm(this);
     const generation = this.bootGeneration;
     const V86Ctor = globalThis.V86 || globalThis.V86Starter;
@@ -361,10 +392,24 @@ export class LinuxVmNode {
         cmdline: '',
         filesystem: {},
         net_device: { type: 'ne2k' },
-        autostart: true
+        autostart: false
       });
       this.v86 = vm;
       const current = () => vmCallbackCurrent(this, generation, vm);
+      let vmStarted = false;
+      vm.add_listener('emulator-loaded', () => {
+        if (!current() || vmStarted) return;
+        try {
+          if (typeof vm.run !== 'function') throw new VmBoundaryError('vm-boundary-unavailable', 'VM run control is unavailable.');
+          this.filesystemUsage = installFilesystemControls(vm, error => this.enforceBoundary(error.message));
+          this.runtimeDeadline = setTimeout(() => {
+            if (current() && terminationRequired(false, true, false))
+              this.enforceBoundary(`VM runtime allowance of ${this.vmRuntimeMs}ms elapsed. The whole VM is being stopped; guest effects remain unknown.`);
+          }, this.vmRuntimeMs);
+          vmStarted = true;
+          Promise.resolve(vm.run()).catch(error => this.failBoot(generation, `VM start failed: ${error.message}`));
+        } catch (error) { this.failBoot(generation, error.message); }
+      });
       vm.add_listener('download-error', () => {
         if (current()) this.failBoot(generation, 'VM asset download failed; retry Boot when assets are available.');
       });
@@ -375,11 +420,12 @@ export class LinuxVmNode {
         this.transport.broadcast({ type: 'eth_frame', from: this.transport.peerId, frame: Array.from(frameBytes) },
           { consentCurrent: () => grantGeneration === this.ethernetGeneration && ethernetAllowed(this, current(), frameBytes) });
       });
+      if (!current()) return;
       this.bootDeadline = setTimeout(() => {
         if (current()) this.failBoot(generation, `VM readiness was not observed within ${this.bootTimeoutMs}ms; retry Boot explicitly.`);
       }, this.bootTimeoutMs);
       this.bootPoll = setInterval(() => {
-        if (!current() || !this.booting) return;
+        if (!current() || !this.booting || !vmStarted) return;
         try {
           const text = Array.from(this.screenContainer.querySelectorAll('span'))
             .map(s => s.innerText).join('').replace(/[\s\u00a0]+/g, ' ').trim();
@@ -455,21 +501,31 @@ export class LinuxVmNode {
     this.objectSharing = false;
     this.ethernetSharing = false;
     this.clearBootTimers();
+    this.clearRuntimeDeadline();
     // Invalidate all pending callbacks BEFORE invoking a possibly reentrant host effect.
     this.bootGeneration++;
     this.vmPhase = 'Failed';
-    for (const command of this.commands.values()) if (command.outcome === 'pending') command.outcome = 'unknown';
+    for (const command of this.commands.values()) if (command.vm === vm && command.outcome !== 'completed') {
+      if (command.dispatched) { command.outcome = 'unknown'; command.termination = 'stop-pending'; }
+      else if (command.outcome === 'pending') command.outcome = 'cancelled-before-dispatch';
+      command.interrupt?.();
+    }
     try {
       if (typeof vm[action] !== 'function') throw Error(`VM ${action} is unavailable`);
-      await vm[action]();
+      const pending = vm[action]();
+      try { this.onStatus({ state: 'stopping', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}VM ${action} requested; awaiting emulator confirmation. Guest effects remain unknown.` }); }
+      catch { /* An observing UI callback must not prevent or abandon termination. */ }
+      await pending;
       if (action === 'destroy') {
         this.v86 = null;
         this.vmPhase = 'Idle';
         this.adminBlocked = false;
       }
-      this.onStatus({ state: 'offline', message: action === 'stop' ? 'VM stopped. Destroy before booting a fresh VM.' : 'VM destroyed. Guest effects are not rolled back.' });
+      for (const command of this.commands.values()) if (command.vm === vm && command.dispatched && command.outcome !== 'completed') command.termination = action === 'stop' ? 'vm-stopped' : 'vm-destroyed';
+      this.onStatus({ state: 'offline', message: `${this.boundaryReason ? this.boundaryReason + ' ' : ''}${action === 'stop' ? 'VM stopped. Destroy before booting a fresh VM.' : 'VM destroyed. Guest effects are not rolled back.'}` });
       return true;
     } catch (error) {
+      for (const command of this.commands.values()) if (command.vm === vm && command.dispatched && command.outcome !== 'completed') command.termination = 'stop-unknown';
       this.onStatus({ state: 'error', message: `VM ${action} outcome unknown: ${error.message}. Grants revoked; instance retained for explicit destroy retry.` });
       return false;
     } finally { this.adminBusy = false; }
@@ -478,13 +534,22 @@ export class LinuxVmNode {
   stop() { return this.administer('stop'); }
   destroy() { return this.administer('destroy'); }
 
-  cancelCommandObservation(id) {
+  async cancelCommand(id) {
     const command = this.commands.get(id);
-    if (!command || command.outcome === 'completed') return false;
+    if (!command || command.cancelled || ['completed', 'failed-before-dispatch', 'cancelled-before-dispatch'].includes(command.outcome)) return false;
     command.cancelled = true;
     command.outcome = command.dispatched ? 'unknown' : 'cancelled-before-dispatch';
-    return true;
+    command.interrupt?.();
+    if (!command.dispatched) return true;
+    if (command.vm !== this.v86 || command.generation !== this.bootGeneration || this.adminBlocked) return false;
+    command.termination = 'stop-pending';
+    if (terminationRequired(true, false, false))
+      return await this.enforceBoundary('Command cancellation requested. Cancellation stops the whole VM, including other guest work. Prior effects are not rolled back.');
+    return false;
   }
+
+  // Compatibility name retains the stronger whole-VM cancellation semantics.
+  cancelCommandObservation(id) { return this.cancelCommand(id); }
 
   forgetCommand(id) {
     const command = this.commands.get(id);
@@ -499,7 +564,7 @@ export class LinuxVmNode {
 
   commandEvidence(id) {
     const command = this.commands.get(id);
-    return command ? { id, generation: command.generation, outcome: command.outcome, dispatched: command.dispatched } : null;
+    return command ? { id, generation: command.generation, outcome: command.outcome, dispatched: command.dispatched, termination: command.termination ?? 'not-requested' } : null;
   }
 
   async reconcileCommand(id) {
@@ -507,15 +572,30 @@ export class LinuxVmNode {
     if (!command) throw Error('Unknown VM command handle');
     if (command.outcome === 'completed') return command.output.slice();
     if (!observationAllowed(this, command)) throw Error('Command belongs to an unavailable VM instance; completion remains unknown.');
-    const done = await command.vm.read_file(command.doneName);
-    if (!observationAllowed(this, command)) throw Error('VM replaced during command observation; completion remains unknown.');
-    if (!done?.length) return null;
-    const output = await command.vm.read_file(command.outName);
-    if (!observationAllowed(this, command)) throw Error('VM replaced during output read; completion remains unknown.');
-    if ((output?.length ?? 0) > 4 * 1024 * 1024) throw Error('Guest output exceeds 4 MiB observation limit; completion remains unknown.');
-    command.output = output ? new Uint8Array(output).slice() : new Uint8Array(0);
-    command.outcome = 'completed';
-    return command.output.slice();
+    if (command.reading) throw new VmBoundaryError('vm-observation-busy', 'This command result is already being observed.');
+    command.reading = true;
+    try {
+      const observe = operation => command.interruption ? Promise.race([operation, command.interruption]) : operation;
+      const done = await observe(readBoundedVmFile(command.vm, command.doneName, 16));
+      if (!observationAllowed(this, command)) throw Error('VM replaced during command observation; completion remains unknown.');
+      if (!done?.length) return null;
+      const retained = [...this.commands.values()].reduce((sum, value) => sum + (value.output?.length ?? 0), 0);
+      const output = await observe(readBoundedVmFile(command.vm, command.outName, Math.max(0, Math.min(vmLimits.outputLimit, vmLimits.retainedOutputLimit - retained))));
+      if (!observationAllowed(this, command)) throw Error('VM replaced during output read; completion remains unknown.');
+      if (output === null) return null;
+      const retainedNow = [...this.commands.values()].reduce((sum, value) => sum + (value.output?.length ?? 0), 0);
+      if (!allocationAllowed(retainedNow, output.length, vmLimits.retainedOutputLimit))
+        throw new VmBoundaryError('vm-output-limit', 'Retained output allowance reached.');
+      command.output = output ?? new Uint8Array(0);
+      command.outcome = 'completed';
+      return command.output.slice();
+    } catch (error) {
+      if (['vm-output-limit', 'vm-boundary-unavailable'].includes(error.code)) {
+        command.outcome = 'unknown';
+        await this.enforceBoundary(error.message);
+      }
+      throw error;
+    } finally { command.reading = false; }
   }
 
   async executeShellCommand(commandStr, timeoutMs = 6000) {
@@ -529,26 +609,34 @@ export class LinuxVmNode {
     this.commands.set(id, command);
     this.lastCommandId = id;
     const failure = message => Object.assign(new Error(message), { commandId: id, outcome: command.outcome });
+    command.interruption = new Promise((resolve, reject) => {
+      command.interrupt = () => reject(failure(command.dispatched
+        ? 'VM replaced or stopped during command observation; completion remains unknown.' : 'Command cancelled before shell dispatch.'));
+    });
+    // A cancellation can arrive between host calls. Always observe its rejection.
+    command.interruption.catch(() => {});
     try {
       const scriptName = `job_${id}.sh`;
       const scriptBody = `#!/bin/sh\n(${commandStr}) > /mnt/${command.outName} 2>&1\necho OK > /mnt/${command.doneName}\n`;
-      await vm.create_file(scriptName, new TextEncoder().encode(scriptBody));
+      await Promise.race([vm.create_file(scriptName, new TextEncoder().encode(scriptBody)), command.interruption]);
       if (command.cancelled || this.v86 !== vm || this.bootGeneration !== generation || this.adminBlocked) {
         command.outcome = 'cancelled-before-dispatch';
         throw failure('Command cancelled before shell dispatch.');
       }
       // Even a throwing keyboard adapter may have dispatched input: retain unknown.
       command.dispatched = true;
-      await vm.keyboard_send_text(`sh /mnt/${scriptName}\n`, 10);
+      await Promise.race([vm.keyboard_send_text(`sh /mnt/${scriptName}\n`, 10), command.interruption]);
       const t0 = performance.now();
       while (!command.cancelled && performance.now() - t0 < timeoutMs) {
         if (!observationAllowed(this, command)) break;
         const output = await this.reconcileCommand(id);
         if (output !== null) return output;
-        await new Promise(resolve => setTimeout(resolve, 200));
+        await Promise.race([new Promise(resolve => setTimeout(resolve, 200)), command.interruption]);
       }
       command.outcome = 'unknown';
-      throw failure(`VM command observation ended after ${timeoutMs}ms; completion is unknown and the guest command was not cancelled. Reconcile handle ${id}; do not replay automatically.`);
+      throw failure(command.cancelled || this.adminBlocked
+        ? `Command observation ended; completion is unknown. VM termination: ${command.termination ?? 'stop-pending'}. Prior guest effects are not rolled back.`
+        : `VM command observation ended after ${timeoutMs}ms; completion is unknown and the guest command was not cancelled. Reconcile handle ${id}, or Cancel and stop VM; do not replay automatically. The VM runtime allowance continues independently.`);
     } catch (error) {
       if (command.outcome === 'pending') command.outcome = command.dispatched ? 'unknown' : 'failed-before-dispatch';
       error.commandId = id; error.outcome = command.outcome;

@@ -105,7 +105,7 @@ definition{
   name: componentBrowser,
   parameters: [],
   result: Component,
-  body: (record Component {id := "browser", role := "Interactive five-layer Stitch product", implementation := (cons "index.html" (cons "src/product-experience.js" (cons "src/recovery-ui.js" (nil String)))), models := (cons "Product.Experience" (cons "Stitch.Recovery" (cons "Product.Host" (cons "Product.Model" (nil String))))), trustBoundary := true})
+  body: (record Component {id := "browser", role := "Interactive five-layer Stitch product", implementation := (cons "index.html" (cons "src/product-experience.js" (cons "src/recovery-ui.js" (cons "src/authority-ui.js" (nil String))))), models := (cons "Product.Experience" (cons "Stitch.Recovery" (cons "Product.Host" (cons "Product.Model" (nil String))))), trustBoundary := true})
 }
 
 definition{
@@ -161,7 +161,7 @@ definition{
   name: componentPointerAuthority,
   parameters: [],
   result: Component,
-  body: (record Component {id := "pointerAuthority", role := "Independently pinned single-writer key", implementation := (cons "src/layer1-uor/pointer.js" (cons "src/layer1-uor/browser-authority.js" (nil String))), models := (cons "Stitch.Pointer" (cons "Stitch.Effects" (cons "Product.Host" (cons "Product.Experience" (nil String))))), trustBoundary := true})
+  body: (record Component {id := "pointerAuthority", role := "Independently pinned single-writer key", implementation := (cons "src/layer1-uor/pointer.js" (cons "src/layer1-uor/browser-authority.js" (nil String))), models := (cons "Stitch.Authority" (cons "Stitch.Pointer" (cons "Stitch.Effects" (cons "Product.Host" (cons "Product.Experience" (nil String)))))), trustBoundary := true})
 }
 
 definition{
@@ -189,7 +189,7 @@ definition{
   name: componentSignaling,
   parameters: [],
   result: Component,
-  body: (record Component {id := "signaling", role := "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin", implementation := (cons "src/layer5-transport/relay-framing.js" (nil String)), models := (cons "Stitch.Relay" (cons "Stitch.Effects" (cons "Product.Host" (nil String)))), trustBoundary := true})
+  body: (record Component {id := "signaling", role := "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin", implementation := (cons "src/layer5-transport/signaling.js" (cons "src/layer5-transport/relay-framing.js" (nil String))), models := (cons "Stitch.Signaling" (cons "Stitch.Relay" (cons "Stitch.Effects" (cons "Product.Host" (nil String))))), trustBoundary := true})
 }
 
 definition{
@@ -350,7 +350,7 @@ definition{
   name: capabilityPublicSignaling,
   parameters: [],
   result: CapabilityContract,
-  body: (record CapabilityContract {id := "publicSignaling", owner := "signaling", capability := "PublicSignaling", operation := "Publish and receive SDP/ICE through ntfy", source := "src/layer5-transport/index.js", inputs := (cons "channel topic" (cons "SDP and ICE candidates" (nil String))), outputs := (cons "public signaling response" (nil String)), preconditions := (cons "explicit mesh join" (cons "disclosure accepted" (cons "network reservation" (nil String)))), failures := (cons "provider unavailable" (cons "untrusted signal" (cons "topic collision" (nil String)))), assumptions := (cons "disclosureConsent" (cons "networkAvailability" (nil String))), proofScope := "Public metadata disclosure; topic names are not authentication or privacy.", enabledByDefault := false})
+  body: (record CapabilityContract {id := "publicSignaling", owner := "signaling", capability := "PublicSignaling", operation := "Publish and receive SDP/ICE through ntfy", source := "src/layer5-transport/index.js", inputs := (cons "channel topic" (cons "SDP and ICE candidates" (nil String))), outputs := (cons "public signaling response" (nil String)), preconditions := (cons "explicit mesh join" (cons "disclosure accepted" (cons "network reservation" (nil String)))), failures := (cons "provider unavailable" (cons "untrusted signal" (cons "topic collision" (nil String)))), assumptions := (cons "disclosureConsent" (cons "networkAvailability" (nil String))), proofScope := "Ed25519 key-owned session signaling with replay rejection; public metadata disclosure. Keys are not trusted human identity or holder authorization; topics are not privacy.", enabledByDefault := false})
 }
 
 definition{
@@ -378,7 +378,7 @@ definition{
   name: capabilityVm,
   parameters: [],
   result: CapabilityContract,
-  body: (record CapabilityContract {id := "vm", owner := "vm", capability := "VirtualMachine", operation := "Boot guest, mirror object files, run shell and bridge Ethernet", source := "src/layer4-compute/index.js", inputs := (cons "five local v86/BIOS/kernel assets" (cons "guest command or object bytes" (nil String))), outputs := (cons "guest output bytes" (cons "Ethernet frames" (nil String))), preconditions := (cons "explicit VM action" (cons "all assets available" (cons "host resource policy" (nil String)))), failures := (cons "missing asset" (cons "boot failure" (cons "guest timeout" (cons "bridge failure" (nil String))))), assumptions := (cons "browserSemantics" (cons "vmIsolation" (nil String))), proofScope := "VM output may become a content-addressed object; arbitrary VM execution is not semantically replayed or metered as ring work.", enabledByDefault := false})
+  body: (record CapabilityContract {id := "vm", owner := "vm", capability := "VirtualMachine", operation := "Boot guest, mirror object files, run shell and bridge Ethernet", source := "src/layer4-compute/index.js", inputs := (cons "five local v86/BIOS/kernel assets" (cons "guest command or object bytes" (nil String))), outputs := (cons "guest output bytes" (cons "Ethernet frames" (nil String))), preconditions := (cons "explicit VM action" (cons "all assets available" (cons "runtime deadline configured before boot" (cons "guarded local 9p allocation installed before run" (nil String))))), failures := (cons "missing asset" (cons "boot failure" (cons "guest timeout or runtime expiry" (cons "filesystem or bounded-result limit" (cons "stop outcome unknown" (cons "bridge failure" (nil String))))))), assumptions := (cons "browserSemantics" (cons "vmIsolation" (nil String))), proofScope := "Source predicates govern local 9p allocation and bounded result reads. Runtime expiry and dispatched-command cancellation request whole-VM stop; prior effects remain unknown. Browser scheduling and host VM behavior are assumptions, not guest isolation or ring-work metering.", enabledByDefault := false})
 }
 
 definition{
@@ -609,35 +609,35 @@ definition{
   name: assetFile13,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "v86/libv86.js", role := "vendored VM dependency", origin := "Existing repository bytes; upstream source/revision not established", licenseStatus := "Unresolved: release must establish redistribution provenance and license", redistributionCleared := false})
+  body: (record Asset {path := "v86/libv86.js", role := "vendored VM dependency", origin := "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed", licenseStatus := "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution", redistributionCleared := true})
 }
 
 definition{
   name: assetFile14,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "v86/v86.wasm", role := "vendored VM dependency", origin := "Existing repository bytes; upstream source/revision not established", licenseStatus := "Unresolved: release must establish redistribution provenance and license", redistributionCleared := false})
+  body: (record Asset {path := "v86/v86.wasm", role := "vendored VM dependency", origin := "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed", licenseStatus := "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution", redistributionCleared := true})
 }
 
 definition{
   name: assetFile15,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "v86/seabios.bin", role := "vendored VM dependency", origin := "Exact Git-blob match to copy/v86 at 315b2b0b758703ef0e6cc7b4088d6068f83f3c20; SeaBIOS rel-1.16.2 build recipe", licenseStatus := "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved", redistributionCleared := false})
+  body: (record Asset {path := "v86/seabios.bin", role := "vendored VM dependency", origin := "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425", licenseStatus := "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution", redistributionCleared := true})
 }
 
 definition{
   name: assetFile16,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "v86/vgabios.bin", role := "vendored VM dependency", origin := "Exact Git-blob match to copy/v86 at 315b2b0b758703ef0e6cc7b4088d6068f83f3c20; SeaBIOS rel-1.16.2 build recipe", licenseStatus := "SeaBIOS LGPLv3 source notices identified; distribution notice and corresponding-source packaging still unresolved", redistributionCleared := false})
+  body: (record Asset {path := "v86/vgabios.bin", role := "vendored VM dependency", origin := "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425", licenseStatus := "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution", redistributionCleared := true})
 }
 
 definition{
   name: assetFile17,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "images/buildroot-bzimage.bin", role := "vendored VM dependency", origin := "Existing repository bytes; upstream source/revision not established", licenseStatus := "Unresolved: release must establish redistribution provenance and license", redistributionCleared := false})
+  body: (record Asset {path := "images/buildroot-bzimage.bin", role := "vendored VM dependency", origin := "Exact official i.copy.sh/buildroot-bzimage.bin; Linux 5.6.15, original full image build inputs unresolved", licenseStatus := "Unresolved: release must establish redistribution provenance and license", redistributionCleared := false})
 }
 
 definition{
@@ -652,6 +652,13 @@ definition{
   parameters: [],
   result: Asset,
   body: (record Asset {path := "src/layer1-uor/browser-authority.js", role := "Origin-local signing authority and transactional publication journal", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetAuthorityUi,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/authority-ui.js", role := "Contextual explicit signing, trust-anchor and browser-storage administration", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
 }
 
 structure{
@@ -701,6 +708,13 @@ definition{
 }
 
 definition{
+  name: assetSignaling,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/signaling.js", role := "Signed key-owned signaling with current-session challenge and replay rejection", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
   name: assetChannelFlow,
   parameters: [],
   result: Asset,
@@ -718,7 +732,7 @@ definition{
   name: product,
   parameters: [],
   result: Model,
-  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (cons (capabilityOriginStorage) (cons (capabilityWebLock) (nil CapabilityContract))))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (cons (assetRecovery) (cons (assetRecoveryUi) (cons (assetChannelFlow) (cons (assetVmAdministration) (cons (assetBrowserAuthority) (nil Asset)))))))))))))))))))))))))))))})
+  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (cons (capabilityOriginStorage) (cons (capabilityWebLock) (nil CapabilityContract))))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (cons (assetRecovery) (cons (assetRecoveryUi) (cons (assetSignaling) (cons (assetChannelFlow) (cons (assetVmAdministration) (cons (assetBrowserAuthority) (cons (assetAuthorityUi) (nil Asset)))))))))))))))))))))))))))))))})
 }
 
 definition{

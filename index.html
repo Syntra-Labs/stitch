@@ -360,6 +360,14 @@
       <p id="vmActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
       <details id="vmExplanationPanel"><summary id="vmExplanationLabel">What this evidence means</summary><p id="vmExplanation"></p></details>
 
+      <details id="vmLimitsPanel">
+        <summary>Guest limits and stopping</summary>
+        <label for="vmRuntimeSeconds">VM runtime allowance (seconds, set before boot)</label>
+        <input id="vmRuntimeSeconds" type="number" min="1" max="300" value="300" aria-describedby="vmLimitsHelp" />
+        <p id="vmLimitsHelp" class="muted">The whole VM stops when its elapsed-time allowance expires, when Cancel is requested after dispatch, or when a filesystem/result limit is exceeded. This includes background commands and console work. Browser scheduling can delay stopping; this is not an instruction-accurate CPU quota. Destroy the instance before changing its allowance.</p>
+        <p class="muted">Guest RAM: 64 MiB. Local 9p /mnt: 16 MiB per buffer, 64 MiB cumulative allocation requests, and 4096 inode/link admissions per instance. Removing files does not refund that allowance. Result reads: 4 MiB per command, 16 MiB retained in total. Other guest filesystems consume configured guest memory; these controls are not a complete host-memory or guest-isolation guarantee.</p>
+        <p id="vmResourceUsage" role="status" aria-live="polite">No guest resource usage observed.</p>
+      </details>
       <div class="controls">
         <button id="bootVmBtn">Boot Linux 5.6 VM</button>
         <button id="stopVmBtn" class="secondary">Stop VM</button>
@@ -373,16 +381,16 @@
         </div>
       </div>
 
-      <p id="vmCommandHelp" class="muted">Commands run in the guest, not on this host. Stdout and stderr are captured as bytes and shown as text below, including when storing the object fails. Cancellation ends observation only. Public relay consent also applies to stored command output.</p>
+      <p id="vmCommandHelp" class="muted">Commands run in the guest, not on this host. Stdout and stderr are captured as bytes and shown as text below, including when storing the object fails. After dispatch, Cancel requests a stop of the whole VM, including other guest work. Public relay consent also applies to stored command output.</p>
       <p id="vmCommandOutcome" role="status" aria-live="polite">No guest command submitted.</p>
       <div id="vmRetainedCommandControls" class="controls" hidden>
         <label for="vmCommandSelection">Retained command handle</label>
         <select id="vmCommandSelection" aria-describedby="vmCommandOutcome"></select>
-        <button id="cancelVmObservationBtn" class="secondary">Cancel command wait</button>
+        <button id="cancelVmObservationBtn" class="secondary">Cancel and stop VM</button>
         <button id="forgetVmCommandBtn" class="secondary">Forget Resolved Command Evidence</button>
-        <button id="reconcileVmCommandBtn" class="secondary">Observe last command result</button>
+        <button id="reconcileVmCommandBtn" class="secondary">Observe selected command result</button>
       </div>
-      <p class="muted">Observation cancellation does not stop guest effects. Unknown commands are never automatically replayed. Stop and destroy revoke grants; failures retain the instance for destroy retry. These controls do not certify guest isolation.</p>
+      <p class="muted">Cancelling before dispatch prevents the command. After dispatch, cancellation stops the whole VM and leaves prior effects unknown. A short observation timeout keeps the guest running until cancellation or the runtime limit. Unknown commands are never automatically replayed. Stop and destroy revoke grants; failures retain the instance for destroy retry. These controls do not certify guest isolation.</p>
       <h3 id="vmStdoutTitle">Observed guest command output (text)</h3>
       <p id="vmStdoutSummary" role="status" aria-live="polite" aria-atomic="true">No guest output observed.</p>
       <pre id="vmStdoutText" class="mono-out" tabindex="0" role="region" aria-labelledby="vmStdoutTitle" aria-describedby="vmStdoutSummary">No guest output observed.</pre>
@@ -429,13 +437,41 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
         <input type="text" id="pointerAuthorityInput" aria-describedby="pointerScopeHelp" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
         <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
       </div>
-      <details><summary>Signing authority and browser storage</summary>
-        <p>Save a new nonextractable Ed25519 key on this origin, or restore the existing saved key. This also explicitly pins its public key. No key rotation, private-key export or import is performed. A different key requires independently distributing a new trust anchor. Origin scripts can use saved keys; only use a trusted deployment.</p>
+      <details id="authorityLifecyclePanel"><summary>Signing authority, saved trust and storage care</summary>
+        <p>Save or restore a nonextractable Ed25519 key on this origin. Origin scripts can use it; only use a trusted deployment. Local rotation or revocation does not change independently trusted keys, DNS records or remote copies.</p>
         <button id="saveAuthorityBtn" class="secondary">Set Up or Restore Saved Authority</button>
         <p id="authorityStorageStatus" role="status">Checking saved signing authority…</p>
-        <p>Browser storage is not a backup: quota, eviction, clearing and private browsing can lose keys and journals. DNS publication requires IndexedDB, Web Locks and a committed write-ahead journal; storage failures block writes. Interrupted unknown writes permit exact-candidate reads only, with no timed retry or automatic takeover. API tokens are never saved.</p>
+        <p id="authoritySavedSummary"></p>
+        <div id="authoritySignerControls" hidden>
+          <label for="authorityExpectedKey">Exact saved signer key to rotate or revoke</label>
+          <input id="authorityExpectedKey" type="text" placeholder="Type the saved 64-hex public key" style="width: 100%;" />
+          <button id="rotateAuthorityBtn" class="secondary">Rotate Saved Signing Key</button>
+          <button id="revokeAuthorityBtn" class="secondary">Revoke Saved Signing Key Locally</button>
+        </div>
+        <details><summary>Independently accepted exact trust anchor</summary>
+          <p id="authorityTrustSummary"></p>
+          <p>Enter the public key and exact recent pointer digest obtained independently. Save requires this observer's admitted head. Migration uses the complete signed JSON below, and does not change the live pin. Select the new pin and restore separately. Timestamps and signatures alone do not establish trust or global recency.</p>
+          <label for="authorityAnchorKey">Independently accepted public key</label><input id="authorityAnchorKey" type="text" style="width: 100%;" />
+          <label for="authorityAnchorDigest">Independently accepted exact pointer digest</label><input id="authorityAnchorDigest" type="text" placeholder="sha256:…" style="width: 100%;" />
+          <label for="authorityAnchorConsent"><input id="authorityAnchorConsent" type="checkbox" /> I independently confirmed this key and exact recent digest for this DNS name.</label>
+          <button id="saveTrustedAnchorBtn" class="secondary">Save Current Exact Trust Anchor</button>
+          <div id="authorityTrustControls" hidden>
+            <button id="restoreTrustedAnchorBtn" class="secondary">Restore Saved Head to Current Pin</button>
+            <button id="migrateTrustedAnchorBtn" class="secondary">Migrate Saved Trust to Pasted Anchor</button>
+            <button id="revokeTrustedAnchorBtn" class="secondary">Revoke Saved Trust Locally</button>
+          </div>
+        </details>
+        <details><summary>Quota, eviction and public journal</summary>
+          <p>Storage estimates cover this whole origin. Persistence permission is not a backup. Clearing or eviction can lose keys and unknown-write evidence. Export preserves public anchors, exact candidates and provider identities, never signing keys or API tokens. There is no automatic journal import or unknown-write reset.</p>
+          <button id="inspectAuthorityStorageBtn" class="secondary">Inspect Origin Storage and Journal</button>
+          <button id="persistAuthorityStorageBtn" class="secondary">Request Browser Storage Persistence</button>
+          <button id="exportAuthorityJournalBtn" class="secondary">Export Public Authority Journal</button>
+          <button id="compactAuthorityJournalBtn" class="secondary">Remove Definitely Refused Journal Entries</button>
+        </details>
+        <label for="authorityLifecycleConsent"><input id="authorityLifecycleConsent" type="checkbox" /> I confirm the exact local key operation or removal of definitely refused journal entries. Unknown writes and published provider identities must remain.</label>
+        <p id="authorityLifecycleStatus" role="status" aria-live="polite" aria-atomic="true">No lifecycle operation requested.</p>
       </details>
-      <div class="muted">Observer heads and session-only keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <div class="muted">Session-only keys and unsaved observer heads last only this session. Save an independently accepted recent trust anchor to restore strict succession after reload. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
       <p id="pointerAdmissionHelp" class="muted">Paste complete signed JSON, at most 4096 UTF-8 bytes. Admission checks this exact name, independently pinned key and retained head. Restoring an anchor in the recovery vault does not change this observer.</p>
       <div id="pointerAdmissionControls">
       <label for="pointerJsonInput">Signed pointer JSON</label>
@@ -537,13 +573,15 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     import { parseCanonicalJson } from './src/layer1-uor/custody.js';
     import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
     import { installRecoveryControls } from './src/recovery-ui.js';
+    import { installAuthorityControls } from './src/authority-ui.js';
     import { BrowserAuthorityStore } from './src/layer1-uor/browser-authority.js';
     import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
 
     // One stable handle is shared by every adapter. Only the explicit renewal
     // control replaces the underlying epoch. Prior ledgers stay retained.
     let operatorExperience = null;
-    function renderExperience() { operatorExperience?.render(); }
+    let authorityControls = null;
+    function renderExperience() { operatorExperience?.render(); authorityControls?.render(); }
     // The same model guard protects keyboard, repeated and programmatic events.
     function bindModelAction(id, handler) {
       document.getElementById(id).addEventListener('click', async (...args) => {
@@ -581,13 +619,17 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     let authorityReady = Promise.resolve(null);
     let persistentAuthority = false;
     // Restore only; missing, blocked or invalid storage never silently creates a key.
-    const authorityRestore = authorityStore.restoreAuthority().then(authority => {
-      if (authority) { authorityReady = Promise.resolve(authority); persistentAuthority = true; }
-      document.getElementById('authorityStorageStatus').textContent = authority
-        ? 'Saved signing key restored. Explicitly pin it to trust it for this name.'
+    const authorityRestore = (async () => {
+      const status = await authorityStore.authorityStatus();
+      persistentAuthority = !!status;
+      const authority = status?.status === 'revoked' ? null : await authorityStore.restoreAuthority();
+      if (authority) authorityReady = Promise.resolve(authority);
+      document.getElementById('authorityStorageStatus').textContent = status?.status === 'revoked'
+        ? 'Saved signer revoked locally. Explicit rotation is required; no replacement key or trust was selected.'
+        : authority ? 'Saved signing key restored. Explicitly pin it to trust it for this name.'
         : 'No saved signing key. Choose session-only or saved authority explicitly.';
-    }).catch(() => {
-      document.getElementById('authorityStorageStatus').textContent = 'Browser storage unavailable or invalid. No key replaced. Session-only signing remains available; persistent publication is blocked until storage works.';
+    })().catch(() => {
+      document.getElementById('authorityStorageStatus').textContent = 'Browser storage unavailable or invalid. No key replaced. Persistent signing and publication require working storage. Missing evidence does not prove an earlier write never happened.';
     });
     const pointerObservers = new Map();
     const unpublishedPointers = new WeakMap();
@@ -699,11 +741,12 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
             ? `ONLINE (eth0=${st.ip})`
             : st.state === 'booting'
             ? `BOOTING LINUX 5.6 (${st.ip})...`
-            : st.state === 'offline'
+            : ['offline', 'stopping'].includes(st.state)
             ? st.message
             : `ERROR: ${st.message || 'Unknown VM lifecycle observation'}`;
         document.getElementById('vmShareObjects').checked = Boolean(vmNode.objectSharing);
         document.getElementById('vmShareEthernet').checked = Boolean(vmNode.ethernetSharing);
+        showVmCommand();
         logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}${st.message ? `: ${st.message}` : ''}`);
       }
     });
@@ -839,7 +882,9 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     document.getElementById('vmShareObjects').addEventListener('change', event => vmNode.setObjectSharing(event.target.checked));
     document.getElementById('vmShareEthernet').addEventListener('change', event => vmNode.setEthernetSharing(event.target.checked));
     async function administerVm(action) {
-      await vmNode[action]();
+      const pending = vmNode[action]();
+      showVmCommand(); renderExperience();
+      await pending;
       document.getElementById('vmShareObjects').checked = vmNode.objectSharing;
       document.getElementById('vmShareEthernet').checked = vmNode.ethernetSharing;
     }
@@ -867,12 +912,19 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       }));
       if (entries.includes(previous)) control.value = previous;
       const evidence = vmNode.commandEvidence(selectedVmCommandId());
+      document.getElementById('vmRuntimeSeconds').disabled = Boolean(vmNode.v86 || vmNode.adminBusy);
+      const usage = vmNode.filesystemUsage;
+      document.getElementById('vmResourceUsage').textContent = usage
+        ? `9p allocation requests admitted: ${usage.allocatedBytes}/67108864 bytes. Inode admissions: ${usage.createdInodes}/4096; directory-entry admissions: ${usage.linkedEntries}/4096. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s. ${vmNode.boundaryReason || ''}`
+        : `No guest resource usage observed. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s.`;
       document.getElementById('vmCommandOutcome').textContent = evidence
-        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}). Retained evidence: ${vmNode.commands.size}/128. Unknown effects stay retained; destroying the VM does not resolve them.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
+        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}); termination: ${evidence.termination}. Retained evidence: ${vmNode.commands.size}/128. Unknown effects stay retained; destroying the VM does not resolve them.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
     }
     document.getElementById('vmCommandSelection').addEventListener('change', () => { showVmCommand(); renderExperience(); });
-    bindModelAction('cancelVmObservationBtn', () => {
-      vmNode.cancelCommandObservation(selectedVmCommandId()); showVmCommand();
+    bindModelAction('cancelVmObservationBtn', async () => {
+      const pending = vmNode.cancelCommand(selectedVmCommandId());
+      showVmCommand(); renderExperience();
+      await pending; showVmCommand();
     });
     bindModelAction('forgetVmCommandBtn', () => {
       const commandId = selectedVmCommandId();
@@ -897,7 +949,10 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     });
 
     bindModelAction('bootVmBtn', () => {
-      vmNode.boot();
+      try {
+        vmNode.setRuntimeAllowance(Number(document.getElementById('vmRuntimeSeconds').value) * 1000);
+        vmNode.boot(); showVmCommand();
+      } catch (error) { logWire('VM-REFUSED', error.message); }
     });
 
     bindModelAction('runVmCmdBtn', async () => {
@@ -1036,13 +1091,22 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
       if (!trustedAuthorityKey) throw Error('Pin an independently trusted authority key first, or explicitly trust the demo session key.');
       const key = `${name}:${trustedAuthorityKey}`;
-      if (!pointerObservers.has(key)) pointerObservers.set(key, new PointerObserver({ name, trustedAuthorityKey, admission }));
+      if (!pointerObservers.has(key)) pointerObservers.set(key, new PointerObserver({ name, trustedAuthorityKey, admission, trustStore: authorityStore }));
       return pointerObservers.get(key);
     }
 
+    authorityControls = installAuthorityControls({ document, store: authorityStore, pointerObserver,
+      onAuthorityChanged: async status => {
+        persistentAuthority = true;
+        authorityReady = status.status === 'active' ? authorityStore.restoreAuthority() : Promise.resolve(null);
+        await authorityReady;
+        document.getElementById('authorityStorageStatus').textContent = `Saved signer ${status.status}. Visible trust pin unchanged; unknown publications retained.`;
+      }, onChange: renderExperience });
+
     bindModelAction('pinSessionAuthorityBtn', async () => {
       await authorityRestore;
-      if (!await authorityReady) authorityReady = generateAuthority();
+      if (persistentAuthority) authorityReady = authorityStore.restoreAuthority();
+      else if (!await authorityReady) authorityReady = generateAuthority();
       document.getElementById('pointerAuthorityInput').value = (await authorityReady).publicKey;
       logWire('POINTER-PIN', persistentAuthority ? 'Explicitly pinned the restored saved key. Existing trust is not transferred from other keys.' : 'Created and pinned a session-only key. Closing this tab loses signing authority; no automatic replacement after reload.');
     });
@@ -1054,6 +1118,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       authorityReady = Promise.resolve(authority); persistentAuthority = true;
       document.getElementById('pointerAuthorityInput').value = authority.publicKey;
       document.getElementById('authorityStorageStatus').textContent = 'Saved nonextractable signing key and pinned its public key. Browser clearing, eviction or private-session closure can destroy it. No private-key backup is included in evidence exports.';
+      await authorityControls.refresh();
       logWire('AUTHORITY', 'Saved authority ready; public-key trust is explicit and origin-scoped.');
     });
     bindModelAction('loadPublicationBtn', async () => {
@@ -1091,9 +1156,10 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
           if (!objectRoot) throw Error('Store or recover a verified object before creating a pointer.');
           const current = observer.head;
           const nowMs = Date.now();
-          candidate = await signPointer({ version: 1, name: observer.name, authorityKey: authority.publicKey,
+          const body = { version: 1, name: observer.name, authorityKey: authority.publicKey,
             revision: current ? current.revision + 1 : 0, previousDigest: current?.pointerDigest ?? null,
-            objectRoot, validFromMs: nowMs, validUntilMs: nowMs + 600000 }, authority.privateKey);
+            objectRoot, validFromMs: nowMs, validUntilMs: nowMs + 600000 };
+          candidate = persistentAuthority ? await authorityStore.signPointer(body, authority.publicKey) : await signPointer(body, authority.privateKey);
           // Source-derived succession, pinned authority and signature checks run
           // before any DNS publication. A retained local head is not a publish receipt.
           await observer.admit(candidate);

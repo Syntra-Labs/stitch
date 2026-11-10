@@ -20,25 +20,86 @@ No control reverses commands or data already sent. Boot-failure cleanup follows 
 settle successfully before retry, and rejection retains the handle for explicit
 destroy retry. Missing assets without an emulator instance remain directly retryable.
 
+## Runtime and filesystem controls
+
+Boot uses `autostart: false`. The current bundled v86 filesystem must expose the
+reviewed local-9p adapter surface before `run()` is called. Missing methods or a
+mounted backing filesystem refuse startup; no unbounded compatibility fallback
+is used. The adapter is tied to copy/v86 source commit
+`1e4f43c954701db9699fa976b27cc675f9971265`, especially `lib/filesystem.js` and
+`src/browser/starter.js`. A future asset replacement must requalify this boundary.
+
+The operator chooses a 1–300 second **whole-VM elapsed runtime allowance** before
+boot. The default is 300 seconds, starting when the emulator is loaded and starts
+running, including guest boot. It remains active after a short command observation
+timeout or a completed command, so background processes and console work do not
+escape it. Expiry requests a stop of the entire emulator and revokes host bridges.
+A stopped instance must be destroyed before booting again or changing its
+allowance. Browser timer scheduling, suspension and emulator cooperation can delay
+stopping. This is not an instruction-accurate CPU quota, CPU-share scheduler,
+wall-clock execution certificate, or kill guarantee against a broken emulator.
+
+Configured guest RAM is 64 MiB, with 2 MiB VGA memory. It does not bound all emulator
+or browser allocations. Guest-internal filesystems consume configured guest memory
+in this diskless image. Host-backed 9p `/mnt` has separate pre-allocation admission:
+
+- At most 16 MiB in one data-buffer allocation request.
+- At most 64 MiB of cumulative admitted data-buffer allocation requests per
+  instance, including object mirrors, shell scripts/results and directory listings.
+  v86 growth slack is charged. Shrinking, unlinking, repeated directory reads and
+  failed admitted operations do not refund the allowance. This conservative budget
+  is not 64 MiB of usable free disk or a bound on all JS heap/transient overhead.
+- At most 4096 cumulative inode allocations and 4096 directory-entry admissions;
+  admitted names fit 255 UTF-8 bytes. Hard links consume directory-entry allowance.
+
+The adapter wraps the bundled local allocator entrances (`ChangeSize`,
+`CreateBinaryFile`, `CreateTextFile`, `FillDirectory`) before their allocations and
+bounds inode/link creation. The filesystem's `total_size` field only affects
+reported capacity; it is not relied on for enforcement. A refused allocation
+quarantines subsequent guarded filesystem effects and requests whole-VM stop.
+These are scoped filesystem controls, not a complete hostile-guest memory sandbox
+or certification of every v86 device, lock, protocol table or browser allocation.
+
+## Command observations and cancellation
+
 Each shell command has a session-unique random instance prefix, generation and
-monotonic sequence. The retained handle captures the actual emulator object;
+monotonic sequence. Its retained handle captures the actual emulator object;
 reads never switch to a replacement emulator. Only one execute wait runs at a
 time, with at most 128 retained handles per node. Explicit disposal of completed
 or known-not-dispatched evidence releases retained host output and command capacity.
-Pending or unknown handles cannot be forgotten; disposal does not remove guest files. Commands accept general shell
-syntax but reject empty input, NUL and input exceeding 16384 UTF-8 bytes. Observation
-time is bounded to 300000ms and observed output to 4 MiB. These host bounds are
-not guest CPU/memory/disk quotas: arbitrary shell commands can still exhaust the
-guest. The output limit is checked after the emulator API reads the file and does
-not bound that API's internal allocation.
+Pending or unknown handles cannot be forgotten; disposal does not remove guest files.
+Commands accept general shell syntax but reject empty input, NUL and input exceeding
+16384 UTF-8 bytes. Observation time is bounded to 300000ms.
 
-Timeout retains unknown outcome and a handle for explicit reconciliation. Cancel
-ends observation, not guest execution; before dispatch it prevents the shell send.
-An exception after dispatch remains unknown. Reconciliation reads the same
-instance's completion flag and output and never resubmits the command. These files
-are guest-controlled observations, not trustworthy execution certificates. Browser
-reload loses handles. The UI offers observation of the latest handle; all retained
-handles are accessible through the node API. No automatic replay is performed.
+Result observation inspects regular-file metadata first and then calls
+`fs9p.Read(id, 0, boundedLength)`, never unbounded `read_file`. The completion marker
+is limited to 16 bytes; output is limited to 4 MiB per command and 16 MiB retained
+across command handles. Metadata rejection happens before a read, and the captured
+range cannot grow while that read awaits. Malformed or oversized results request
+whole-VM stop, retain unknown completion and never certify command execution.
+
+A short observation timeout retains unknown outcome and a handle for explicit
+reconciliation while the same VM remains available. It does not stop the command;
+the independent VM runtime deadline still applies. **Cancel and Stop VM** prevents
+shell dispatch when it has not happened. After dispatch it requests a stop of the
+whole VM, including unrelated guest/background work, rather than pretending that
+shell signals can reliably kill arbitrary root commands or their descendants.
+It interrupts a pending host result wait even if that API has stalled. Stop success
+records `vm-stopped` separately from command outcome `unknown`: prior effects are
+not rolled back. Rejection records `stop-unknown`, retains the quarantined instance
+and requires explicit destroy retry. A pending stop remains pending, not success.
+The compatibility `cancelCommandObservation` API uses these stronger semantics.
+
+Reconciliation reads the same instance's completion flag/output and never resubmits
+the command. The files are guest-controlled observations, not trustworthy execution
+certificates. Browser reload loses command handles. The UI's retained-command
+selector permits observation of any available earlier handle, not just the latest;
+selection never executes or replays a command. No automatic replay is performed.
+
+New typed boundary failures are `vm-boundary-unavailable`, `vm-filesystem-limit`,
+`vm-output-limit`, `vm-observation-busy`, `vm-runtime-limit-invalid` and
+`vm-runtime-active`. An uncertain stop is a separate termination observation, not
+proof of rollback or a resolved command.
 
 The emulator kernel command line no longer explicitly disables mitigations or
 trusts CPU entropy; it is empty and leaves kernel defaults in force. This source
@@ -46,19 +107,37 @@ configuration change does not alter host security settings or establish that the
 old guest kernel provides modern mitigations. Linux 5.6 and emulator assets still
 need maintenance and actual browser/security qualification.
 
-`Stitch.VmAdministration` supplies source-derived predicates actually called before
-object/Ethernet dispatch, command admission, result observation and administration.
-Host object identity, valid frame shape, readiness and emulator success are external
-observations. Finite oracle tests and mock-emulator regression tests cover grants,
-revocation, malformed Ethernet, closed transport, double clicks, unknown timeout,
-reconciliation, replacement, cancellation and failed cleanup. They are not a live
-VM/browser isolation qualification. The integrated 23-module source verification includes these definitions; see
-`product/source-verification.json`. It does not certify browser or VM effects.
+## Verification boundary
 
-The isolated canonical module was subsequently checked and verified with the
-pinned LexLean tool and Lean 4.32.1 in a one-module helper project. Attestation
-`228cfe5f3d7848c73fc61fa82a1b10dba68b83ac321ddd74a873f9f205958e24`
-audits its six definitions with no axioms. This is definition-level compiler
-verification, not a new universal theorem set or aggregate application closure.
-The canonical source file SHA-256 at that check was
-`ba09b78f30729240508af5e4f33c7f0a63469fb5d5a72f1f4a81fafaa99e2286`.
+`Stitch.VmAdministration` supplies source-derived predicates actually called before
+object/Ethernet dispatch, command admission, result observation, filesystem
+allocation/metadata admission and administration. Host object identity, valid frame
+shape, readiness, clock scheduling and emulator success remain external observations.
+Finite oracle tests and mock-emulator regression tests cover boundary values,
+revocation, malformed Ethernet, closed transport, repeated clicks, timeout,
+reconciliation, replacement, cancellation, stalled reads and failed cleanup.
+
+`tests/vm-v86-boundary.test.js` additionally loads the **shipped v86 JS/WASM and
+BIOS/kernel bytes** in Node. It checks real local-9p API compatibility, captured
+result bytes, growth-slack charges, oversized-result refusal before `Read`,
+pre-allocation refusal, and a successful stop of an actually running emulated CPU.
+This is more than a mock test, but is not a browser, guest-shell, hostile-guest
+isolation, physical-host or device-memory qualification. Chromium launch in this
+execution environment is blocked by its Unix-socket restriction; live graphical
+journeys have not been qualified here.
+
+Focused commands:
+
+- `node --test tests/vm-administration.test.js tests/vm-lifecycle.test.js tests/vm-v86-boundary.test.js`
+- `node --test tests/runtime-admission.test.js tests/operator-ui.test.js`
+- `npm test` and `python3 scripts/verify-custody.py`
+
+The source predicates/limits changed in this resource-control revision. Historical
+six-definition compiler attestations do not cover the additions; exact integrated
+source verification must be regenerated against the final source. Neither a source
+attestation nor these runtime checks certifies all browser or VM effects.
+
+Gate sensitivity was checked by planting removal of `ChangeSize` admission in the
+adapter. `node --test tests/vm-v86-boundary.test.js` failed on actual-v86 growth
+accounting (`25` charged bytes versus expected `64`). Restoring the guard made the
+same test pass. The mutation was not retained.

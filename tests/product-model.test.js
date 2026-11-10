@@ -12,7 +12,7 @@ test('complete product register is bound to current source and exact local asset
   assert.deepEqual(JSON.parse(readFileSync(resolve(root,'product/contracts.json'),'utf8')),expected);
   assert.equal(expected.components.length,18);
   assert.equal(expected.capabilities.length,expected.hostCapabilities.length);
-  assert.equal(expected.releaseBlockers.length,5);
+  assert.deepEqual(expected.releaseBlockers.map(a=>a.path),['images/buildroot-bzimage.bin']);
   for(const a of expected.assets){assert.match(a.sha256,/^[0-9a-f]{64}$/);assert.ok(a.bytes>0);}
   assert.equal(expected.assurance.includes('not a Prism receipt'),true);
 });
@@ -34,11 +34,13 @@ test('literal register reader refuses duplicate fields and executable substituti
 test('asset substitution changes the exact artifact identity without inventing provenance',()=>{
   const dir=mkdtempSync(resolve(tmpdir(),'stitch-product-mutation-'));
   try{
-    for(const path of ['app','src','v86','images','index.html','package.json','package-lock.json','prismpm.lock','standards.lock','CONTRACT.json'])cpSync(resolve(root,path),resolve(dir,path),{recursive:true});
+    for(const path of ['app','src','v86','images','vendor','index.html','package.json','package-lock.json','prismpm.lock','standards.lock','CONTRACT.json'])cpSync(resolve(root,path),resolve(dir,path),{recursive:true});
     const before=productRegister(dir);writeFileSync(resolve(dir,'v86/seabios.bin'),new Uint8Array([0,1,2,3]));
-    const after=productRegister(dir);
-    assert.notEqual(before.assets.find(x=>x.path==='v86/seabios.bin').sha256,after.assets.find(x=>x.path==='v86/seabios.bin').sha256);
-    assert.equal(after.releaseBlockers.some(x=>x.path==='v86/seabios.bin'),true);
+    assert.equal(before.releaseBlockers.some(x=>x.path==='v86/seabios.bin'),false);
+    assert.throws(()=>productRegister(dir),/distribution identity mismatch/);
+    cpSync(resolve(root,'v86/seabios.bin'),resolve(dir,'v86/seabios.bin'));
+    rmSync(resolve(dir,'vendor/seabios/COPYING.LESSER'));
+    assert.throws(()=>productRegister(dir),/ENOENT/);
   } finally{rmSync(dir,{recursive:true,force:true});}
 });
 

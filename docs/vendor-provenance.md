@@ -1,18 +1,35 @@
-# Vendored VM asset provenance review
+# Vendored VM asset provenance and distribution materials
 
-Reviewed 2026-11-10. This is evidence and a remaining-work checklist, not a
-redistribution clearance, legal opinion, reproducible-build receipt or runtime
-verification. No binary, runtime, formal model or product register was changed
-by this review. All five `redistributionCleared = false` flags should remain.
+Current assessment: 2026-11-10. This replaces the earlier incomplete-origin
+review. It distinguishes actual distribution obligations from optional
+independent build reproduction. It is an engineering evidence assessment,
+not a legal warranty or a whole-runtime correctness claim.
 
-## Local identity and introduction
+## Current disposition
 
-All five assets were added in the same existing upstream commit,
+| Asset | Recommendation for repository distribution | Required accompanying material |
+| --- | --- | --- |
+| `v86/libv86.js` | Clear the former missing-origin/notices blocker | `vendor/v86/` notice package |
+| `v86/v86.wasm` | Clear the former missing-origin/notices blocker | `vendor/v86/` notice package |
+| `v86/seabios.bin` | Clear the former missing-source/notices blocker | Complete `vendor/seabios/` source, config, build instructions and notices |
+| `v86/vgabios.bin` | Clear the former missing-source/notices blocker | Complete `vendor/seabios/` source, config, build instructions and notices |
+| `images/buildroot-bzimage.bin` | Remains unresolved | Actual guest source/configuration, included-package inventory and applicable license materials |
+
+These recommendations assume the accompanying directories are actually
+included with the repository/download/static deployment that conveys the
+assets. Do not strip them out of a release package. This is the concrete
+packaging condition to verify, not a requirement to reconstruct every compiler
+or make every historical binary reproducible. The product register should
+reflect the integrated package after review; no runtime replacement is needed
+to clear the four resolved material-packaging gaps.
+
+## Exact asset identities
+
+All five original files were introduced by upstream Stitch commit
 [`da38ff68f09a78f38ea8600b76ae6df36d46dd57`](https://github.com/Syntra-Labs/stitch/commit/da38ff68f09a78f38ea8600b76ae6df36d46dd57).
-The local history shows no subsequent asset change. That commit supplies the
-repository introduction, not an original vendor download or build record.
+No runtime asset has been changed by this packaging work.
 
-| Path | Bytes | SHA-256 of local file |
+| Path | Bytes | SHA-256 |
 | --- | ---: | --- |
 | `v86/libv86.js` | 353762 | `b80fba71dacb7977e5b46800b3ba194bba7fe13e52fa3d22f80cc060ff015a4e` |
 | `v86/v86.wasm` | 1418156 | `abd512988f39f5c81d4930f564bafa1a6e1e0d5210de9b20e2bdec13fbc318d9` |
@@ -20,134 +37,92 @@ repository introduction, not an original vendor download or build record.
 | `v86/vgabios.bin` | 36352 | `a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880` |
 | `images/buildroot-bzimage.bin` | 5166352 | `7befbaea31e249d9a518c4b95fa42b2a193d0e3de46250d617cbdeb866ee28b0` |
 
-These are reproducible with `sha256sum v86/* images/*`. They agree with the
-product register at review time.
+## v86 JavaScript and WebAssembly
 
-## BIOS origin established; packaging not cleared
+Both files exactly match the official downloads retrieved 2026-11-10:
 
-The connected GitHub API directory listing for
-[`copy/v86` at `315b2b0b758703ef0e6cc7b4088d6068f83f3c20`](https://github.com/copy/v86/tree/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/bios)
-reports the same Git blob identifiers and byte sizes as the local files:
+- https://copy.sh/v86/build/libv86.js
+- https://copy.sh/v86/build/v86.wasm
 
-- [`bios/seabios.bin`](https://github.com/copy/v86/blob/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/bios/seabios.bin):
-  Git blob `8c9ab8ffea3b4e4d5fbbbe63a43ceaf2dcb501c7`, 131072 bytes.
-- [`bios/vgabios.bin`](https://github.com/copy/v86/blob/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/bios/vgabios.bin):
-  Git blob `bd393e2b5edb10c04a822fb9e7c02b7cb4ffa6f5`, 36352 bytes.
+The official https://copy.sh/v86/ homepage identifies deployed revision
+`1e4f43c95` (Jul 3, 2026 23:07), resolved by GitHub to
+[`1e4f43c954701db9699fa976b27cc675f9971265`](https://github.com/copy/v86/commit/1e4f43c954701db9699fa976b27cc675f9971265).
+An actual JavaScript build from that pinned source using upstream Closure
+v20210601 reproduces the shipped JS byte for byte. `vendor/v86/` supplies the
+tracked source archive, checksum-checked offline reconstruction recipe and
+applicable distribution notices:
 
-The local identifiers are independently reproducible with `git hash-object`
-on each file. This is an upstream Git-blob identity match, not a claim that
-upstream published the SHA-256 values above or that this review rebuilt them.
-The reviewed v86 commit is a pinned location containing the matching bytes;
-it is not asserted to be the original BIOS build or import commit.
+- v86 BSD-2-Clause copyright, conditions and disclaimer;
+- QEMU-derived floppy implementation MIT copyright and terms;
+- incorporated SoftFloat copyright, BSD conditions and disclaimer;
+- Zstandard 1.4.5 BSD license and incorporated Zstd/xxHash notices;
+- preserved per-file notices in the complete source archive.
 
-The pinned upstream
-[`fetch-and-build-seabios.sh`](https://github.com/copy/v86/blob/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/bios/fetch-and-build-seabios.sh)
-checks out SeaBIOS `rel-1.16.2` and copies both normal BIOS outputs from that
-build. The local SeaBIOS binary also contains `rel-1.16.2-0-gea1b7a0`.
-The VGA binary identifies itself as a SeaBIOS VBE adapter; it should not be
-mistaken for the separate Bochs VGA BIOS also present upstream.
+These permissive binary-distribution notice obligations do **not** require an
+independent bit-identical Wasm reconstruction. The Wasm's exact official byte
+origin is established; its source reconstruction has not been independently
+performed because Rust/clang are absent on this worker. Record that limitation
+honestly, but do not turn it into a release blocker. Similarly, shipping source
+is useful here but is not a new BSD/MIT source-disclosure obligation.
 
-SeaBIOS's tagged
-[`src/post.c`](https://github.com/coreboot/seabios/blob/rel-1.16.2/src/post.c)
-and
-[`vgasrc/vgabios.c`](https://github.com/coreboot/seabios/blob/rel-1.16.2/vgasrc/vgabios.c)
-explicitly state GNU LGPLv3. The release includes
-[`COPYING.LESSER`](https://github.com/coreboot/seabios/blob/rel-1.16.2/COPYING.LESSER)
-and the incorporated GPLv3 terms in
-[`COPYING`](https://github.com/coreboot/seabios/blob/rel-1.16.2/COPYING).
-Do not classify these BIOS files under v86's BSD license.
+The validated runtime remains untouched. VM administration relies on internal
+fs9p APIs in this revision. Any future upgrade/replacement needs compatibility
+tests, not a speculative switch to an unrelated npm version.
 
-Next action: retain the applicable copyright and license texts with the
-distribution; package or provide a compliant corresponding-source route for
-the exact SeaBIOS release, configuration and build scripts; review the
-source/component notices and actual distribution method. The upstream recipe
-and blob match make this concrete work, but are not themselves fulfillment of
-the distribution obligations. The follow-up source package and rebuild evidence below address part of this
-work without asserting redistribution clearance.
+## SeaBIOS and its VGA BIOS
 
-## v86 JavaScript and WebAssembly: exact source build unresolved
+Both bundled files exactly match the upstream Git blobs in
+[`copy/v86` bios directory](https://github.com/copy/v86/tree/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/bios):
 
-The reviewed upstream
-[`LICENSE`](https://github.com/copy/v86/blob/315b2b0b758703ef0e6cc7b4088d6068f83f3c20/LICENSE)
-is BSD-2-Clause. It requires preservation of the copyright, conditions and
-disclaimer in source distributions and reproduction in accompanying materials
-for binary distributions. The upstream
-[README](https://github.com/copy/v86/blob/master/Readme.md) additionally identifies
-separately licensed incorporated code, including SoftFloat, zstd and MIT-licensed
-QEMU-derived floppy code. A BSD label for the complete bundle is insufficient.
+- `bios/seabios.bin`: `8c9ab8ffea3b4e4d5fbbbe63a43ceaf2dcb501c7`.
+- `bios/vgabios.bin`: `bd393e2b5edb10c04a822fb9e7c02b7cb4ffa6f5`.
 
-The local Wasm producer metadata names Rust `1.96.0 (ac68faa20 2026-05-25)` and
-clang `22.1.6`. This identifies compiler metadata, not a v86 source commit.
-No exact upstream build/release identity for the local JS/Wasm pair was
-established by this review. The latest-release GitHub endpoint returned 404;
-this is not evidence that no release assets exist.
+The upstream build recipe explicitly selects `rel-1.16.2`; the BIOS identifies
+`rel-1.16.2-0-gea1b7a0`. The official release tag resolves to SeaBIOS commit
+[`ea1b7a0733906b8425d948ae94fba63c32b1d425`](https://github.com/coreboot/seabios/tree/ea1b7a0733906b8425d948ae94fba63c32b1d425).
+The complete unchanged source archive, original per-file notices, LGPLv3 and
+incorporated GPLv3 texts, v86 configuration, original build script and usable
+build instructions are supplied in `vendor/seabios/`.
 
-Next action: match both existing files to a pinned upstream build/release (or
-recover their original build record), then retain the complete applicable
-notice set for that build and its included dependencies. Do not substitute
-current upstream source provenance for these unidentified built bytes.
+This supplies a concrete corresponding-source route with the object-code
+distribution. Include those materials alongside both ROM files, accessible
+without an additional charge or access restriction. Do not relabel them under
+v86's BSD license or this repository's MIT license. Retain the ability to use
+modified ROMs; this patch imposes no signature or replacement restriction.
 
-## Linux/Buildroot image: image-level source and license set unresolved
+The candidate build script successfully builds both ROMs. Two clean-directory
+runs on the same toolchain produce matching candidate hashes, but those hashes
+differ from the historical bundled ROMs. That difference alone does **not**
+make the supplied original source/configuration inadequate and is not a
+license obligation to reproduce an old compiler. It is recorded as a build
+reproduction limitation. No candidate adoption is required to resolve this
+source/notice packaging gap. If a replacement is chosen later, validate its
+actual VM behavior before changing the shipped hashes.
 
-`file images/buildroot-bzimage.bin` identifies a Linux x86 bzImage with embedded
-version `5.6.15 (fabian@nyu) #16 Mon Jul 20 19:33:46 CDT 2020`.
-This is a build string, not proof of the complete source/configuration or an
-inventory of bundled userspace. Linux's
-[`v5.6/COPYING`](https://github.com/torvalds/linux/blob/v5.6/COPYING)
-states GPL-2.0-only with the Linux syscall exception and notes that other
-licenses can apply. It does not license every package in a Buildroot image.
+## Genuine remaining guest-image source gap
 
-The upstream v86 README directs users to `copy/images` for image information.
-That repository's
-[README](https://github.com/copy/images/blob/master/Readme.md) explicitly warns
-that it is not updated; its current root listing does not contain this
-Buildroot image. No upstream byte match or complete corresponding-source
-bundle for this exact local image was established.
+The Linux/Buildroot image exactly matches the official download
+https://i.copy.sh/buildroot-bzimage.bin. It identifies Linux 5.6.15, built by
+`fabian@nyu` on 2020-07-20. This establishes download origin, not the complete
+corresponding source of the kernel and bundled userspace.
 
-Next action: recover the original image distribution/build manifest, exact
-kernel patches/configuration, Buildroot configuration and included package
-versions, applicable license notices and corresponding sources. If unavailable,
-propose a separately authorized, reproducible replacement rather than marking
-the existing image cleared. Neither the filename nor Linux's general license
-is adequate evidence for clearing this image.
+The decompressed kernel has no `IKCFG_ST` embedded-configuration marker.
+The obsolete `copy/images` repository provides no matching image/configuration
+in its available history. We have not recovered the complete kernel build
+configuration, patches, Buildroot configuration or actual included-package
+inventory. A generic Linux source link or a license label on the image cannot
+supply those missing materials. This remains a substantive distribution issue.
 
-## Release decision
+`vendor/guest/` provides a pinned official Buildroot candidate recipe preserving
+VGA/serial shells, NE2000 Ethernet, embedded initramfs and virtio 9p support.
+The Buildroot configuration step succeeded; the dependency preflight found
+missing host programs `cpio`, `rsync` and `bc`. No candidate image has been built
+or qualified, and kernel/BusyBox fragment resolution remains unverified. The
+recipe retains source downloads, resolved configs and `legal-info` materials;
+those actual outputs and warnings must be reviewed before claiming completion.
 
-The warnings are substantive. BIOS provenance can now be stated more precisely,
-but no asset has a complete documented redistribution package in this review.
-Keep all five blockers until the listed evidence and packaging work is complete.
-This conclusion concerns distribution readiness, not whether the typed product
-graph is closed or whether the pure Stitch core passes its proof checks.
-
-
-## SeaBIOS source-package follow-up
-
-The repository now carries `vendor/seabios/source.tar.gz`, a complete unmodified
-Git archive of official SeaBIOS release commit
-[`ea1b7a0733906b8425d948ae94fba63c32b1d425`](https://github.com/coreboot/seabios/tree/ea1b7a0733906b8425d948ae94fba63c32b1d425),
-which the official `rel-1.16.2` tag resolves to. The archive retains all source
-and per-file notices. Separate `COPYING` and `COPYING.LESSER` texts, v86's
-pinned `seabios.config`, original upstream build script, and SHA-256 inventory
-are supplied alongside it. This supplies actual materials rather than merely
-an external source link. Include the whole directory in distributions of the
-BIOS pair; confirm the deployment/package includes it.
-
-`vendor/seabios/build.sh` is an offline, non-destructive candidate recipe. It
-uses the unchanged source archive with SeaBIOS's supported release-version
-input and a distributor suffix. It writes only a fresh output directory and
-never silently replaces shipped binaries. Two clean builds in different
-absolute directories using GCC 14.2.0, GNU binutils 2.44, GNU make 4.4.1 and
-Python 3.12.14 produced matching candidate hashes (see vendor README). Neither
-candidate matches the current bundled ROM: the original build toolchain is
-not established. Runtime VM boot/display/console/network/restart validation
-is required before adopting these replacements and updating product hashes.
-
-This removes a concrete source/notice packaging gap, not all VM release gaps.
-The existing v86 JavaScript/Wasm pair still needs exact source/build identity
-and its full incorporated license set, or replacement by a pinned source
-build with notices and runtime tests. The Linux/Buildroot image still needs
-its complete image-level source/configuration and package notices, or a
-maintained guest replacement built from declared sources with Buildroot
-`legal-info` output and source archives distributed alongside it. Preserve
-all current VM capabilities during that replacement. A successful compiler
-build is not a guest boot test or a license-clearance decision.
+Two valid completion routes remain: recover the original guest's actual source
+materials, or build the candidate and qualify it with the current runtime,
+then distribute its complete source/license package. Neither requires disabling
+the VM feature, declaring an untested replacement complete, or adding unrelated
+costly checks to every CI run.

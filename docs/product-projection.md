@@ -3,13 +3,13 @@
 ## What is represented
 
 `app/src/Product/Model.lex.tex` is the project-owned typed product graph. Its
-`product` value contains 18 components, 14 capability contracts, 11 named
-external assumptions, 11 dependencies, two deployment descriptions and 21
-artifact declarations. `valid` checks identity uniqueness, component-to-asset
+`product` value contains the component, capability, external-assumption,
+dependency, deployment and artifact declarations listed in
+`product/contracts.json`. `valid` checks identity uniqueness, component-to-asset
 closure, capability ownership and assumption closure, dependency consumers and
 deployment capability references. `productGraphIsClosed` states the concrete
-structural acceptance obligation. These counts describe the current graph;
-they are not policy scores, reliability measurements or limits on extension.
+structural acceptance obligation. The register is derived from these declarations; its counts are not policy
+scores, reliability measurements or limits on extension.
 
 The graph covers all five Stitch layers and the actual browser product:
 
@@ -62,7 +62,10 @@ budget or journal. Focused interruption tests now exercise these refinements:
   configurable finite deadline (60 seconds by default). Cleanup permits explicit
   retry, and generation identity fences old callbacks. Cleanup is best-effort,
   not proof that host downloads stopped. A command timeout means its completion
-  is unknown, not that the command was cancelled.
+  is unknown, not that the command was cancelled. Whole-VM runtime expiry and
+  explicit cancellation after dispatch separately request a stop; local-9p
+  pre-allocation limits and bounded range reads are installed before run. The
+  retained-command selector can observe earlier available handles without replay.
 - `Stitch.Pointer.restoreAllowed` admits only a separately accepted exact vault
   anchor in its independently pinned live scope, with current signature/validity
   and an empty or identical retained head. `PointerObserver` shares restoration
@@ -137,12 +140,18 @@ cross-reference closure and refuses omitted browser assets. It does not compile
 LexLean or prove the runtime implements a contract.
 
 The inventory records existing v86 JavaScript/Wasm, SeaBIOS, VGA BIOS and Linux
-image bytes. [The provenance review](vendor-provenance.md) establishes both BIOS
-Git blobs against a pinned v86 tree and identifies SeaBIOS LGPLv3 source notices.
-The exact v86 JS/Wasm build and complete Linux image source remain unidentified.
-Notice/corresponding-source packaging is still unresolved, so all five remain
-`redistributionCleared = false`.
-`vendorRedistributionRemainsBlocked` states that concrete unresolved condition.
+image bytes. [The provenance review](vendor-provenance.md) establishes official
+v86 distribution identity, actual JavaScript reconstruction and complete
+applicable notices, plus the BIOS origin and corresponding source/configuration.
+The four resolved assets require their accompanying `vendor/v86` or
+`vendor/seabios` materials in distributions. `vendor/distribution.json` binds the
+reviewed asset and companion bytes; the existing product-register check refuses
+changed assets or missing/substituted required materials.
+The Linux/Buildroot guest still lacks its complete original build inputs and
+package source/license inventory, so it alone remains uncleared.
+`vendorRedistributionRemainsBlocked` states that remaining concrete condition.
+Independent byte-identical compiler reconstruction is useful evidence, not a
+new licensing condition for every asset.
 An asset digest proves identity of the inventoried local bytes, not ownership,
 license, security or that a remote static host served those bytes. The current
 browser does not verify every dependency against this inventory at load time.
@@ -162,9 +171,11 @@ The browser deployment is an ordinary same-origin static product, with the
 complete local asset set and explicitly enabled network functions. A valid
 static publication is not a successful browser readiness test. Probe-only
 publication cannot replace the multi-panel Stitch UI. Rollback retains an
-entire prior asset set; reloading a tab can lose RAM, local trusted anchors,
-budget state and journals. The current product makes no crash-recovery or
-persistent custody guarantee.
+entire prior asset set. Reloading loses RAM, session-local budget state and
+unpersisted trusted anchors. Explicitly saved origin-local signing keys and
+publication journals survive an ordinary reload when browser storage remains
+available; that is not an eviction-proof backup or persistent object-custody
+guarantee. Unknown provider outcomes remain unresolved until reconciled.
 
 VM memory sizes and request ceilings already in the implementation are host
 configuration, not derived kernel guarantees. VM boot/shell/Ethernet operations

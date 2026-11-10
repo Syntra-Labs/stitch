@@ -104,12 +104,19 @@ export function validateProduct(p,base=root){
   for(const e of p.architecture.filter(x=>x.type==='Foundation.Arch::Edge'))if(!arch.some(x=>x.index===e.fromIndex)||!arch.some(x=>x.index===e.toIndex))fail('dangling architecture edge');
   const native=p.capabilities.find(x=>x.capability==='NativeRouting');if(!native||native.enabledByDefault||!native.proofScope.startsWith('Unsupported'))fail('native routing overclaim');
   const relay=p.capabilities.find(x=>x.capability==='PublicRelay');if(!relay||relay.enabledByDefault||!relay.assumptions.includes('disclosureConsent'))fail('relay consent boundary');
+  const distribution=JSON.parse(bytes('vendor/distribution.json',base));
+  for(const asset of p.assets.filter(a=>a.redistributionCleared && /^(v86|images)\//.test(a.path))){
+    const evidence=distribution.assets[asset.path];
+    if(!evidence || hash(bytes(asset.path,base))!==evidence.sha256)fail(`distribution identity mismatch ${asset.path}`);
+    if(!evidence.materials?.length)fail(`missing distribution materials ${asset.path}`);
+    for(const material of evidence.materials)if(hash(bytes(material.path,base))!==material.sha256)fail(`distribution material mismatch ${material.path}`);
+  }
   return true;
 }
 export function productRegister(base=root){
   const p=readProduct(base);validateProduct(p,base);
   const formal=walk(resolve(base,'app/src')).filter(x=>x.endsWith('.lex.tex')).map(x=>relative(base,x));
-  const sourcePaths=[...new Set([...formal,...walk(resolve(base,'app/language')).filter(x=>x.endsWith('.toml')).map(x=>relative(base,x)),'app/lexlean.toml','app/prismpm.toml','app/prism.toml','package.json','package-lock.json','prismpm.lock','standards.lock'])].sort();
+  const sourcePaths=[...new Set([...formal,...walk(resolve(base,'app/language')).filter(x=>x.endsWith('.toml')).map(x=>relative(base,x)),'app/lexlean.toml','app/prismpm.toml','app/prism.toml','package.json','package-lock.json','prismpm.lock','standards.lock','vendor/distribution.json'])].sort();
   const sources=sourcePaths.map(path=>({path,sha256:hash(bytes(path,base))}));
   const artifacts=p.assets.map(a=>{const data=bytes(a.path,base);return {...a,bytes:data.length,sha256:hash(data)};}).sort((a,b)=>a.path.localeCompare(b.path,'en'));
   return {format:'Stitch project-owned product contract register',version:1,assurance:'Source contracts and local byte inventory, not a Prism receipt or whole-browser proof',reference:{repository:'https://github.com/UOR-Foundation/PrismPM',revision:'fe5b8b73a94134c316329a8d1b09ebc97b555c5f',specSections:['2','11'],foundationArchUpstreamBytes:8959,foundationArchUpstreamSha256:'9a79e4912d33b1736d7451ab726ed0a83d958b8d9c70091a749fbc70acd48cdc',foundationArch:'Type-only subset; source types preserved, title localized to available glossary, examples omitted',sdk:'Existing prismpm.lock; no dependency or profile upgrade'},releaseBlockers:artifacts.filter(a=>!a.redistributionCleared).map(a=>({path:a.path,reason:a.licenseStatus})),...p,assets:artifacts,sources,sourceDigest:'sha256:'+hash(JSON.stringify(sources))};

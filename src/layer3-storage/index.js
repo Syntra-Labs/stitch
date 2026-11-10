@@ -485,7 +485,7 @@ export class LiveUorMeshDatabase {
   }
 
   _publish(packet) {
-    if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'place', { ...packet, from: this.transport.peerId, tsMs: Date.now() });
+    if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'place', { ...packet, from: (this.transport.routingPeerId ?? this.transport.peerId), tsMs: Date.now() });
     return this.transport.publishWarmEnvelope(packet, { publicData: true });
   }
 
@@ -541,7 +541,7 @@ export class LiveUorMeshDatabase {
     }
     if (p.purpose === 'placement') {
       if (typeof p.requestId !== 'string' || !/^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(p.requestId)
-        || p.holder !== this.transport.peerId || p.leaseExpiresAt <= Date.now()
+        || p.holder !== (this.transport.routingPeerId ?? this.transport.peerId) || p.leaseExpiresAt <= Date.now()
         || p.leaseExpiresAt > Date.now() + this.maxAcceptedLeaseMs) throw new CustodyError('InvalidSchema', 'Wrong holder or invalid lease claim');
     } else if (p.requestId !== null || p.leaseExpiresAt !== 0
       || (p.purpose === 'public-relay' ? p.holder !== 'public-relay' : p.holder !== null)) {
@@ -597,7 +597,7 @@ export class LiveUorMeshDatabase {
       // no application-authority or persistent-storage authentication is claimed.
       this._send(fromPeerId, {
         type: 'uor_shard_ack', version: 1, requestId: p.requestId, index: f.index,
-        holder: this.transport.peerId, manifestDigest: manifest.manifestDigest,
+        holder: (this.transport.routingPeerId ?? this.transport.peerId), manifestDigest: manifest.manifestDigest,
         fragmentDigest: manifest.fragments.digests[f.index], leaseExpiresAt: p.leaseExpiresAt,
       });
     }
@@ -712,19 +712,19 @@ export class LiveUorMeshDatabase {
       const entry = existing || {
         addressHex: key, fingerprintHex: key, manifest, originalLength: bytes.length, label,
         createdAtSec: Math.floor(Date.now() / 1000), shards: [null, null, null], heldIndices: new Set(),
-        bytes, verified: true, source: `local:${this.transport.peerId}`, warmPublished: 0,
+        bytes, verified: true, source: `local:${(this.transport.routingPeerId ?? this.transport.peerId)}`, warmPublished: 0,
       };
       // A caller supplying complete bytes may promote a prior fragment/read
       // cache. Preserve actually assigned fragments and begin explicit placement.
       entry.bytes = bytes;
       entry.verified = true;
-      entry.source = `local:${this.transport.peerId}`;
+      entry.source = `local:${(this.transport.routingPeerId ?? this.transport.peerId)}`;
       entry.warmPublished ??= 0;
       this.objects.set(key, entry);
       let state = await createPlacement(manifest);
       this.placements.set(key, state);
       const peers = [...new Set((this.transport.openPeers?.() || []).map(p => p.remoteId))]
-        .filter(id => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(id) && id !== this.transport.peerId).sort().slice(0, 3);
+        .filter(id => typeof id === 'string' && /^[A-Za-z0-9][A-Za-z0-9._:@/-]{0,127}$/.test(id) && id !== (this.transport.routingPeerId ?? this.transport.peerId)).sort().slice(0, 3);
       for (let index = 0; index < peers.length; index++) {
         const holder = peers[index];
         const requestId = `placement-${++this._sequence}`;

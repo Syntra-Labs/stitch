@@ -1,0 +1,88 @@
+name: Build and qualify guest candidate
+on:
+  workflow_dispatch:
+  push:
+    branches: ['feat/**']
+    paths:
+      - 'vendor/guest/**'
+      - '.github/workflows/guest-candidate.yml'
+permissions:
+  contents: read
+concurrency:
+  group: guest-candidate-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  candidate:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 200
+    env:
+      BUILDROOT_PIN: 7fdeadb3b9f12f78e5fccca914d7fef47090ab9a
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+      - name: Prepare bounded build host
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/guest-evidence"
+          df -h "$RUNNER_TEMP" | tee "$RUNNER_TEMP/guest-evidence/disk-before.log"
+          free_kib=$(df -Pk "$RUNNER_TEMP" | awk 'NR==2 {print $4}')
+          test "$free_kib" -ge 20971520 || { echo 'Need at least 20 GiB free for first Buildroot build; use a larger authorized runner.'; exit 1; }
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends build-essential patch perl cpio unzip rsync bc file wget python3 gzip xz-utils git
+          { gcc --version; make --version; python3 --version; node --version; } > "$RUNNER_TEMP/guest-evidence/host-tools.log"
+          git init "$RUNNER_TEMP/buildroot"
+          git -C "$RUNNER_TEMP/buildroot" remote add origin https://github.com/buildroot/buildroot.git
+          git -C "$RUNNER_TEMP/buildroot" fetch --depth=1 origin "$BUILDROOT_PIN"
+          git -C "$RUNNER_TEMP/buildroot" checkout --detach FETCH_HEAD
+          test "$(git -C "$RUNNER_TEMP/buildroot" rev-parse HEAD)" = "$BUILDROOT_PIN"
+      - name: Build image and collect original source/license materials
+        timeout-minutes: 175
+        shell: bash
+        run: |
+          set -euo pipefail
+          vendor/guest/build-candidate.sh "$RUNNER_TEMP/buildroot" "$RUNNER_TEMP/guest-output" 2>&1 | tee "$RUNNER_TEMP/guest-evidence/build.log"
+      - name: Qualify actual bundled emulator against candidate
+        timeout-minutes: 4
+        shell: bash
+        run: |
+          set -euo pipefail
+          node vendor/guest/qualify-candidate.mjs "$RUNNER_TEMP/guest-output/images/bzImage" 2>&1 | tee "$RUNNER_TEMP/guest-evidence/runtime.log"
+      - name: Preserve usable results even on failure
+        if: always()
+        timeout-minutes: 8
+        shell: bash
+        run: |
+          set -euo pipefail
+          evidence="$RUNNER_TEMP/guest-evidence"
+          output="$RUNNER_TEMP/guest-output"
+          mkdir -p "$evidence"
+          printf '%s\n' 'Candidate evidence only. A failed or interrupted build produces partial materials, not distribution clearance. Inspect build/runtime logs and legal-info warnings. No runtime image was published or replaced.' > "$evidence/STATUS.txt"
+          if test -d "$output"; then
+            parts=()
+            for part in downloads legal-info release-materials; do
+              test ! -d "$output/$part" || parts+=("$part")
+            done
+            if ((${#parts[@]})); then tar -czf "$evidence/sources-and-licenses.tar.gz" -C "$output" "${parts[@]}"; fi
+            test ! -f "$output/.config" || cp "$output/.config" "$evidence/buildroot.config"
+            test ! -f "$output/images/bzImage" || cp "$output/images/bzImage" "$evidence/stitch-guest-candidate.bin"
+            if test -d "$output/build"; then
+              (cd "$output"; find build -mindepth 2 -maxdepth 2 -name .config -type f -exec cp --parents '{}' "$evidence/" ';')
+            fi
+            (cd "$evidence"; find . -type f ! -name SHA256SUMS -print0 | sort -z | xargs -0 sha256sum > SHA256SUMS)
+          fi
+      - name: Upload candidate, source materials, configs and logs
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: guest-candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/guest-evidence/
+          include-hidden-files: true
+          if-no-files-found: warn
+          retention-days: 14
+          compression-level: 0
