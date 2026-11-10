@@ -31,7 +31,7 @@ function fixture(t) {
     async read_file() { return null; }
   }
   globalThis.V86 = FakeVm;
-  const node = new LinuxVmNode({ transport: { peerId: 'test-1234', broadcast: frame => sent.push(frame) },
+  const node = new LinuxVmNode({ network: { address: '10.42.0.2', prefixLength: 24 }, transport: { peerId: 'test-1234', broadcast: frame => sent.push(frame) },
     screenContainer: { querySelectorAll: () => [{ innerText: prompt }] },
     onStatus: status => statuses.push(status), bootTimeoutMs: 1000 });
   return { node, statuses, sent, instances, intervals, deadlines, FakeVm,
@@ -423,4 +423,51 @@ test('stopping and replacing a VM during initialization fences its late keystrok
   finish(); await pending;
   assert.equal(f.node.v86, fresh); assert.equal(f.node.booted, true);
   assert.equal(f.statuses.filter(status => status.state === 'online').length, 1);
+});
+
+test('static configuration is independent of labels and duplicate addresses are not claimed unique', () => {
+  for (const peerId of ['----', 'candidate-0', 'candidate-1', '0001', '006z']) {
+    const node = new LinuxVmNode({ transport: { peerId } });
+    assert.equal(node.ipAddress, null);
+    assert.throws(() => node.setEthernetSharing(true), error => error.code === 'vm-network-required');
+    node.setNetworkConfiguration('10.42.1.0', 23);
+    assert.equal(node.ipAddress, '10.42.1.0');
+    assert.equal(node.networkConfiguration.netmask, '255.255.254.0');
+    assert.equal(Object.isFrozen(node.networkConfiguration), true);
+    assert.throws(() => { node.ipAddress = '10.42.0.5'; }, TypeError);
+  }
+});
+
+test('offline boot initializes shell and 9p without ifconfig or Ethernet grant', async t => {
+  const f = fixture(t);
+  f.node.setNetworkConfiguration(null);
+  f.node.boot(); f.ready(); await f.poll();
+  assert.equal(f.node.booted, true);
+  assert.doesNotMatch(f.instances[0].commands[0], /ifconfig/);
+  assert.equal(f.statuses.at(-1).ip, null);
+  assert.throws(() => f.node.setEthernetSharing(true), error => error.code === 'vm-network-required');
+  assert.throws(() => f.node.setNetworkConfiguration('10.42.0.2', 24), error => error.code === 'vm-network-active');
+  assert.equal(f.node.ethernetSharing, false);
+  await f.node.destroy();
+});
+
+test('boot uses exact selected address and subnet; stopped and uncertain handles keep configuration locked', async t => {
+  const f = fixture(t);
+  f.node.setNetworkConfiguration('10.42.1.0', 23);
+  f.node.boot();
+  assert.throws(() => f.node.setNetworkConfiguration(null), error => error.code === 'vm-network-active');
+  f.ready(); await f.poll();
+  assert.match(f.instances[0].commands[0], /ifconfig eth0 10\.42\.1\.0 netmask 255\.255\.254\.0 up/);
+  assert.equal(f.statuses.at(-1).cidr, '10.42.1.0/23');
+  await f.node.stop();
+  assert.equal(f.node.lifecycle.networkConfiguration.cidr, '10.42.1.0/23');
+  assert.equal(f.node.lifecycle.canConfigureNetwork, false);
+  assert.throws(() => f.node.setNetworkConfiguration('10.42.0.3', 24), error => error.code === 'vm-network-active');
+  f.node.v86.destroy = () => { throw Error('uncertain'); };
+  await f.node.destroy();
+  assert.throws(() => f.node.setNetworkConfiguration(null), error => error.code === 'vm-network-active');
+  f.node.v86.destroy = () => {};
+  await f.node.destroy();
+  f.node.setNetworkConfiguration('10.42.0.3', 24);
+  assert.equal(f.node.networkConfiguration.cidr, '10.42.0.3/24');
 });

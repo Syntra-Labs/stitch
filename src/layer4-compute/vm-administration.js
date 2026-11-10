@@ -10,7 +10,7 @@ export function validEthernet(frame) {
   }
   return true;
 }
-export const ethernetAllowed = (node, current, frame) => call('ethernetAllowed', node.ethernetSharing, node.booted,
+export const ethernetAllowed = (node, current, frame) => call('ethernetAllowed', node.ethernetSharing && networkSharingAllowed(true, Boolean(node.networkConfiguration)), node.booted,
   current, !!node.transport && node.transport.closed !== true, validEthernet(frame), node.adminBlocked);
 export const commandAllowed = node => call('commandAllowed', node.booted, node.commandBusy, node.adminBlocked, node.commands.size < 128);
 export const observationAllowed = (node, command) => call('observationAllowed', node.bootGeneration, command.generation,
@@ -116,3 +116,23 @@ export async function readBoundedVmFile(vm, name, limit) {
     throw new VmBoundaryError('vm-boundary-unavailable', 'v86 returned an invalid bounded file range.');
   return bytes ? bytes.slice() : new Uint8Array(0);
 }
+
+// Parsing and subnet arithmetic are host observations; admission is source-owned.
+// Canonical decimal input avoids shell syntax, ambiguous octal, NaN and coercion.
+export function validateStaticNetwork(address, prefixLength) {
+  if (typeof address !== 'string' || !/^(0|[1-9][0-9]{0,2})(\.(0|[1-9][0-9]{0,2})){3}$/.test(address) ||
+      !Number.isInteger(prefixLength) || prefixLength < 0 || prefixLength > 32)
+    throw new VmBoundaryError('vm-network-invalid', 'Enter a canonical IPv4 host address and prefix length 0–32.');
+  const octets = address.split('.').map(Number);
+  if (octets.some(value => value > 255))
+    throw new VmBoundaryError('vm-network-invalid', 'IPv4 octets must be 0–255.');
+  const numeric = octets.reduce((value, octet) => value * 256 + octet, 0);
+  const size = 2 ** (32 - prefixLength), hostPart = numeric % size;
+  if (!call('staticAddressAllowed', octets[0], prefixLength, hostPart, size - 1))
+    throw new VmBoundaryError('vm-network-invalid', 'Use a unicast host address, not unspecified, loopback, multicast, reserved, or the subnet network/broadcast address.');
+  const mask = 2 ** 32 - size;
+  const netmask = [24, 16, 8, 0].map(shift => Math.floor(mask / 2 ** shift) % 256).join('.');
+  return Object.freeze({ address, prefixLength, netmask, cidr: `${address}/${prefixLength}` });
+}
+export const networkChangeAllowed = node => call('networkChangeAllowed', !!node.v86, Boolean(node.adminBusy || node.adminBlocked), node.booting);
+export const networkSharingAllowed = (granted, configured) => call('networkSharingAllowed', granted, configured);

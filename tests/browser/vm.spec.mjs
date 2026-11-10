@@ -13,6 +13,7 @@ test('bundled v86 boots the actual guest, captures shell bytes and stops/destroy
   await page.locator('#vmLimitsPanel > summary').click();
   await expect(page.locator('#vmRuntimeSeconds')).toBeVisible();
   await page.locator('#vmRuntimeSeconds').fill('120');
+  await page.locator('#vmIpv4Address').fill('10.42.0.2');
   await page.locator('#bootVmBtn').click();
   await expect(page.locator('#bootVmBtn')).toBeDisabled();
   await expect(page.locator('#vmStatusLabel')).toContainText('ONLINE', { timeout: 70_000 });

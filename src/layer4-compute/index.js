@@ -22,7 +22,7 @@ import {
   Fnv1aHasher16
 } from '../layer1-uor/index.js';
 import { createCheckpoint, verifyCheckpoint, demoProgram, identifyProgram, MAX_PROGRAM_STEPS } from './replay.js';
-import { shareAllowed, ethernetAllowed, commandAllowed, observationAllowed, administrationAllowed, forgetAllowed, validateCommand, vmLimits, VmBoundaryError, allocationAllowed, terminationRequired, installFilesystemControls, readBoundedVmFile } from './vm-administration.js';
+import { validateStaticNetwork, networkChangeAllowed, networkSharingAllowed, shareAllowed, ethernetAllowed, commandAllowed, observationAllowed, administrationAllowed, forgetAllowed, validateCommand, vmLimits, VmBoundaryError, allocationAllowed, terminationRequired, installFilesystemControls, readBoundedVmFile } from './vm-administration.js';
 import { ResourceAdmission, reserveNetwork } from '../layer2-schedulers/policy.js';
 import { snapshotRecord } from '../layer1-uor/custody.js';
 import { record, identifier, natural, digest, refuse } from '../layer1-uor/contracts.js';
@@ -256,7 +256,8 @@ export function benchmarkComputeStrategies({
  *   3. Shell task execution producing UOR-addressed output artifacts
  */
 export class LinuxVmNode {
-  constructor({ transport, screenContainer, onStatus = () => {}, bootTimeoutMs = 60000, vmRuntimeMs = vmLimits.runtimeLimitMs }) {
+  #network = null;
+  constructor({ transport, screenContainer, onStatus = () => {}, bootTimeoutMs = 60000, vmRuntimeMs = vmLimits.runtimeLimitMs, network = null }) {
     if (!Number.isFinite(bootTimeoutMs) || bootTimeoutMs <= 0 || bootTimeoutMs > 2147483647) throw new Error('Invalid VM boot timeout');
     if (!Number.isFinite(vmRuntimeMs) || vmRuntimeMs < 1000 || vmRuntimeMs > vmLimits.runtimeLimitMs) throw new VmBoundaryError('vm-runtime-limit-invalid', 'Invalid VM runtime allowance (1000–300000ms).');
     this.transport = transport;
@@ -287,14 +288,24 @@ export class LinuxVmNode {
     this.instanceId = globalThis.crypto.randomUUID();
     this.ethFramesSent = 0;
     this.ethFramesReceived = 0;
-    this.ipAddress = `10.42.0.${(parseInt((this.transport?.peerId ?? '0000').slice(-4), 36) % 250) + 2}`;
+    if (network !== null) this.setNetworkConfiguration(network.address, network.prefixLength);
+  }
+
+  get networkConfiguration() { return this.#network; }
+  get ipAddress() { return this.#network?.address ?? null; }
+  setNetworkConfiguration(address, prefixLength) {
+    if (!networkChangeAllowed(this))
+      throw new VmBoundaryError('vm-network-active', 'Destroy the current instance before changing its network configuration.');
+    this.#network = address === null ? null : validateStaticNetwork(address, prefixLength);
+    if (this.#network === null) this.setEthernetSharing(false);
+    return this.#network;
   }
 
   get booted() { return vmCanExecute(this); }
   get booting() { return vmIsBooting(this); }
   get lifecycle() {
     return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: !this.adminBlocked && !this.adminBusy && vmCanBoot(this), canExecute: vmCanExecute(this), instancePresent: !!this.v86, adminBusy: this.adminBusy, adminBlocked: this.adminBlocked, commandBusy: this.commandBusy, commandCapacity: this.commands.size < 128,
-      runtimeAllowanceMs: this.vmRuntimeMs, filesystemUsage: this.filesystemUsage ? { ...this.filesystemUsage } : null, boundaryReason: this.boundaryReason,
+      networkConfiguration: this.#network, canConfigureNetwork: networkChangeAllowed(this), runtimeAllowanceMs: this.vmRuntimeMs, filesystemUsage: this.filesystemUsage ? { ...this.filesystemUsage } : null, boundaryReason: this.boundaryReason,
       canAdminister: administrationAllowed(this), ...this.commandLifecycle(this.lastCommandId) };
   }
 
@@ -387,6 +398,7 @@ export class LinuxVmNode {
 
   boot() {
     if (this.adminBlocked || this.adminBusy || !vmCanBoot(this)) return;
+    const network = this.#network;
     this.boundaryReason = null;
     this.boundaryStop = null;
     this.filesystemUsage = null;
@@ -400,7 +412,7 @@ export class LinuxVmNode {
       return;
     }
 
-    this.onStatus({ state: 'booting', ip: this.ipAddress });
+    this.onStatus({ state: 'booting', ip: network?.address ?? null, cidr: network?.cidr ?? null });
     try {
       const vm = new V86Ctor({
         wasm_path: './v86/v86.wasm',
@@ -463,7 +475,7 @@ export class LinuxVmNode {
             // A preexisting mount is normal for the shipped guest. If its init
             // mount failed, retry only that setup step. The response can arrive
             // only after the shell reads host input and writes back over 9p.
-            const setup = `mkdir -p /mnt; { grep -q '^host9p /mnt 9p ' /proc/mounts || mount -t 9p -o trans=virtio host9p /mnt; } && [ "$(cat /mnt/${probe.inputName})" = '${nonce}' ] && ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up && printf '%s' '${nonce}' > /mnt/${probe.responseName}\n`;
+            const setup = `mkdir -p /mnt; { grep -q '^host9p /mnt 9p ' /proc/mounts || mount -t 9p -o trans=virtio host9p /mnt; } && [ "$(cat /mnt/${probe.inputName})" = '${nonce}' ] && ${network ? `ifconfig eth0 ${network.address} netmask ${network.netmask} up` : 'true'} && printf '%s' '${nonce}' > /mnt/${probe.responseName}\n`;
             await this.sendGuestText(vm, generation, setup);
             probe.typingCompleted = true;
           }
@@ -474,7 +486,7 @@ export class LinuxVmNode {
           if (current() && probe.typingCompleted && exact) {
             this.clearBootTimers();
             readyVm(this, generation, vm, true);
-            this.onStatus({ state: 'online', ip: this.ipAddress });
+            this.onStatus({ state: 'online', ip: network?.address ?? null, cidr: network?.cidr ?? null });
           }
         } catch (error) {
           this.failBoot(generation, `VM boot failed: ${error.message}`);
@@ -527,6 +539,8 @@ export class LinuxVmNode {
 
   setEthernetSharing(granted) {
     if (typeof granted !== 'boolean') throw Error('Explicit Boolean grant required');
+    if (!networkSharingAllowed(granted, this.#network !== null))
+      throw new VmBoundaryError('vm-network-required', 'Configure a unique static IPv4 address and compatible prefix before Boot to enable Ethernet sharing. Destroy any retained instance first.');
     this.ethernetGeneration++;
     this.ethernetSharing = granted;
     return granted;

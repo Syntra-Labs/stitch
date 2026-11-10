@@ -376,6 +376,12 @@
         <p id="vmResourceUsage" role="status" aria-live="polite">No guest resource usage observed.</p>
       </details>
       <div class="controls">
+        <label for="vmIpv4Address">Guest static IPv4 address (optional, set before boot)</label>
+        <input id="vmIpv4Address" type="text" placeholder="e.g. 10.42.0.2" aria-describedby="vmNetworkHelp" />
+        <label for="vmPrefixLength">Subnet prefix length (0–32)</label>
+        <input id="vmPrefixLength" type="number" min="0" max="32" step="1" value="24" aria-describedby="vmNetworkHelp" />
+        <p id="vmNetworkHelp" class="muted">Leave blank for offline shell and object work. For Ethernet sharing, choose a different address for every guest on the mesh and compatible subnet prefixes. The example is not an allocation. Display names do not assign addresses. No DHCP, duplicate-address detection, gateway or DNS setup is provided. /31 is for point-to-point links; /32 needs explicit guest routes. Destroy a retained instance before changing configuration.</p>
+        <p id="vmNetworkStatus" role="status">No static address configured.</p>
         <button id="bootVmBtn">Boot Linux 5.6 VM</button>
         <button id="stopVmBtn" class="secondary">Stop VM</button>
         <button id="destroyVmBtn" class="secondary">Destroy VM</button>
@@ -746,9 +752,9 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       onStatus: st => {
         document.getElementById('vmStatusLabel').textContent =
           st.state === 'online'
-            ? `ONLINE (eth0=${st.ip})`
+            ? `ONLINE (eth0=${st.cidr || st.ip || 'offline'})`
             : st.state === 'booting'
-            ? `BOOTING LINUX 5.6 (${st.ip})...`
+            ? `BOOTING LINUX 5.6 (${st.cidr || st.ip || 'offline'})...`
             : ['offline', 'stopping'].includes(st.state)
             ? st.message
             : `ERROR: ${st.message || 'Unknown VM lifecycle observation'}`;
@@ -927,7 +933,10 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     });
 
     document.getElementById('vmShareObjects').addEventListener('change', event => vmNode.setObjectSharing(event.target.checked));
-    document.getElementById('vmShareEthernet').addEventListener('change', event => vmNode.setEthernetSharing(event.target.checked));
+    document.getElementById('vmShareEthernet').addEventListener('change', event => {
+      try { vmNode.setEthernetSharing(event.target.checked); }
+      catch (error) { event.target.checked = Boolean(vmNode.ethernetSharing); logWire('VM-REFUSED', error.message); }
+    });
     async function administerVm(action) {
       const pending = vmNode[action]();
       showVmCommand(); renderExperience();
@@ -960,6 +969,12 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
       if (entries.includes(previous)) control.value = previous;
       const evidence = vmNode.commandEvidence(selectedVmCommandId());
       document.getElementById('vmRuntimeSeconds').disabled = Boolean(vmNode.v86 || vmNode.adminBusy);
+      const networkLocked = !vmNode.lifecycle.canConfigureNetwork;
+      document.getElementById('vmIpv4Address').disabled = networkLocked;
+      document.getElementById('vmPrefixLength').disabled = networkLocked;
+      document.getElementById('vmNetworkStatus').textContent = vmNode.networkConfiguration
+        ? `Configured eth0: ${vmNode.networkConfiguration.cidr} (netmask ${vmNode.networkConfiguration.netmask}). ${networkLocked ? 'Instance retained; configuration locked.' : 'Applied at next boot.'} Address uniqueness and peer subnet compatibility must be checked by the operator.`
+        : 'Offline configuration: shell and object work available; Ethernet sharing requires configuration before Boot.';
       const usage = vmNode.filesystemUsage;
       document.getElementById('vmResourceUsage').textContent = usage
         ? `9p allocation requests admitted: ${usage.allocatedBytes}/67108864 bytes. Inode admissions: ${usage.createdInodes}/4096; directory-entry admissions: ${usage.linkedEntries}/4096. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s. ${vmNode.boundaryReason || ''}`
@@ -997,6 +1012,8 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
 
     bindModelAction('bootVmBtn', () => {
       try {
+        const prefixText = document.getElementById('vmPrefixLength').value;
+        vmNode.setNetworkConfiguration(document.getElementById('vmIpv4Address').value || null, /^(0|[1-9][0-9]*)$/.test(prefixText) ? Number(prefixText) : NaN);
         vmNode.setRuntimeAllowance(Number(document.getElementById('vmRuntimeSeconds').value) * 1000);
         vmNode.boot(); showVmCommand();
       } catch (error) { logWire('VM-REFUSED', error.message); }

@@ -164,3 +164,29 @@ Gate sensitivity was checked by planting removal of `ChangeSize` admission in th
 adapter. `node --test tests/vm-v86-boundary.test.js` failed on actual-v86 growth
 accounting (`25` charged bytes versus expected `64`). Restoring the guard made the
 same test pass. The mutation was not retained.
+
+## Static IPv4 operation
+
+Offline boot, shell and object work need no IP address. Ethernet sharing requires
+an explicit operator-selected IPv4 address and prefix length before boot. Peer
+display labels never derive or validate addresses. There is no DHCP, automatic
+allocation, conflict detection, gateway or DNS configuration. Coordinate unique
+addresses and compatible subnets across guests before enabling mesh Ethernet.
+For example, 10.42.0.2/24 and 10.42.0.3/24 share a subnet; reusing .2 does not.
+These are examples, not reserved or automatically safe addresses.
+
+Canonical dotted-decimal parsing rejects ambiguous leading zeros and shell input.
+The source-owned staticAddressAllowed predicate rejects unspecified/loopback,
+multicast/reserved ranges and ordinary subnet network/broadcast addresses.
+Prefixes 0–32 are supported. /31 follows point-to-point host semantics (RFC 3021),
+not a general multi-peer subnet; /32 has no directly connected remote hosts and
+requires guest-managed routes. No arbitrary last-octet restriction is imposed:
+10.42.1.0/23 is a host, while 10.42.0.0/23 is the network address.
+The exact selected netmask is passed to ifconfig in the readiness initializer.
+
+Configuration is frozen and retained independently of labels and status events.
+Model-owned admission prevents changes while booting, during administration, or
+while any emulator handle exists, including stopped or cleanup-uncertain handles.
+Destroy must succeed before changing it. The UI shows the retained configuration
+separately from lifecycle status. Guest root shell commands can change networking;
+the displayed configuration records host boot intent, not continuous attestation.

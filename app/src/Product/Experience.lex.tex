@@ -360,7 +360,7 @@ definition{
   name: actionBoot,
   parameters: [],
   result: Action,
-  body: (record Action {code := 6, id := "boot", control := "bootVmBtn", journey := "vm", label := "Boot Linux VM", help := "Allowed only outside ready or booting lifecycle."})
+  body: (record Action {code := 6, id := "boot", control := "bootVmBtn", journey := "vm", label := "Boot Linux VM", help := "Offline boot needs no IP address. Ethernet sharing requires an explicit static IPv4 host address and compatible subnet prefix before boot. Destroy retained instances before reconfiguration; operators must ensure address uniqueness."})
 }
 
 definition{

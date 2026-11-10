@@ -93,3 +93,42 @@ test('guest mutation while a read awaits never expands its range and invalid ven
   fs.inodes[id].size = 1; fs.Read = async () => new Uint8Array(2);
   await assert.rejects(readBoundedVmFile({ fs9p: fs }, 'output', 1), error => error.code === 'vm-boundary-unavailable');
 });
+
+import { ethernetAllowed, validateStaticNetwork, networkChangeAllowed, networkSharingAllowed } from '../src/layer4-compute/vm-administration.js';
+
+test('static IPv4 parser rejects malformed and non-host addresses without arbitrary host-octet limits', () => {
+  for (const address of ['', '----', '1.2.3', '1.2.3.4.5', '01.2.3.4', '256.2.3.4', '1.2.3.-1', '1.2.3.4;reboot', ' 1.2.3.4', '1.2.3.4\n',
+    '0.1.2.3', '127.0.0.1', '224.0.0.1', '240.0.0.1', '255.255.255.255', '10.42.0.0', '10.42.0.255'])
+    assert.throws(() => validateStaticNetwork(address, 24), error => error.code === 'vm-network-invalid', address);
+  for (const prefix of [-1, 33, NaN, Infinity, 24.5, '24', null])
+    assert.throws(() => validateStaticNetwork('10.42.0.2', prefix), error => error.code === 'vm-network-invalid');
+  for (const [address, prefix, mask] of [
+    ['10.42.0.255', 23, '255.255.254.0'], ['10.42.1.0', 23, '255.255.254.0'],
+    ['10.42.0.0', 31, '255.255.255.254'], ['10.42.0.1', 31, '255.255.255.254'],
+    ['10.42.0.0', 32, '255.255.255.255'], ['10.42.0.1', 0, '0.0.0.0']])
+    assert.equal(validateStaticNetwork(address, prefix).netmask, mask);
+});
+
+test('source-owned address and configuration predicates match subnet and lifecycle semantics', () => {
+  for (let first = 0; first < 256; first++)
+    for (let prefix = 0; prefix <= 33; prefix++)
+      for (const host of [0, 1, 255])
+        assert.equal(call('staticAddressAllowed', first, prefix, host, 255),
+          first > 0 && first < 224 && first !== 127 && prefix <= 32 && (prefix >= 31 || host > 0 && host < 255));
+  for (const instance of [false, true]) for (const busy of [false, true]) for (const booting of [false, true])
+    assert.equal(networkChangeAllowed({ v86: instance, adminBusy: busy, booting }), !instance && !busy && !booting);
+  for (const granted of [false, true]) for (const configured of [false, true])
+    assert.equal(networkSharingAllowed(granted, configured), !granted || configured);
+});
+
+test('Ethernet host admission refuses absent configuration and configuration changes respect unknown administration', () => {
+  const node = { ethernetSharing: true, booted: true, transport: {}, adminBlocked: false };
+  const frame = new Uint8Array(14);
+  for (const configuration of [undefined, null]) {
+    node.networkConfiguration = configuration;
+    assert.equal(ethernetAllowed(node, true, frame), false);
+  }
+  node.networkConfiguration = validateStaticNetwork('10.42.0.2', 24);
+  assert.equal(ethernetAllowed(node, true, frame), true);
+  assert.equal(networkChangeAllowed({ v86: null, adminBusy: false, adminBlocked: true, booting: false }), false);
+});

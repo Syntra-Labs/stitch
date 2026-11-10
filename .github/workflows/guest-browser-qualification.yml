@@ -34,7 +34,7 @@ jobs:
           p = Path('src/layer4-compute/index.js')
           s = p.read_text()
           assert s.count("cmdline: '',") == 1
-          p.write_text(s.replace("cmdline: '',", "cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/init',"))
+          p.write_text(s.replace("cmdline: '',", "cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/init nomodeset',"))
           PY
           mkdir -p verification-output/browser
           git diff -- src/layer4-compute/index.js > verification-output/browser/temporary-candidate.patch

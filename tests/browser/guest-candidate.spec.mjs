@@ -8,6 +8,7 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
   try {
     await Promise.all(pages.map(async (target, index) => {
       await harness(target);
+      await target.evaluate(() => { const base = document.createElement('base'); base.href = '/'; document.head.append(base); });
       await target.addScriptTag({ url: '/v86/libv86.js' });
       await target.evaluate(async ({ channelKey, index }) => {
         const { LinuxVmNode } = await import('/src/layer4-compute/index.js');
@@ -15,8 +16,13 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
         const screen = document.createElement('div');
         screen.innerHTML = '<div style="white-space:pre;font:12px monospace"></div><canvas style="display:none"></canvas>';
         document.body.append(screen);
+        const offline = new LinuxVmNode({ screenContainer: screen });
+        if (offline.networkConfiguration !== null || offline.ipAddress !== null) throw Error('Absent network must remain unconfigured');
+        let refused = false;
+        try { offline.setEthernetSharing(true); } catch (error) { refused = error.code === 'vm-network-required'; }
+        if (!refused || offline.ethernetSharing) throw Error('Absent network must refuse Ethernet sharing');
         const state = window.guest = { statuses: [], serial: '', frames: 0 };
-        const transport = state.transport = new WebRtcTransportNode({ peerId: `candidate000${index + 1}`, channelKey,
+        const transport = state.transport = new WebRtcTransportNode({ peerId: `candidate-${index}`, channelKey,
           iceServers: [], publicSignaling: false, publicRelayConsent: () => false,
           onEvent: event => {
             if (event.type === 'mesh_message' && event.msg.type === 'eth_frame') {
@@ -25,6 +31,7 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
             }
           } });
         const vm = state.vm = new LinuxVmNode({ transport, screenContainer: screen, vmRuntimeMs: 180_000,
+          network: { address: `10.42.0.${index + 2}`, prefixLength: 24 },
           onStatus: status => state.statuses.push(status) });
         transport.connect();
         vm.boot();
