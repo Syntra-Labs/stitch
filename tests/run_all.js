@@ -47,7 +47,12 @@ import {
 import {
   parsePointerTxt,
   formatPointerTxt,
-  parseSrvRecord
+  parseSrvRecord,
+  generatePointerKeyPair,
+  signPointerTxt,
+  verifyPointerTxt,
+  DohResolver,
+  ExperimentTrialLogger
 } from '../src/layer5-transport/index.js';
 
 // ============================================================================
@@ -146,7 +151,7 @@ import {
 }
 
 // ============================================================================
-// LAYER 5 TESTS: DNS SRV & TXT Pointer Parsing
+// LAYER 5 TESTS: DNS SRV & TXT Pointer Parsing, C8 Ed25519 Signing, C2 Staleness, O5 JSONL Logger
 // ============================================================================
 {
   const txt = formatPointerTxt({ peerId: 'node-1', endpoint: 'wss://ntfy.sh/t', rootAddress: 'uor:ca:01', timestampSec: 12345 });
@@ -157,6 +162,90 @@ import {
 
   const srv = parseSrvRecord('10 20 443 node.example.net.');
   assert.deepEqual(srv, { priority: 10, weight: 20, port: 443, target: 'node.example.net' });
+
+  // Claim C8 & C10: Ed25519 signed TXT pointer verification & byte size bound (<= 255B)
+  const kp = await generatePointerKeyPair();
+  const signed = await signPointerTxt(
+    { peerId: 'node-1', endpoint: 'syntra-uor-bus-01', rootAddress: '66a5cdda2e757277b806e89ae7615aa5', timestampSec: 1700000000 },
+    kp.privateKey
+  );
+  assert.equal(signed.c10_within_255b, true);
+  assert.ok(signed.byteLength <= 200);
+
+  const verifiedPtr = await verifyPointerTxt(signed.txt, kp.publicKeyB64Url);
+  assert.equal(verifiedPtr.ok, true);
+  assert.ok(verifiedPtr.verifyLatencyMs < 50);
+
+  // Tampered pointer must fail verification
+  const tamperedTxt = signed.txt.replace('peer=node-1', 'peer=node-9');
+  const badVerify = await verifyPointerTxt(tamperedTxt, kp.publicKeyB64Url);
+  assert.equal(badVerify.ok, false);
+
+  // Claim C2 & Objective O2: Cloudflare SRV/TXT writer + staleness measurement against TTL
+  const cfCalls = [];
+  let dohPolls = 0;
+  const mockDoh = new DohResolver({
+    fetchImpl: async (url, opts) => {
+      if (url.includes('api.cloudflare.com')) {
+        cfCalls.push({ url, method: opts.method, body: JSON.parse(opts.body) });
+        return {
+          ok: true,
+          json: async () => ({ success: true, result: { id: 'cf-rec-1' } })
+        };
+      }
+      dohPolls++;
+      // Simulate resolver returning stale record on poll 1 and fresh SRV record on poll 2
+      const targetHost = dohPolls >= 2 ? 'fresh.peer.example.net.' : 'stale.peer.example.net.';
+      return {
+        ok: true,
+        json: async () => ({
+          Status: 0,
+          Answer: [{ TTL: 30, data: `10 20 443 ${targetHost}` }]
+        })
+      };
+    }
+  });
+
+  const cfRes = await mockDoh.writeCloudflareRecord({
+    zoneId: 'zone-123',
+    apiToken: 'tok-xyz',
+    type: 'SRV',
+    name: 'e1._stitch._udp.example.net',
+    srvData: { priority: 10, weight: 20, port: 443, target: 'fresh.peer.example.net' },
+    ttl: 30
+  });
+  assert.equal(cfRes.ok, true);
+  assert.equal(cfCalls.length, 1);
+  assert.equal(cfCalls[0].body.type, 'SRV');
+  assert.equal(cfCalls[0].body.ttl, 30);
+
+  const c2Probe = await mockDoh.measurePointerStaleness({
+    name: 'e1._stitch._udp.example.net',
+    type: 'SRV',
+    expectedSubstring: 'fresh.peer.example.net',
+    ttlSeconds: 30,
+    pollIntervalMs: 10,
+    maxWaitMs: 500
+  });
+  assert.equal(c2Probe.resolved, true);
+  assert.equal(c2Probe.c2_within_2x_ttl, true);
+  assert.equal(c2Probe.polls, 2);
+
+  // Objective O5 & Claim C1: Pre-registered JSONL Trial Logger
+  const logger = new ExperimentTrialLogger();
+  for (let i = 0; i < 30; i++) {
+    logger.logTrial('C1', {
+      network_pair_class: 'home<->mobile',
+      success: i < 24, // 24/30 = 80% >= 60%
+      used_turn: false,
+      ice_setup_sec: 1.8
+    });
+  }
+  const c1Summary = logger.summarizeC1('home<->mobile');
+  assert.equal(c1Summary.trials, 30);
+  assert.equal(c1Summary.direct_success_rate, 0.8);
+  assert.equal(c1Summary.c1_status, 'VERIFIED');
+  assert.equal(logger.toJsonl().trim().split('\n').length, 30);
 }
 
 // ============================================================================

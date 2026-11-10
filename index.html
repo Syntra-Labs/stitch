@@ -160,6 +160,7 @@
       <label class="muted">Mesh Key:</label>
       <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
       <button id="reconnectBtn">Join Mesh & Sync</button>
+      <button id="exportJsonlBtn" class="secondary">Export Trials (.jsonl)</button>
       <button id="runAllBenchBtn" class="secondary">Re-Run All Benchmarks</button>
     </div>
   </header>
@@ -264,9 +265,9 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
 
       <div class="controls">
-        <input type="text" id="duckSubInput" placeholder="DuckDNS subdomain" style="width: 130px;" />
-        <input type="text" id="duckTokenInput" placeholder="Public scoped token" style="width: 140px;" />
-        <button id="writeDuckTxtBtn" class="secondary">Write Pointer to DNS TXT</button>
+        <input type="text" id="cfZoneInput" placeholder="CF Zone ID or DuckDNS sub" style="width: 150px;" />
+        <input type="text" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
+        <button id="writeSignedDnsBtn" class="secondary">Sign (Ed25519) & Write DNS</button>
       </div>
 
       <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
@@ -290,8 +291,8 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     <section class="stratum">
       <div class="stratum-head">
-        <h2>Layer 2 Benchmark: Refresh Schedulers (600s, Drop=18s, TTL=60s)</h2>
-        <span class="muted">4 Isolated Policies</span>
+        <h2>Layer 2 Benchmark: Equal-Budget C3/C4 Test (B=30, 600s, CV=1.15)</h2>
+        <span class="muted">5 Isolated Policies (Equal Refresh Cap)</span>
       </div>
       <table>
         <thead>
@@ -331,7 +332,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
   <script type="module">
     import { benchmarkUorHashers } from './src/layer1-uor/index.js';
     import {
-      ShannonEntropyHysteresisScheduler,
+      BudgetPacedSurvivalScheduler,
       benchmarkSchedulers
     } from './src/layer2-schedulers/index.js';
     import {
@@ -346,8 +347,17 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     import {
       DohResolver,
       WebRtcTransportNode,
-      formatPointerTxt
+      generatePointerKeyPair,
+      signPointerTxt,
+      verifyPointerTxt,
+      ExperimentTrialLogger
     } from './src/layer5-transport/index.js';
+
+    const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.0.0' });
+    let peerSigningKeys = null;
+    generatePointerKeyPair().then(kp => {
+      peerSigningKeys = kp;
+    });
 
     const logBox = document.getElementById('wireLogBox');
     function logWire(tag, text) {
@@ -355,12 +365,11 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
     }
 
-    // 1. Layer-2 Scheduler driving live refreshes
-    const scheduler = new ShannonEntropyHysteresisScheduler({
+    // 1. Layer-2 Budget-Paced Survival Scheduler driving live refreshes (C3 compliant)
+    const scheduler = new BudgetPacedSurvivalScheduler({
       ttlSeconds: 60,
-      epsilon: 0.08,
-      entropyThreshold: 0.40,
-      hysteresis: 0.04,
+      durationSeconds: 600,
+      maxRefreshBudget: 30,
       minFloorSeconds: 5
     });
     const nowSec = () => Date.now() / 1000;
@@ -374,14 +383,17 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     const transport = new WebRtcTransportNode({
       channelKey: document.getElementById('meshKeyInput').value.trim(),
+      trialLogger,
       onEvent: async ev => {
         document.getElementById('peerCountLabel').textContent = String(transport.openPeers().length);
 
         if (ev.type === 'signaling_ready') {
           logWire('SIGNAL', `Listening on topic=${ev.topic} (peerId=${ev.peerId})`);
         } else if (ev.type === 'channel_open') {
-          logWire('WEBRTC', `DataChannel open with ${ev.remoteId}; requesting UOR shard sync`);
+          logWire('WEBRTC', `DataChannel open with ${ev.remoteId} (ICE=${ev.iceSetupSec}s); requesting UOR shard sync`);
           transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', from: transport.peerId });
+        } else if (ev.type === 'c1_trial_complete') {
+          logWire('C1-TRIAL', `Logged C1 trial for ${ev.remote_peer}: success=${ev.success}, ice=${ev.ice_setup_sec}s, hb=${ev.heartbeats_passed}`);
         } else if (ev.type === 'peer_disconnected') {
           scheduler.recordFailure(nowSec());
           logWire('CHURN', `Peer ${ev.remoteId} disconnected; checking stalled jobs for takeover`);
@@ -552,25 +564,63 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
-    document.getElementById('writeDuckTxtBtn').addEventListener('click', async () => {
-      const subdomain = document.getElementById('duckSubInput').value.trim();
-      const token = document.getElementById('duckTokenInput').value.trim();
-      if (!subdomain || !token) {
-        logWire('DNS-WRITE', 'Provide DuckDNS subdomain and scoped token to write TXT record.');
+    document.getElementById('writeSignedDnsBtn').addEventListener('click', async () => {
+      const zoneOrSub = document.getElementById('cfZoneInput').value.trim();
+      const token = document.getElementById('cfTokenInput').value.trim();
+      const latestRoot = Array.from(liveDb.objects.keys()).pop() || '0';
+      if (!peerSigningKeys) peerSigningKeys = await generatePointerKeyPair();
+
+      const signed = await signPointerTxt(
+        {
+          peerId: transport.peerId,
+          endpoint: transport.signalTopic(),
+          rootAddress: latestRoot.slice(0, 24)
+        },
+        peerSigningKeys.privateKey
+      );
+      const verified = await verifyPointerTxt(signed.txt, peerSigningKeys.publicKeyB64Url);
+      trialLogger.logTrial('C8', {
+        byte_length: signed.byteLength,
+        c10_within_255b: signed.c10_within_255b,
+        sign_latency_ms: signed.signLatencyMs,
+        verify_latency_ms: verified.verifyLatencyMs,
+        verified: verified.ok
+      });
+      logWire('C8-SIGN', `Ed25519 signed TXT (${signed.byteLength}B <= 255B, verify=${verified.verifyLatencyMs}ms): ${signed.txt}`);
+
+      if (!zoneOrSub || !token) {
+        logWire('DNS-WRITE', 'Signed pointer logged to O5 trials. Provide Cloudflare Zone ID (32-hex) or DuckDNS subdomain + token to publish.');
         return;
       }
-      const latestRoot = Array.from(liveDb.objects.keys()).pop() || '0';
-      const txtValue = formatPointerTxt({
-        peerId: transport.peerId,
-        endpoint: `wss://ntfy.sh/${transport.signalTopic()}`,
-        rootAddress: latestRoot.slice(0, 24)
-      });
       try {
-        const res = await doh.writeDuckDnsTxt({ subdomain, token, txtValue });
-        logWire('DNS-WRITE', `Updated ${res.fqdn} TXT="${txtValue}" -> response=${res.response}`);
+        if (/^[a-f0-9]{32}$/i.test(zoneOrSub)) {
+          const epochName = `e${Math.floor(Date.now() / 1000)}._stitch._udp.${ document.getElementById('dnsQueryInput').value.trim() }`;
+          const res = await doh.writeCloudflareRecord({
+            zoneId: zoneOrSub,
+            apiToken: token,
+            type: 'TXT',
+            name: epochName,
+            content: signed.txt,
+            ttl: 30
+          });
+          logWire('CF-DNS', `Published Cloudflare TXT ${epochName} (TTL=30s) -> ok=${res.ok}`);
+        } else {
+          const res = await doh.writeDuckDnsTxt({ subdomain: zoneOrSub, token, txtValue: signed.txt });
+          logWire('DUCK-DNS', `Updated ${res.fqdn} TXT -> response=${res.response}`);
+        }
       } catch (e) {
         logWire('DNS-ERR', e.message);
       }
+    });
+
+    document.getElementById('exportJsonlBtn').addEventListener('click', () => {
+      const jsonl = trialLogger.toJsonl();
+      const blob = new Blob([jsonl || JSON.stringify({ info: 'no_trials_logged_yet' }) + '\n'], { type: 'application/x-ndjson' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `stitch-trials-${Date.now()}.jsonl`;
+      a.click();
+      logWire('O5-EXPORT', `Exported ${trialLogger.entries.length} pre-registered trial records (.jsonl)`);
     });
 
     // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
@@ -594,9 +644,8 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
         <tr><td><strong>${r.hasher}</strong></td><td>${r.output_bytes}</td><td>${r.collisions}</td><td>${r.elapsed_ms}</td><td>${r.ops_per_sec}</td><td>${r.throughput_mb_s}</td></tr>
       `).join('');
 
-      const drops = [];
-      for (let t = 18; t < 600; t += 18) drops.push(t);
-      const l2 = benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: drops });
+      const burstyDrops = [63, 131, 197, 269, 341, 411, 420, 429, 438, 447, 456, 465, 474, 483, 492, 501, 510, 519, 528, 537, 546, 555, 564, 573, 582, 591];
+      const l2 = benchmarkSchedulers({ durationSeconds: 600, ttlSeconds: 60, dropTimestamps: burstyDrops, maxRefreshBudget: 30 });
       document.getElementById('l2BenchBody').innerHTML = l2.map(r => `
         <tr><td><strong>${r.scheduler}</strong></td><td>${r.refreshes_issued}</td><td>${r.unavailable_seconds}</td><td>${(r.availability_ratio * 100).toFixed(2)}%</td><td>${r.mean_recovery_lag_sec}</td></tr>
       `).join('');
