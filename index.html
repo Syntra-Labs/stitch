@@ -142,31 +142,68 @@
       font-size: 12px;
       color: #e8e8e8;
     }
+    .experience-evidence { padding: 8px 12px; border-inline-start: 3px solid; line-height: 1.5; }
+    #operatorJourneyNav { display: flex; gap: 8px; flex-wrap: wrap; }
+    #operatorJourneyNav [aria-current="location"] { border-color: #e6e6e6; }
+    [tabindex="-1"]:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible { outline: 2px solid #9bc4ff; outline-offset: 3px; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Syntra-Labs / stitch — Live Multi-Peer UOR Database, Distributed Compute & In-Browser Linux 5.6 VM</h1>
+      <h1 id="productTitle">Stitch / recoverable objects and replayable pure jobs</h1>
       <div class="muted">
         Local Node: <strong id="nodeIdLabel">...</strong> |
         WebRTC Open Peers: <strong id="peerCountLabel">0</strong> |
-        Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
-        P(alive): <strong id="schedPAliveLabel">1.000</strong> |
-        H(p): <strong id="schedEntropyLabel">0.000 bit</strong> |
         Application budget: <strong id="budgetLabel">0 requests</strong>
       </div>
     </div>
-    <div class="controls">
-      <label class="muted">Mesh Key:</label>
-      <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
-      <button id="reconnectBtn">Join Mesh & Sync</button>
-      <button id="toggleMetricsLabBtn" class="secondary">Show Metrics & Falsification Lab (C1–C10)</button>
-      <button id="exportJsonlBtn" class="secondary">Export Trials (.jsonl)</button>
-    </div>
   </header>
 
-  <section class="stratum" style="margin-bottom: 12px;">
+  <section class="stratum" aria-label="Operator journey navigation" style="margin-bottom: 12px;">
+    <nav id="operatorJourneyNav" aria-label="Stitch operator journeys"></nav>
+    <p id="operatorJourneySummary"></p>
+    <p><strong>Available next actions: </strong><span id="operatorNextActions"></span></p>
+    <button type="button" id="reviewResourcePolicyBtn" class="secondary" hidden>Review resource policy</button>
+    <details><summary>About modeled evidence</summary><p id="experienceProvenance" class="muted"></p></details>
+    <noscript>Stitch needs JavaScript for model-derived action guards and live evidence. No mesh connection starts without explicit disclosure and join.</noscript>
+  </section>
+
+  <section class="stratum" id="meshPanel" tabindex="-1" style="margin-bottom: 12px;">
+    <div class="controls">
+      <h2 id="meshTitle">Join a mesh</h2>
+      <label class="muted" for="meshKeyInput">Mesh Key:</label>
+      <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
+      <label><input type="checkbox" id="allowMeshSignalingInput" /><span id="meshDisclosureText">Allow public mesh signaling</span></label>
+      <button id="reconnectBtn">Join Mesh & Sync</button>
+
+    </div>
+    <p id="meshEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="meshExplanationPanel"><summary id="meshExplanationLabel">What this evidence means</summary><p id="meshExplanation"></p></details>
+    <details id="networkInspectionPanel"><summary>Inspect external network observations</summary>
+      <p class="muted">Scheduler estimates, not availability evidence: Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
+        P(alive): <strong id="schedPAliveLabel">1.000</strong> |
+        H(p): <strong id="schedEntropyLabel">0.000 bit</strong> |</p>
+    <div class="stratum-head">
+      <h2>Network evidence and independent verification</h2>
+      <span class="muted"> Cloudflare Edge PoP: <strong id="cfTraceLabel">probing 1.1.1.1...</strong> | STUN Candidate: <strong id="stunTypeLabel">waiting</strong></span>
+    </div>
+    <div class="controls" style="justify-content: space-between;">
+      <span class="muted">These commands inspect external records. Inspection alone does not establish integrity, authority, or durability; use the repository verifier for exported object evidence:</span>
+      <button id="copyCliProofBtn" class="secondary">Copy Inspection Commands</button>
+    </div>
+    <div class="mono-out" id="cliProofBox" style="max-height: 76px;">curl -s "https://ntfy.sh/syntra-warm-syntra-uor-bus-01/json?poll=1&since=30m" | tail -n 5</div>
+    </details>
+
+  </section>
+
+
+
+  <section class="stratum" id="resourcesPanel" tabindex="-1" style="margin-bottom: 12px;">
+    <h2 id="resourcesTitle">Inspect and renew allowances</h2>
+    <p id="resourcesEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="resourcesExplanationPanel"><summary id="resourcesExplanationLabel">What this evidence means</summary><p id="resourcesExplanation"></p></details>
     <details id="budgetPolicyPanel">
       <summary><strong>Application resource policy</strong> (operational demo configuration)</summary>
       <p class="muted">These are configurable operating allowances, not semantic limits. An expired epoch or exhausted allowance refuses further effects. Choose a new epoch to continue; previous charges are retained, including failed or uncertain effects. Existing objects, jobs and pointer heads stay in this tab.</p>
@@ -186,29 +223,22 @@
       <div class="mono-out" id="budgetHistoryBox" style="max-height: 140px;">No prior epochs.</div>
     </details>
     <div id="budgetStatus" role="status" aria-live="polite"></div>
-  </section>
-
-  <!-- EXTERNAL INFRASTRUCTURE PROOF BANNER (PROVES EXECUTION OUTSIDE BROWSER MEMORY) -->
-  <section class="stratum" style="margin-bottom: 12px;">
-    <div class="stratum-head">
-      <h2>Network evidence and independent verification</h2>
-      <span class="muted"> Cloudflare Edge PoP: <strong id="cfTraceLabel">probing 1.1.1.1...</strong> | STUN Candidate: <strong id="stunTypeLabel">waiting</strong></span>
-    </div>
-    <div class="controls" style="justify-content: space-between;">
-      <span class="muted">These commands inspect external records. Inspection alone does not establish integrity, authority, or durability; use the repository verifier for exported object evidence:</span>
-      <button id="copyCliProofBtn" class="secondary">Copy Inspection Commands</button>
-    </div>
-    <div class="mono-out" id="cliProofBox" style="max-height: 76px;">curl -s "https://ntfy.sh/syntra-warm-syntra-uor-bus-01/json?poll=1&since=30m" | tail -n 5</div>
+    <details><summary>Experimental diagnostics and trial export</summary><div class="controls">
+      <button id="toggleMetricsLabBtn" class="secondary">Show Metrics & Falsification Lab (C1–C10)</button>
+      <button id="exportJsonlBtn" class="secondary">Export Trials (.jsonl)</button>
+    </div></details>
   </section>
 
   <!-- LIVE WIRED SECTION: REAL NETWORK DATABASE + DISTRIBUTED COMPUTE + IN-BROWSER LINUX VM -->
   <div class="grid">
     <!-- LIVE PANEL A: REAL NETWORK-BACKED UOR CONTENT-ADDRESSED DATABASE -->
-    <section class="stratum">
+    <section class="stratum" id="objectsPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
+        <h2 id="objectsTitle">Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
         <span class="muted">Recovery requires enough reachable fragments; relay storage is optional</span>
       </div>
+      <p id="objectsEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="objectsExplanationPanel"><summary id="objectsExplanationLabel">What this evidence means</summary><p id="objectsExplanation"></p></details>
 
       <div class="controls">
         <input type="text" id="dbLabelInput" value="state.txt" placeholder="Filename in /mnt" style="width: 100px;" />
@@ -216,7 +246,7 @@
         <button id="dbPutBtn">Put & Replicate</button>
         <button id="dbWipeLocalBtn" class="secondary" title="Clears this browser tab's memory to 0 objects to prove recovery comes from external infrastructure">Wipe Local RAM</button>
         <button id="dbSyncBtn" class="secondary">Fetch Reachable Fragments</button>
-        <label><input type="checkbox" id="allowPublicRelayInput" /> Public relay: share object/job bytes on ntfy.sh (not private)</label>
+        <label><input type="checkbox" id="allowPublicRelayInput" /><span id="relayDisclosureText">Public relay: share object/job bytes on ntfy.sh (not private)</span></label>
       </div>
 
       <table>
@@ -231,17 +261,19 @@
           </tr>
         </thead>
         <tbody id="liveDbBody">
-          <tr><td colspan="6" class="muted">No objects yet. Click "Put & Replicate" or "Recover from Warm Cache".</td></tr>
+          <tr><td colspan="6" class="muted">No local object bytes.</td></tr>
         </tbody>
       </table>
     </section>
 
     <!-- LIVE PANEL B: REAL DISTRIBUTED COMPUTE & FAILOVER TAKEOVER -->
-    <section class="stratum">
+    <section class="stratum" id="computePanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
+        <h2 id="computeTitle">Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
         <span class="muted">Pure jobs replay before resume; VM effects are outside this contract</span>
       </div>
+      <p id="computeEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="computeExplanationPanel"><summary id="computeExplanationLabel">What this evidence means</summary><p id="computeExplanation"></p></details>
 
       <div class="controls">
         <label class="muted">Steps:</label>
@@ -264,22 +296,26 @@
           </tr>
         </thead>
         <tbody id="liveJobsBody">
-          <tr><td colspan="6" class="muted">No active jobs. Start a job and close this tab mid-run to test peer takeover.</td></tr>
+          <tr><td colspan="6" class="muted">No pure jobs observed. Use the current journey to start or inspect checkpoint recovery.</td></tr>
         </tbody>
       </table>
     </section>
 
     <!-- LIVE PANEL C: IN-BROWSER X86 LINUX 5.6 VM (v86) + ETHERNET OVER WEBRTC -->
-    <section class="stratum">
+    <section class="stratum" id="vmPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>In-Browser x86 Linux 5.6 VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
+        <h2 id="vmTitle">In-Browser x86 Linux 5.6 VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
         <span class="muted" id="vmStatusLabel">VM Standby</span>
       </div>
+      <p id="vmEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="vmExplanationPanel"><summary id="vmExplanationLabel">What this evidence means</summary><p id="vmExplanation"></p></details>
 
       <div class="controls">
         <button id="bootVmBtn">Boot Linux 5.6 VM</button>
+        <div id="vmCommandControls" class="controls" hidden>
         <input type="text" id="vmCmdInput" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
         <button id="runVmCmdBtn" class="secondary">Run in VM & Store Output in UOR DB</button>
+        </div>
       </div>
 
       <div id="vmScreenContainer">
@@ -289,12 +325,13 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
     </section>
 
-    <!-- LIVE PANEL D: LAYER 5 DNS SRV/TXT DoH READER + PUBLIC DUCKDNS TXT WRITER & TELEMETRY -->
-    <section class="stratum">
+    <!-- POINTER DISCOVERY, EXPLICIT AUTHORITY AND PROVIDER PUBLICATION -->
+    <section class="stratum" id="pointersPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
-        <span class="muted">RFC 8484 DoH + Single-GET Dynamic DNS</span>
+        <h2 id="pointersTitle">Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
       </div>
+      <p id="pointersEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <details id="pointersExplanationPanel"><summary id="pointersExplanationLabel">What this evidence means</summary><p id="pointersExplanation"></p></details>
 
       <div class="controls">
         <input type="text" id="dnsQueryInput" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
@@ -302,19 +339,24 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
         <button id="resolveTxtBtn" class="secondary">Resolve TXT (DoH)</button>
       </div>
 
+      <details id="pointerPublicationSetup"><summary>Provider publication setup and reconciliation</summary>
       <div class="controls">
         <input type="text" id="cfZoneInput" placeholder="Cloudflare Zone ID" style="width: 150px;" />
         <input type="password" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
         <button id="writeSignedDnsBtn" class="secondary">Admit Next Pointer & Publish TXT</button>
+        <button id="reconcilePointerBtn" class="secondary" hidden>Reconcile Unknown Publication</button>
       </div>
+      </details>
 
       <div class="controls">
         <input type="text" id="pointerAuthorityInput" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
         <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
       </div>
       <div class="muted">Observer heads and demo keys last only this session. A lost head needs a trusted recent anchor. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <div id="pointerAdmissionControls">
       <textarea id="pointerJsonInput" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
       <button id="admitPointerBtn" class="secondary">Admit Pasted Pointer</button>
+      </div>
       <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
     </section>
   </div>
@@ -405,11 +447,24 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       ExperimentTrialLogger
     } from './src/layer5-transport/index.js';
 
+    import { createOperatorExperience, integrityLabel, executionLabel } from './src/product-experience.js';
+    import { placementStatus } from './src/layer3-storage/custody.js';
+    import { parseCanonicalJson } from './src/layer1-uor/custody.js';
     import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
     import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
 
     // One stable handle is shared by every adapter. Only the explicit renewal
     // control replaces the underlying epoch. Prior ledgers stay retained.
+    let operatorExperience = null;
+    function renderExperience() { operatorExperience?.render(); }
+    // The same model guard protects keyboard, repeated and programmatic events.
+    function bindModelAction(id, handler) {
+      document.getElementById(id).addEventListener('click', async (...args) => {
+        if (!operatorExperience?.allow(id)) return;
+        try { return await handler(...args); }
+        finally { renderExperience(); }
+      });
+    }
     let activeAdmission = new ResourceAdmission();
     let policyEpoch = 1;
     let lastPolicyRefusal = null;
@@ -429,7 +484,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       },
       run(kind, cost, effect) { this.reserve(kind, cost); return effect(); }
     };
-    const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.0.0' });
+    const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.1.0' });
     const authorityReady = generateAuthority();
     const pointerObservers = new Map();
     const unpublishedPointers = new WeakMap();
@@ -440,6 +495,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     function logWire(tag, text) {
       const ts = new Date().toISOString().slice(11, 19);
       logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
+      renderExperience();
     }
 
     window.addEventListener('unhandledrejection', ev => {
@@ -453,7 +509,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       const lines = [
         `# 1. Inspect live 2-of-3 XOR shards & compute checkpoints on public warm bus:`,
         `curl -s "https://ntfy.sh/${warmTopic}/json?poll=1&since=30m" | tail -n 5`,
-        `# 2. Query Cloudflare RFC 8484 DoH for live DNS pointer record:`,
+        `# 2. Inspect the provider DNS-JSON discovery response:`,
         `curl -s -H "accept: application/dns-json" "https://cloudflare-dns.com/dns-query?name=${dnsName}&type=SRV"`
       ];
       if (extraLine) lines.push(extraLine);
@@ -469,7 +525,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
         document.getElementById('cfTraceLabel').textContent = `${kv.colo || 'CF'} (${kv.ip || 'edge'} / ${kv.http || 'h2'})`;
       })
       .catch(() => {
-        document.getElementById('cfTraceLabel').textContent = 'cloudflare-dns.com (DoH active)';
+        document.getElementById('cfTraceLabel').textContent = 'Trace unavailable; no network evidence';
       });
 
     // 1. Layer-2 Budget-Paced Survival Scheduler driving live refreshes (C3 compliant)
@@ -567,10 +623,11 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     }
 
     function renderLiveDbTable() {
+      renderExperience();
       const items = Array.from(liveDb.objects.values());
       renderRows(document.getElementById('liveDbBody'), items.length ? items.map(e => [
         e.addressHex, e.label || '—', `${e.originalLength} B`,
-        e.verified ? 'DIGEST MATCH' : 'PARTIAL', e.source,
+        integrityLabel(e.verified), e.source,
         e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(awaiting fragments)'
       ]) : [['No local objects. Recovery needs enough retained, reachable fragments.']]);
     }
@@ -583,16 +640,19 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     });
 
     function renderJobsTable() {
+      renderExperience();
       const jobs = Array.from(computeCoord.jobs.values());
       renderRows(document.getElementById('liveJobsBody'), jobs.length ? jobs.map(j => [
         j.jobId, `${j.stepIndex} / ${j.totalSteps}`, `${j.ownerPeerId} (${j.sourceTag})`,
-        j.currentValueHex, j.status.toUpperCase(), j.verification === 'replayed' ? 'REPLAYED' : 'UNVERIFIED'
+        j.currentValueHex, j.status.toUpperCase(), executionLabel(j.verification === 'replayed')
       ]) : [['No active pure jobs. Host and VM effects are not replay-certified.']]);
     }
 
     const publicRelayEnabled = () => document.getElementById('allowPublicRelayInput').checked;
+    transport.publicRelayConsent = publicRelayEnabled;
     document.getElementById('allowPublicRelayInput').addEventListener('change', () => {
       computeCoord.allowPublicRelay = publicRelayEnabled();
+      renderExperience();
     });
 
     // UI Controls Wiring
@@ -605,13 +665,14 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logWire('SYNC', `Recovered ${rec} UOR objects from warm cache; resumed ${resumed.length} jobs.`);
     }
 
-    document.getElementById('reconnectBtn').addEventListener('click', joinAndSync);
+    bindModelAction('reconnectBtn', joinAndSync);
 
     document.getElementById('toggleMetricsLabBtn').addEventListener('click', () => {
       const sec = document.getElementById('metricsLabSection');
       const btn = document.getElementById('toggleMetricsLabBtn');
       const hidden = sec.style.display === 'none';
       sec.style.display = hidden ? 'block' : 'none';
+      if (hidden) runAllBenchmarks();
       btn.textContent = hidden ? 'Hide Metrics & Falsification Lab' : 'Show Metrics & Falsification Lab (C1–C10)';
     });
 
@@ -620,7 +681,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logWire('CLI-PROOF', 'Copied external terminal verification commands to clipboard.');
     });
 
-    document.getElementById('dbPutBtn').addEventListener('click', async () => {
+    bindModelAction('dbPutBtn', async () => {
       const label = document.getElementById('dbLabelInput').value.trim() || 'data.txt';
       const payload = document.getElementById('dbPayloadInput').value;
       const entry = await liveDb.put(payload, { label, persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
@@ -629,26 +690,26 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logWire('PUT', `Committed ${entry.addressHex}; remote placement is conditional on verified receipts and reachability.`);
     });
 
-    document.getElementById('dbWipeLocalBtn').addEventListener('click', async () => {
+    bindModelAction('dbWipeLocalBtn', async () => {
       await liveDb.clearLocal();
       renderLiveDbTable();
       logWire('WIPE-RAM', 'Cleared local object bytes. Recovery succeeds only if enough fragments remain elsewhere.');
     });
 
-    document.getElementById('dbSyncBtn').addEventListener('click', async () => {
+    bindModelAction('dbSyncBtn', async () => {
       const count = await liveDb.syncFromNetwork('30m', { publicData: publicRelayEnabled() });
       renderLiveDbTable();
       logWire('WARM-SYNC', `Recovered ${count} verified UOR objects from warm relay buffer.`);
     });
 
-    document.getElementById('startJobBtn').addEventListener('click', () => {
+    bindModelAction('startJobBtn', () => {
       const totalSteps = Number(document.getElementById('jobStepsInput').value) || 12;
       const stepDelayMs = Number(document.getElementById('jobDelayInput').value) || 800;
       computeCoord.startOrResumeJob({ totalSteps, stepDelayMs }).catch(e => logWire('COMPUTE-ERR', e.code || e.message));
       logWire('COMPUTE', `Started ${totalSteps}-step distributed UOR reduction job`);
     });
 
-    document.getElementById('takeoverJobsBtn').addEventListener('click', async () => {
+    bindModelAction('takeoverJobsBtn', async () => {
       const resumed = await computeCoord.syncAndTakeOverJobs('30m');
       for (const job of computeCoord.jobs.values()) {
         if (job.status === 'running' && job.ownerPeerId === transport.peerId && !computeCoord.running.has(job.jobId)) {
@@ -660,11 +721,11 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       logWire('RESUME', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No unfinished jobs ready to resume.');
     });
 
-    document.getElementById('bootVmBtn').addEventListener('click', () => {
+    bindModelAction('bootVmBtn', () => {
       vmNode.boot();
     });
 
-    document.getElementById('runVmCmdBtn').addEventListener('click', async () => {
+    bindModelAction('runVmCmdBtn', async () => {
       const cmd = document.getElementById('vmCmdInput').value.trim();
       if (!cmd) return;
       try {
@@ -704,12 +765,13 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
         : `Epoch ${policyEpoch} active. Edit the operational allowances above and choose Start New Epoch only when you want a new allowance.`;
       status.style.color = reason ? '#f5b66b' : '';
       document.getElementById('budgetUsageBox').textContent = `Current epoch ${policyEpoch}: ${JSON.stringify(budget.spent)} / limits ${JSON.stringify(budget.limit)}; ${budget.reservations.length}/${activeAdmission.maxActions} reservation entries; ${refreshesUsed}/${scheduler.maxRefreshBudget} discovery refreshes.`;
+      renderExperience();
       document.getElementById('budgetHistoryBox').textContent = policyHistory.length
         ? policyHistory.map(entry => `Epoch ${entry.epoch}: ${JSON.stringify(entry.budget.spent)}; ${entry.budget.reservations.length} reservations retained; ${entry.refreshesUsed} discovery refreshes.`).join('\n')
         : 'No prior epochs. Current charges remain in the active ledger.';
     }
 
-    document.getElementById('renewBudgetBtn').addEventListener('click', () => {
+    bindModelAction('renewBudgetBtn', () => {
       try {
         const integerInput = (id, minimum = 0) => {
           const raw = document.getElementById(id).value.trim();
@@ -744,7 +806,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
-    document.getElementById('exportBudgetHistoryBtn').addEventListener('click', () => {
+    bindModelAction('exportBudgetHistoryBtn', () => {
       const entries = [...policyHistory, { epoch: policyEpoch, budget: activeAdmission.state, maxActions: activeAdmission.maxActions,
         refreshesUsed: Math.max(0, scheduler.refreshCount - 1), refreshLimit: scheduler.maxRefreshBudget }];
       const blob = new Blob([JSON.stringify({ version: 1, accounting: 'application resource ceilings, not host or network measurements', epochs: entries }, null, 2)], { type: 'application/json' });
@@ -754,10 +816,10 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       setTimeout(() => URL.revokeObjectURL(url), 0);
     });
 
-    // DNS DoH & DuckDNS TXT Controls
+    // RFC8484 DNS-message discovery and Cloudflare multipart TXT publication controls
     const doh = new DohResolver({ admission });
     const pointerPublisher = new PointerPublisher({ resolver: doh });
-    document.getElementById('resolveSrvBtn').addEventListener('click', async () => {
+    bindModelAction('resolveSrvBtn', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
         const r = await doh.resolve(q, 'SRV');
@@ -767,7 +829,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
-    document.getElementById('resolveTxtBtn').addEventListener('click', async () => {
+    bindModelAction('resolveTxtBtn', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
         const r = await doh.resolve(q, 'TXT');
@@ -798,18 +860,18 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       return pointerObservers.get(key);
     }
 
-    document.getElementById('pinSessionAuthorityBtn').addEventListener('click', async () => {
+    bindModelAction('pinSessionAuthorityBtn', async () => {
       document.getElementById('pointerAuthorityInput').value = (await authorityReady).publicKey;
       logWire('POINTER-PIN', 'Explicitly trusted this demo session key. This does not establish a persistent owner identity.');
     });
-    document.getElementById('admitPointerBtn').addEventListener('click', async () => {
+    bindModelAction('admitPointerBtn', async () => {
       const text = document.getElementById('pointerJsonInput').value;
       if (text.length > 4096) throw Error('Pointer input exceeds its size limit');
-      const accepted = await pointerObserver().admit(JSON.parse(text));
+      const accepted = await pointerObserver().admit(parseCanonicalJson(text, { maxBytes: 4096 }));
       logWire('POINTER-ADMIT', `Retained revision ${accepted.revision}: ${accepted.objectRoot}`);
     });
 
-    document.getElementById('writeSignedDnsBtn').addEventListener('click', async () => {
+    async function publishOrReconcilePointer() {
       if (pointerWriteInFlight) return;
       pointerWriteInFlight = true;
       try {
@@ -859,7 +921,9 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       } catch (error) {
         logWire('POINTER-REFUSED', error.code || error.message);
       } finally { pointerWriteInFlight = false; }
-    });
+    }
+    bindModelAction('writeSignedDnsBtn', publishOrReconcilePointer);
+    bindModelAction('reconcilePointerBtn', publishOrReconcilePointer);
 
     document.getElementById('exportJsonlBtn').addEventListener('click', () => {
       const jsonl = trialLogger.toJsonl();
@@ -879,7 +943,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
       document.getElementById('schedEntropyLabel').textContent = `${st.entropyBits.toFixed(3)} bit`;
 
-      if (st.shouldRefresh && scheduler.markRefreshed(nowSec())) {
+      if (operatorExperience?.facts().meshJoined && st.shouldRefresh && scheduler.markRefreshed(nowSec())) {
         transport.sendSignal({ kind: 'announce' });
         logWire('SCHED', `Proactive refresh triggered [reason=${st.reason}, H=${st.entropyBits.toFixed(3)} bit]`);
       }
@@ -911,9 +975,64 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     document.getElementById('runAllBenchBtn').addEventListener('click', runAllBenchmarks);
 
+    operatorExperience = createOperatorExperience({
+      document,
+      snapshot: () => {
+        const objects = Array.from(liveDb.objects.values());
+        const jobs = Array.from(computeCoord.jobs.values());
+        const mesh = transport.lifecycle;
+        const vm = vmNode.lifecycle;
+        const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
+        const name = document.getElementById('dnsQueryInput').value.trim();
+        const zoneId = document.getElementById('cfZoneInput').value.trim();
+        const observer = pointerObservers.get(`${name}:${trustedAuthorityKey}`);
+        const publication = pointerPublisher.status({ zoneId, name, trustedAuthorityKey });
+        const budget = admission.state;
+        // Only globally impossible admissions disable every application action.
+        // Resource dimensions and prior operation refusals are not a second ledger:
+        // each actual adapter checks its own exact resource vector before effects.
+        const blocked = activeAdmission.clock() >= budget.endMs ||
+          budget.reservations.length >= activeAdmission.maxActions || lastPolicyRefusal === 'clock-regression';
+        const attention = Boolean(lastPolicyRefusal) ||
+          Object.keys(budget.limit).some(k => budget.spent[k] >= budget.limit[k]) ||
+          Math.max(0, scheduler.refreshCount - 1) >= scheduler.maxRefreshBudget;
+        const unfinished = jobs.filter(j => j.status !== 'completed');
+        return {
+          disclosureAccepted: document.getElementById('allowMeshSignalingInput').checked,
+          meshJoined: Boolean(mesh && !mesh.closed && mesh.generation > 0),
+          peersReachable: transport.openPeers().length > 0,
+          relayEnabled: publicRelayEnabled(),
+          hasObject: objects.some(e => e.verified),
+          hasPartial: objects.some(e => !e.verified),
+          recoverablePlacement: Array.from(liveDb.placements.values()).some(state => {
+            try { return placementStatus(state, Date.now()).canRecoverFromCommitted; }
+            catch { return false; }
+          }),
+          hasJobs: jobs.length > 0,
+          unfinishedJobs: unfinished.length > 0,
+          replayedJobs: unfinished.length > 0 && unfinished.every(j => j.verification === 'replayed'),
+          vmBooting: vm?.phase === 'booting', vmReady: vm?.phase === 'ready', vmFailed: vm?.phase === 'failed',
+          authorityPinned: /^[0-9a-f]{64}$/.test(trustedAuthorityKey),
+          headRetained: Boolean(observer?.head),
+          dnsConfigured: /^[a-f0-9]{32}$/i.test(zoneId) && Boolean(document.getElementById('cfTokenInput').value.trim()),
+          publicationBusy: pointerWriteInFlight,
+          publicationUnknown: publication.outcome === 'unknown',
+          publicationPublished: publication.outcome === 'published',
+          policyBlocked: blocked, policyAttention: attention
+        };
+      },
+      onRefused: message => logWire('MODEL-REFUSED', message)
+    });
+    document.getElementById('allowMeshSignalingInput').addEventListener('change', () => {
+      if (!document.getElementById('allowMeshSignalingInput').checked) transport.close();
+      renderExperience();
+    });
+    for (const id of ['pointerAuthorityInput', 'dnsQueryInput', 'cfZoneInput', 'cfTokenInput', 'pointerJsonInput']) {
+      document.getElementById(id).addEventListener('input', renderExperience);
+    }
     renderBudgetPolicy();
-    runAllBenchmarks();
-    joinAndSync();
+    // No automatic public signaling, relay payload publication or job resumption.
+    renderExperience();
   </script>
 </body>
 </html>

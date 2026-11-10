@@ -16808,6 +16808,3438 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Effects.transportCanSend": {
+    "module": "Stitch.Effects",
+    "name": "transportCanSend",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "not",
+      "value": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "state"
+        },
+        "field": "closed"
+      }
+    }
+  },
+  "Stitch.Effects.transportClose": {
+    "module": "Stitch.Effects",
+    "name": "transportClose",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Transport"
+    },
+    "body": {
+      "k": "record",
+      "name": "Transport",
+      "values": {
+        "generation": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "generation"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "closed": {
+          "k": "bool",
+          "value": true
+        },
+        "channelKey": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "channelKey"
+        },
+        "localPeer": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "localPeer"
+        }
+      }
+    }
+  },
+  "Stitch.Effects.transportOpen": {
+    "module": "Stitch.Effects",
+    "name": "transportOpen",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "channelKey",
+        "type": {
+          "kind": "Bytes"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Transport"
+    },
+    "body": {
+      "k": "record",
+      "name": "Transport",
+      "values": {
+        "generation": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "generation"
+        },
+        "closed": {
+          "k": "bool",
+          "value": false
+        },
+        "channelKey": {
+          "k": "var",
+          "name": "channelKey"
+        },
+        "localPeer": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "localPeer"
+        }
+      }
+    }
+  },
+  "Stitch.Effects.transportSessionMatches": {
+    "module": "Stitch.Effects",
+    "name": "transportSessionMatches",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "callback",
+        "type": {
+          "kind": "TransportCallback"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "transportCanSend",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "generation"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "callback"
+            },
+            "field": "generation"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "channelKey"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "callback"
+                },
+                "field": "channelKey"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          "right": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "localPeer"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "callback"
+                },
+                "field": "localPeer"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.transportPeerCallbackAllowed": {
+    "module": "Stitch.Effects",
+    "name": "transportPeerCallbackAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "callback",
+        "type": {
+          "kind": "TransportCallback"
+        }
+      },
+      {
+        "name": "remotePeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "entryCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "transportSessionMatches",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "callback"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "callback"
+              },
+              "field": "remotePeer"
+            },
+            {
+              "k": "var",
+              "name": "remotePeer"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        },
+        "right": {
+          "k": "var",
+          "name": "entryCurrent"
+        }
+      }
+    }
+  },
+  "Stitch.Effects.transportChannelCallbackAllowed": {
+    "module": "Stitch.Effects",
+    "name": "transportChannelCallbackAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "callback",
+        "type": {
+          "kind": "TransportCallback"
+        }
+      },
+      {
+        "name": "remotePeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "entryCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "channelCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "transportPeerCallbackAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "callback"
+          },
+          {
+            "k": "var",
+            "name": "remotePeer"
+          },
+          {
+            "k": "var",
+            "name": "entryCurrent"
+          }
+        ]
+      },
+      "right": {
+        "k": "var",
+        "name": "channelCurrent"
+      }
+    }
+  },
+  "Stitch.Effects.transportSignalAllowed": {
+    "module": "Stitch.Effects",
+    "name": "transportSignalAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "channelKey",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "remotePeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "targetPeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "broadcast",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "transportCanSend",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "channelKey"
+            },
+            {
+              "k": "var",
+              "name": "channelKey"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "prim",
+              "operation": "equal",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "localPeer"
+                },
+                {
+                  "k": "var",
+                  "name": "remotePeer"
+                }
+              ],
+              "type": {
+                "kind": "Bool"
+              }
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "var",
+              "name": "broadcast"
+            },
+            "right": {
+              "k": "prim",
+              "operation": "equal",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "localPeer"
+                },
+                {
+                  "k": "var",
+                  "name": "targetPeer"
+                }
+              ],
+              "type": {
+                "kind": "Bool"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.transportPeerAllocationAllowed": {
+    "module": "Stitch.Effects",
+    "name": "transportPeerAllocationAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Transport"
+        }
+      },
+      {
+        "name": "peerCount",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "maxPeers",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "transportCanSend",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "var",
+          "name": "peerCount"
+        },
+        "right": {
+          "k": "var",
+          "name": "maxPeers"
+        }
+      }
+    }
+  },
+  "Stitch.Effects.dnsScopeMatches": {
+    "module": "Stitch.Effects",
+    "name": "dnsScopeMatches",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "DnsScope"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "DnsScope"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "prim",
+        "operation": "equal",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "zoneId"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "zoneId"
+          }
+        ],
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "name"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "name"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        },
+        "right": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "authorityKey"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "authorityKey"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.dnsMayWritePhase": {
+    "module": "Stitch.Effects",
+    "name": "dnsMayWritePhase",
+    "params": [
+      {
+        "name": "phase",
+        "type": {
+          "kind": "DnsPhase"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "phase"
+      },
+      "branches": [
+        {
+          "constructor": "DnsPhase.Idle",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "DnsPhase.Published",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "DnsPhase.Refused",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "DnsPhase.Unknown",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.dnsMayReconcile": {
+    "module": "Stitch.Effects",
+    "name": "dnsMayReconcile",
+    "params": [
+      {
+        "name": "phase",
+        "type": {
+          "kind": "DnsPhase"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "not",
+      "value": {
+        "k": "call",
+        "name": "dnsMayWritePhase",
+        "args": [
+          {
+            "k": "var",
+            "name": "phase"
+          }
+        ]
+      }
+    }
+  },
+  "Stitch.Effects.dnsRequestAllowed": {
+    "module": "Stitch.Effects",
+    "name": "dnsRequestAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "DnsPublication"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "DnsCandidate"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "busy"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "dnsScopeMatches",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "scope"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "candidate"
+              },
+              "field": "scope"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "call",
+            "name": "dnsMayWritePhase",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "phase"
+              }
+            ]
+          },
+          "right": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "pointerDigest"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "pointerDigest"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.dnsSelectRead": {
+    "module": "Stitch.Effects",
+    "name": "dnsSelectRead",
+    "params": [
+      {
+        "name": "phase",
+        "type": {
+          "kind": "DnsPhase"
+        }
+      },
+      {
+        "name": "exactCandidate",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recordPresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "predecessor",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "bootstrap",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "live",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsDecision"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "exactCandidate"
+      },
+      "yes": {
+        "k": "ctor",
+        "name": "DnsDecision.Reconciled",
+        "args": []
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "call",
+          "name": "dnsMayReconcile",
+          "args": [
+            {
+              "k": "var",
+              "name": "phase"
+            }
+          ]
+        },
+        "yes": {
+          "k": "ctor",
+          "name": "DnsDecision.Wait",
+          "args": []
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "var",
+            "name": "live"
+          },
+          "yes": {
+            "k": "if",
+            "cond": {
+              "k": "var",
+              "name": "recordPresent"
+            },
+            "yes": {
+              "k": "if",
+              "cond": {
+                "k": "var",
+                "name": "predecessor"
+              },
+              "yes": {
+                "k": "ctor",
+                "name": "DnsDecision.Update",
+                "args": []
+              },
+              "no": {
+                "k": "ctor",
+                "name": "DnsDecision.Refuse",
+                "args": []
+              }
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "var",
+                "name": "bootstrap"
+              },
+              "yes": {
+                "k": "ctor",
+                "name": "DnsDecision.Create",
+                "args": []
+              },
+              "no": {
+                "k": "ctor",
+                "name": "DnsDecision.Refuse",
+                "args": []
+              }
+            }
+          },
+          "no": {
+            "k": "ctor",
+            "name": "DnsDecision.Refuse",
+            "args": []
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.dnsDecisionWrites": {
+    "module": "Stitch.Effects",
+    "name": "dnsDecisionWrites",
+    "params": [
+      {
+        "name": "decision",
+        "type": {
+          "kind": "DnsDecision"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "decision"
+      },
+      "branches": [
+        {
+          "constructor": "DnsDecision.Refuse",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "DnsDecision.Reconciled",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "DnsDecision.Wait",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "DnsDecision.Create",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "DnsDecision.Update",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.dnsSelectGatedRead": {
+    "module": "Stitch.Effects",
+    "name": "dnsSelectGatedRead",
+    "params": [
+      {
+        "name": "admitted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "phase",
+        "type": {
+          "kind": "DnsPhase"
+        }
+      },
+      {
+        "name": "exactCandidate",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recordPresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "predecessor",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "bootstrap",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "live",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsDecision"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "admitted"
+      },
+      "yes": {
+        "k": "call",
+        "name": "dnsSelectRead",
+        "args": [
+          {
+            "k": "var",
+            "name": "phase"
+          },
+          {
+            "k": "var",
+            "name": "exactCandidate"
+          },
+          {
+            "k": "var",
+            "name": "recordPresent"
+          },
+          {
+            "k": "var",
+            "name": "predecessor"
+          },
+          {
+            "k": "var",
+            "name": "bootstrap"
+          },
+          {
+            "k": "var",
+            "name": "live"
+          }
+        ]
+      },
+      "no": {
+        "k": "ctor",
+        "name": "DnsDecision.Refuse",
+        "args": []
+      }
+    }
+  },
+  "Stitch.Effects.dnsReadDecision": {
+    "module": "Stitch.Effects",
+    "name": "dnsReadDecision",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "DnsPublication"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "DnsCandidate"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "DnsRead"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsDecision"
+    },
+    "body": {
+      "k": "call",
+      "name": "dnsSelectGatedRead",
+      "args": [
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "dnsRequestAllowed",
+            "args": [
+              {
+                "k": "var",
+                "name": "state"
+              },
+              {
+                "k": "var",
+                "name": "candidate"
+              },
+              {
+                "k": "bool",
+                "value": false
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "call",
+              "name": "dnsScopeMatches",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "candidate"
+                  },
+                  "field": "scope"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "scope"
+                }
+              ]
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "prim",
+                "operation": "equal",
+                "args": [
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "candidate"
+                    },
+                    "field": "pointerDigest"
+                  },
+                  {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "observation"
+                    },
+                    "field": "candidateDigest"
+                  }
+                ],
+                "type": {
+                  "kind": "Bool"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "complete"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "recordPresent"
+                      }
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "observation"
+                      },
+                      "field": "authenticated"
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "hasRecordId"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "observation"
+                        },
+                        "field": "recordPresent"
+                      },
+                      "right": {
+                        "k": "prim",
+                        "operation": "equal",
+                        "args": [
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "state"
+                            },
+                            "field": "recordId"
+                          },
+                          {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "observation"
+                            },
+                            "field": "recordId"
+                          }
+                        ],
+                        "type": {
+                          "kind": "Bool"
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "phase"
+        },
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "observation"
+            },
+            "field": "recordPresent"
+          },
+          "right": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "pointerDigest"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "pointerDigest"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          }
+        },
+        {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "observation"
+          },
+          "field": "recordPresent"
+        },
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "candidate"
+            },
+            "field": "hasPrevious"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "prim",
+              "operation": "equal",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "pointerDigest"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "candidate"
+                  },
+                  "field": "previousDigest"
+                }
+              ],
+              "type": {
+                "kind": "Bool"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "observation"
+                  },
+                  "field": "revision"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "1"
+                }
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "revision"
+              }
+            }
+          }
+        },
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "hasRecordId"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "hasPrevious"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "revision"
+              },
+              "right": {
+                "k": "nat",
+                "value": "0"
+              }
+            }
+          }
+        },
+        {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<=?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "candidate"
+              },
+              "field": "validFrom"
+            },
+            "right": {
+              "k": "var",
+              "name": "now"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "var",
+              "name": "now"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "candidate"
+              },
+              "field": "validUntil"
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.dnsReconciled": {
+    "module": "Stitch.Effects",
+    "name": "dnsReconciled",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "DnsPublication"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "DnsCandidate"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "DnsRead"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsPublication"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "call",
+        "name": "dnsReadDecision",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "candidate"
+          },
+          {
+            "k": "var",
+            "name": "observation"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "branches": [
+        {
+          "constructor": "DnsDecision.Refuse",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Reconciled",
+          "binders": [],
+          "body": {
+            "k": "record",
+            "name": "DnsPublication",
+            "values": {
+              "scope": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "scope"
+              },
+              "phase": {
+                "k": "ctor",
+                "name": "DnsPhase.Published",
+                "args": []
+              },
+              "pointerDigest": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "pointerDigest"
+              },
+              "recordId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "recordId"
+              },
+              "hasRecordId": {
+                "k": "bool",
+                "value": true
+              }
+            }
+          }
+        },
+        {
+          "constructor": "DnsDecision.Wait",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Create",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Update",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.dnsBeginWrite": {
+    "module": "Stitch.Effects",
+    "name": "dnsBeginWrite",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "DnsPublication"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "DnsCandidate"
+        }
+      },
+      {
+        "name": "observation",
+        "type": {
+          "kind": "DnsRead"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsPublication"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "call",
+        "name": "dnsReadDecision",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "candidate"
+          },
+          {
+            "k": "var",
+            "name": "observation"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          }
+        ]
+      },
+      "branches": [
+        {
+          "constructor": "DnsDecision.Refuse",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Reconciled",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Wait",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "state"
+          }
+        },
+        {
+          "constructor": "DnsDecision.Create",
+          "binders": [],
+          "body": {
+            "k": "record",
+            "name": "DnsPublication",
+            "values": {
+              "scope": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "scope"
+              },
+              "phase": {
+                "k": "ctor",
+                "name": "DnsPhase.Unknown",
+                "args": []
+              },
+              "pointerDigest": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "pointerDigest"
+              },
+              "recordId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "recordId"
+              },
+              "hasRecordId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "recordPresent"
+              }
+            }
+          }
+        },
+        {
+          "constructor": "DnsDecision.Update",
+          "binders": [],
+          "body": {
+            "k": "record",
+            "name": "DnsPublication",
+            "values": {
+              "scope": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "scope"
+              },
+              "phase": {
+                "k": "ctor",
+                "name": "DnsPhase.Unknown",
+                "args": []
+              },
+              "pointerDigest": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "candidate"
+                },
+                "field": "pointerDigest"
+              },
+              "recordId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "recordId"
+              },
+              "hasRecordId": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "observation"
+                },
+                "field": "recordPresent"
+              }
+            }
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.dnsFinishWrite": {
+    "module": "Stitch.Effects",
+    "name": "dnsFinishWrite",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "DnsPublication"
+        }
+      },
+      {
+        "name": "result",
+        "type": {
+          "kind": "DnsWriteResult"
+        }
+      }
+    ],
+    "result": {
+      "kind": "DnsPublication"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "dnsMayReconcile",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "phase"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "dnsScopeMatches",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "scope"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "result"
+                },
+                "field": "scope"
+              }
+            ]
+          },
+          "right": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "pointerDigest"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "result"
+                },
+                "field": "candidateDigest"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          }
+        }
+      },
+      "yes": {
+        "k": "record",
+        "name": "DnsPublication",
+        "values": {
+          "scope": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "scope"
+          },
+          "phase": {
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "result"
+              },
+              "field": "refused"
+            },
+            "yes": {
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "result"
+                },
+                "field": "acknowledged"
+              },
+              "yes": {
+                "k": "ctor",
+                "name": "DnsPhase.Unknown",
+                "args": []
+              },
+              "no": {
+                "k": "ctor",
+                "name": "DnsPhase.Refused",
+                "args": []
+              }
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "result"
+                  },
+                  "field": "acknowledged"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "result"
+                    },
+                    "field": "recordIdValid"
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "hasRecordId"
+                      }
+                    },
+                    "right": {
+                      "k": "prim",
+                      "operation": "equal",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "state"
+                          },
+                          "field": "recordId"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "result"
+                          },
+                          "field": "recordId"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Bool"
+                      }
+                    }
+                  }
+                }
+              },
+              "yes": {
+                "k": "ctor",
+                "name": "DnsPhase.Published",
+                "args": []
+              },
+              "no": {
+                "k": "ctor",
+                "name": "DnsPhase.Unknown",
+                "args": []
+              }
+            }
+          },
+          "pointerDigest": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "pointerDigest"
+          },
+          "recordId": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "not",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "result"
+                  },
+                  "field": "refused"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "result"
+                  },
+                  "field": "acknowledged"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "result"
+                    },
+                    "field": "recordIdValid"
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "hasRecordId"
+                      }
+                    },
+                    "right": {
+                      "k": "prim",
+                      "operation": "equal",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "state"
+                          },
+                          "field": "recordId"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "result"
+                          },
+                          "field": "recordId"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Bool"
+                      }
+                    }
+                  }
+                }
+              }
+            },
+            "yes": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "result"
+              },
+              "field": "recordId"
+            },
+            "no": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "recordId"
+            }
+          },
+          "hasRecordId": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "hasRecordId"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "not",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "result"
+                  },
+                  "field": "refused"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "result"
+                  },
+                  "field": "acknowledged"
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "result"
+                    },
+                    "field": "recordIdValid"
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "state"
+                        },
+                        "field": "hasRecordId"
+                      }
+                    },
+                    "right": {
+                      "k": "prim",
+                      "operation": "equal",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "state"
+                          },
+                          "field": "recordId"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "result"
+                          },
+                          "field": "recordId"
+                        }
+                      ],
+                      "type": {
+                        "kind": "Bool"
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Effects.vmCanBoot": {
+    "module": "Stitch.Effects",
+    "name": "vmCanBoot",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "state"
+        },
+        "field": "phase"
+      },
+      "branches": [
+        {
+          "constructor": "VmPhase.Idle",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "VmPhase.Booting",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Ready",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Failed",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.vmIsBooting": {
+    "module": "Stitch.Effects",
+    "name": "vmIsBooting",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "state"
+        },
+        "field": "phase"
+      },
+      "branches": [
+        {
+          "constructor": "VmPhase.Idle",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Booting",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "VmPhase.Ready",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Failed",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.vmCanExecute": {
+    "module": "Stitch.Effects",
+    "name": "vmCanExecute",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "state"
+        },
+        "field": "phase"
+      },
+      "branches": [
+        {
+          "constructor": "VmPhase.Idle",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Booting",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        },
+        {
+          "constructor": "VmPhase.Ready",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": true
+          }
+        },
+        {
+          "constructor": "VmPhase.Failed",
+          "binders": [],
+          "body": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.vmStart": {
+    "module": "Stitch.Effects",
+    "name": "vmStart",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Vm"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "vmCanBoot",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "Vm",
+        "values": {
+          "generation": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "generation"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "phase": {
+            "k": "ctor",
+            "name": "VmPhase.Booting",
+            "args": []
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Effects.vmCallbackAllowed": {
+    "module": "Stitch.Effects",
+    "name": "vmCallbackAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "instanceCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "generation"
+        },
+        "right": {
+          "k": "var",
+          "name": "generation"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "instanceCurrent"
+        },
+        "right": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "call",
+            "name": "vmIsBooting",
+            "args": [
+              {
+                "k": "var",
+                "name": "state"
+              }
+            ]
+          },
+          "right": {
+            "k": "call",
+            "name": "vmCanExecute",
+            "args": [
+              {
+                "k": "var",
+                "name": "state"
+              }
+            ]
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.vmFailAllowed": {
+    "module": "Stitch.Effects",
+    "name": "vmFailAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "generation"
+        },
+        "right": {
+          "k": "var",
+          "name": "generation"
+        }
+      },
+      "right": {
+        "k": "call",
+        "name": "vmIsBooting",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          }
+        ]
+      }
+    }
+  },
+  "Stitch.Effects.vmFail": {
+    "module": "Stitch.Effects",
+    "name": "vmFail",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Vm"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "vmFailAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "generation"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "Vm",
+        "values": {
+          "generation": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "generation"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "phase": {
+            "k": "ctor",
+            "name": "VmPhase.Failed",
+            "args": []
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Effects.vmGenerationFilter": {
+    "module": "Stitch.Effects",
+    "name": "vmGenerationFilter",
+    "params": [
+      {
+        "name": "difference",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "whenEqual",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "whenDifferent",
+        "type": {
+          "kind": "Vm"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Vm"
+    },
+    "body": {
+      "k": "match",
+      "value": {
+        "k": "var",
+        "name": "difference"
+      },
+      "branches": [
+        {
+          "constructor": "Nat.zero",
+          "binders": [],
+          "body": {
+            "k": "var",
+            "name": "whenEqual"
+          }
+        },
+        {
+          "constructor": "Nat.succ",
+          "binders": [
+            "rest"
+          ],
+          "body": {
+            "k": "var",
+            "name": "whenDifferent"
+          }
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.vmReadyCandidate": {
+    "module": "Stitch.Effects",
+    "name": "vmReadyCandidate",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "instanceCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "readinessObserved",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Vm"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "vmIsBooting",
+          "args": [
+            {
+              "k": "var",
+              "name": "state"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "instanceCurrent"
+          },
+          "right": {
+            "k": "var",
+            "name": "readinessObserved"
+          }
+        }
+      },
+      "yes": {
+        "k": "record",
+        "name": "Vm",
+        "values": {
+          "generation": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "generation"
+          },
+          "phase": {
+            "k": "ctor",
+            "name": "VmPhase.Ready",
+            "args": []
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Effects.vmObserveReady": {
+    "module": "Stitch.Effects",
+    "name": "vmObserveReady",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Vm"
+        }
+      },
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "instanceCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "readinessObserved",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Vm"
+    },
+    "body": {
+      "k": "call",
+      "name": "vmGenerationFilter",
+      "args": [
+        {
+          "k": "prim",
+          "operation": "subtract",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "generation"
+            },
+            {
+              "k": "var",
+              "name": "generation"
+            }
+          ],
+          "type": {
+            "kind": "Nat"
+          }
+        },
+        {
+          "k": "call",
+          "name": "vmGenerationFilter",
+          "args": [
+            {
+              "k": "prim",
+              "operation": "subtract",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "generation"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "generation"
+                }
+              ],
+              "type": {
+                "kind": "Nat"
+              }
+            },
+            {
+              "k": "call",
+              "name": "vmReadyCandidate",
+              "args": [
+                {
+                  "k": "var",
+                  "name": "state"
+                },
+                {
+                  "k": "var",
+                  "name": "instanceCurrent"
+                },
+                {
+                  "k": "var",
+                  "name": "readinessObserved"
+                }
+              ]
+            },
+            {
+              "k": "var",
+              "name": "state"
+            }
+          ]
+        },
+        {
+          "k": "var",
+          "name": "state"
+        }
+      ]
+    }
+  },
+  "Stitch.Effects.c1InWindow": {
+    "module": "Stitch.Effects",
+    "name": "c1InWindow",
+    "params": [
+      {
+        "name": "progress",
+        "type": {
+          "kind": "C1Progress"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "progress"
+          },
+          "field": "startedAt"
+        },
+        "right": {
+          "k": "var",
+          "name": "now"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "var",
+          "name": "now"
+        },
+        "right": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "progress"
+            },
+            "field": "startedAt"
+          },
+          "right": {
+            "k": "nat",
+            "value": "10000000"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.c1ProbeAccepted": {
+    "module": "Stitch.Effects",
+    "name": "c1ProbeAccepted",
+    "params": [
+      {
+        "name": "progress",
+        "type": {
+          "kind": "C1Progress"
+        }
+      },
+      {
+        "name": "sequence",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "correlated",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "correlated"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "c1InWindow",
+          "args": [
+            {
+              "k": "var",
+              "name": "progress"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "progress"
+              },
+              "field": "hasSequence"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "progress"
+              },
+              "field": "lastSequence"
+            },
+            "right": {
+              "k": "var",
+              "name": "sequence"
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Effects.c1ObserveProbe": {
+    "module": "Stitch.Effects",
+    "name": "c1ObserveProbe",
+    "params": [
+      {
+        "name": "progress",
+        "type": {
+          "kind": "C1Progress"
+        }
+      },
+      {
+        "name": "sequence",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "correlated",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "C1Progress"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "c1ProbeAccepted",
+        "args": [
+          {
+            "k": "var",
+            "name": "progress"
+          },
+          {
+            "k": "var",
+            "name": "sequence"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          },
+          {
+            "k": "var",
+            "name": "correlated"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "C1Progress",
+        "values": {
+          "startedAt": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "progress"
+            },
+            "field": "startedAt"
+          },
+          "lastSequence": {
+            "k": "var",
+            "name": "sequence"
+          },
+          "hasSequence": {
+            "k": "bool",
+            "value": true
+          },
+          "consecutive": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "progress"
+                },
+                "field": "hasSequence"
+              },
+              "right": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "binary",
+                  "op": "+",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "progress"
+                    },
+                    "field": "lastSequence"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "1"
+                  }
+                },
+                "right": {
+                  "k": "var",
+                  "name": "sequence"
+                }
+              }
+            },
+            "yes": {
+              "k": "binary",
+              "op": "+",
+              "left": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "progress"
+                },
+                "field": "consecutive"
+              },
+              "right": {
+                "k": "nat",
+                "value": "1"
+              }
+            },
+            "no": {
+              "k": "nat",
+              "value": "1"
+            }
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "progress"
+      }
+    }
+  },
+  "Stitch.Effects.c1ConnectionQualified": {
+    "module": "Stitch.Effects",
+    "name": "c1ConnectionQualified",
+    "params": [
+      {
+        "name": "progress",
+        "type": {
+          "kind": "C1Progress"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "orderedChannel",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "orderedChannel"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "nat",
+            "value": "10"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "progress"
+            },
+            "field": "consecutive"
+          }
+        },
+        "right": {
+          "k": "call",
+          "name": "c1InWindow",
+          "args": [
+            {
+              "k": "var",
+              "name": "progress"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Effects.c1DirectSuccess": {
+    "module": "Stitch.Effects",
+    "name": "c1DirectSuccess",
+    "params": [
+      {
+        "name": "progress",
+        "type": {
+          "kind": "C1Progress"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "orderedChannel",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "selectedPathObserved",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "usedRelay",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "call",
+        "name": "c1ConnectionQualified",
+        "args": [
+          {
+            "k": "var",
+            "name": "progress"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          },
+          {
+            "k": "var",
+            "name": "orderedChannel"
+          }
+        ]
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "selectedPathObserved"
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "var",
+            "name": "usedRelay"
+          }
+        }
+      }
+    }
+  },
   "Stitch.Encoding.dependenciesReady": {
     "module": "Stitch.Encoding",
     "name": "dependenciesReady",
@@ -20718,6 +24150,1851 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Relay.limits": {
+    "module": "Stitch.Relay",
+    "name": "limits",
+    "params": [],
+    "result": {
+      "kind": "Limits"
+    },
+    "body": {
+      "k": "record",
+      "name": "Limits",
+      "values": {
+        "wireBytes": {
+          "k": "nat",
+          "value": "4096"
+        },
+        "chunkBytes": {
+          "k": "nat",
+          "value": "2700"
+        },
+        "messageBytes": {
+          "k": "nat",
+          "value": "524288"
+        },
+        "frames": {
+          "k": "nat",
+          "value": "256"
+        },
+        "entries": {
+          "k": "nat",
+          "value": "16"
+        },
+        "retainedBytes": {
+          "k": "nat",
+          "value": "2097152"
+        },
+        "tombstones": {
+          "k": "nat",
+          "value": "256"
+        },
+        "assemblyAge": {
+          "k": "nat",
+          "value": "30000"
+        },
+        "futureSkew": {
+          "k": "nat",
+          "value": "5000"
+        },
+        "requestTimeout": {
+          "k": "nat",
+          "value": "30000"
+        }
+      }
+    }
+  },
+  "Stitch.Relay.signalLifetime": {
+    "module": "Stitch.Relay",
+    "name": "signalLifetime",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "60000"
+    }
+  },
+  "Stitch.Relay.warmLifetime": {
+    "module": "Stitch.Relay",
+    "name": "warmLifetime",
+    "params": [],
+    "result": {
+      "kind": "Nat"
+    },
+    "body": {
+      "k": "nat",
+      "value": "1800000"
+    }
+  },
+  "Stitch.Relay.sameIdentity": {
+    "module": "Stitch.Relay",
+    "name": "sameIdentity",
+    "params": [
+      {
+        "name": "left",
+        "type": {
+          "kind": "Identity"
+        }
+      },
+      {
+        "name": "right",
+        "type": {
+          "kind": "Identity"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "prim",
+        "operation": "equal",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "left"
+            },
+            "field": "channel"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "right"
+            },
+            "field": "channel"
+          }
+        ],
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "left"
+              },
+              "field": "session"
+            },
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "right"
+              },
+              "field": "session"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "left"
+                },
+                "field": "digest"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "right"
+                },
+                "field": "digest"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "prim",
+              "operation": "equal",
+              "args": [
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "left"
+                  },
+                  "field": "purpose"
+                },
+                {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "right"
+                  },
+                  "field": "purpose"
+                }
+              ],
+              "type": {
+                "kind": "Bool"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "left"
+                  },
+                  "field": "created"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "right"
+                  },
+                  "field": "created"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "left"
+                    },
+                    "field": "messageBytes"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "field": "messageBytes"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "left"
+                    },
+                    "field": "frames"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "right"
+                    },
+                    "field": "frames"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.frameAllowed": {
+    "module": "Stitch.Relay",
+    "name": "frameAllowed",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "frame",
+        "type": {
+          "kind": "Frame"
+        }
+      },
+      {
+        "name": "channel",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "purpose",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "wallNow",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "lifetime",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "let",
+      "name": "identity",
+      "type": {
+        "kind": "Identity"
+      },
+      "value": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "frame"
+        },
+        "field": "identity"
+      },
+      "body": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "prim",
+          "operation": "equal",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "identity"
+              },
+              "field": "channel"
+            },
+            {
+              "k": "var",
+              "name": "channel"
+            }
+          ],
+          "type": {
+            "kind": "Bool"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "prim",
+            "operation": "equal",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "identity"
+                },
+                "field": "purpose"
+              },
+              {
+                "k": "var",
+                "name": "purpose"
+              }
+            ],
+            "type": {
+              "kind": "Bool"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<?",
+              "left": {
+                "k": "nat",
+                "value": "0"
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "identity"
+                },
+                "field": "messageBytes"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "<=?",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "identity"
+                  },
+                  "field": "messageBytes"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "bounds"
+                  },
+                  "field": "messageBytes"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "<?",
+                  "left": {
+                    "k": "nat",
+                    "value": "0"
+                  },
+                  "right": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "identity"
+                    },
+                    "field": "frames"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "<=?",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "identity"
+                      },
+                      "field": "frames"
+                    },
+                    "right": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "bounds"
+                      },
+                      "field": "frames"
+                    }
+                  },
+                  "right": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "binary",
+                      "op": "<?",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "frame"
+                        },
+                        "field": "index"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "identity"
+                        },
+                        "field": "frames"
+                      }
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "&&",
+                      "left": {
+                        "k": "binary",
+                        "op": "<=?",
+                        "left": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "frame"
+                          },
+                          "field": "wireBytes"
+                        },
+                        "right": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "bounds"
+                          },
+                          "field": "wireBytes"
+                        }
+                      },
+                      "right": {
+                        "k": "binary",
+                        "op": "&&",
+                        "left": {
+                          "k": "binary",
+                          "op": "<?",
+                          "left": {
+                            "k": "prim",
+                            "operation": "multiply",
+                            "args": [
+                              {
+                                "k": "prim",
+                                "operation": "subtract",
+                                "args": [
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "identity"
+                                    },
+                                    "field": "frames"
+                                  },
+                                  {
+                                    "k": "nat",
+                                    "value": "1"
+                                  }
+                                ],
+                                "type": {
+                                  "kind": "Nat"
+                                }
+                              },
+                              {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "bounds"
+                                },
+                                "field": "chunkBytes"
+                              }
+                            ],
+                            "type": {
+                              "kind": "Nat"
+                            }
+                          },
+                          "right": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "identity"
+                            },
+                            "field": "messageBytes"
+                          }
+                        },
+                        "right": {
+                          "k": "binary",
+                          "op": "&&",
+                          "left": {
+                            "k": "binary",
+                            "op": "<=?",
+                            "left": {
+                              "k": "project",
+                              "value": {
+                                "k": "var",
+                                "name": "identity"
+                              },
+                              "field": "messageBytes"
+                            },
+                            "right": {
+                              "k": "prim",
+                              "operation": "multiply",
+                              "args": [
+                                {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "identity"
+                                  },
+                                  "field": "frames"
+                                },
+                                {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "bounds"
+                                  },
+                                  "field": "chunkBytes"
+                                }
+                              ],
+                              "type": {
+                                "kind": "Nat"
+                              }
+                            }
+                          },
+                          "right": {
+                            "k": "binary",
+                            "op": "&&",
+                            "left": {
+                              "k": "binary",
+                              "op": "=?",
+                              "left": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "frame"
+                                },
+                                "field": "payloadBytes"
+                              },
+                              "right": {
+                                "k": "if",
+                                "cond": {
+                                  "k": "binary",
+                                  "op": "=?",
+                                  "left": {
+                                    "k": "binary",
+                                    "op": "+",
+                                    "left": {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "frame"
+                                      },
+                                      "field": "index"
+                                    },
+                                    "right": {
+                                      "k": "nat",
+                                      "value": "1"
+                                    }
+                                  },
+                                  "right": {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "identity"
+                                    },
+                                    "field": "frames"
+                                  }
+                                },
+                                "yes": {
+                                  "k": "prim",
+                                  "operation": "subtract",
+                                  "args": [
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "identity"
+                                      },
+                                      "field": "messageBytes"
+                                    },
+                                    {
+                                      "k": "prim",
+                                      "operation": "multiply",
+                                      "args": [
+                                        {
+                                          "k": "prim",
+                                          "operation": "subtract",
+                                          "args": [
+                                            {
+                                              "k": "project",
+                                              "value": {
+                                                "k": "var",
+                                                "name": "identity"
+                                              },
+                                              "field": "frames"
+                                            },
+                                            {
+                                              "k": "nat",
+                                              "value": "1"
+                                            }
+                                          ],
+                                          "type": {
+                                            "kind": "Nat"
+                                          }
+                                        },
+                                        {
+                                          "k": "project",
+                                          "value": {
+                                            "k": "var",
+                                            "name": "bounds"
+                                          },
+                                          "field": "chunkBytes"
+                                        }
+                                      ],
+                                      "type": {
+                                        "kind": "Nat"
+                                      }
+                                    }
+                                  ],
+                                  "type": {
+                                    "kind": "Nat"
+                                  }
+                                },
+                                "no": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "bounds"
+                                  },
+                                  "field": "chunkBytes"
+                                }
+                              }
+                            },
+                            "right": {
+                              "k": "binary",
+                              "op": "&&",
+                              "left": {
+                                "k": "binary",
+                                "op": "<=?",
+                                "left": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "identity"
+                                  },
+                                  "field": "created"
+                                },
+                                "right": {
+                                  "k": "binary",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "var",
+                                    "name": "wallNow"
+                                  },
+                                  "right": {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "bounds"
+                                    },
+                                    "field": "futureSkew"
+                                  }
+                                }
+                              },
+                              "right": {
+                                "k": "binary",
+                                "op": "<?",
+                                "left": {
+                                  "k": "var",
+                                  "name": "wallNow"
+                                },
+                                "right": {
+                                  "k": "binary",
+                                  "op": "+",
+                                  "left": {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "identity"
+                                    },
+                                    "field": "created"
+                                  },
+                                  "right": {
+                                    "k": "var",
+                                    "name": "lifetime"
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.admissionAllowed": {
+    "module": "Stitch.Relay",
+    "name": "admissionAllowed",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "capacity",
+        "type": {
+          "kind": "Capacity"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<?",
+        "left": {
+          "k": "nat",
+          "value": "0"
+        },
+        "right": {
+          "k": "var",
+          "name": "bytes"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<=?",
+          "left": {
+            "k": "var",
+            "name": "bytes"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "bounds"
+            },
+            "field": "messageBytes"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "binary",
+            "op": "<?",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "capacity"
+              },
+              "field": "entries"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "bounds"
+              },
+              "field": "entries"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "capacity"
+                  },
+                  "field": "retainedBytes"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "bytes"
+                }
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "bounds"
+                },
+                "field": "retainedBytes"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "<?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "capacity"
+                  },
+                  "field": "entries"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "capacity"
+                  },
+                  "field": "tombstones"
+                }
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "bounds"
+                },
+                "field": "tombstones"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.admitCapacity": {
+    "module": "Stitch.Relay",
+    "name": "admitCapacity",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "capacity",
+        "type": {
+          "kind": "Capacity"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Capacity"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "admissionAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "bounds"
+          },
+          {
+            "k": "var",
+            "name": "capacity"
+          },
+          {
+            "k": "var",
+            "name": "bytes"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "Capacity",
+        "values": {
+          "entries": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "capacity"
+              },
+              "field": "entries"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "retainedBytes": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "capacity"
+              },
+              "field": "retainedBytes"
+            },
+            "right": {
+              "k": "var",
+              "name": "bytes"
+            }
+          },
+          "tombstones": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "capacity"
+            },
+            "field": "tombstones"
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "capacity"
+      }
+    }
+  },
+  "Stitch.Relay.release": {
+    "module": "Stitch.Relay",
+    "name": "release",
+    "params": [
+      {
+        "name": "capacity",
+        "type": {
+          "kind": "Capacity"
+        }
+      },
+      {
+        "name": "bytes",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Capacity"
+    },
+    "body": {
+      "k": "record",
+      "name": "Capacity",
+      "values": {
+        "entries": {
+          "k": "prim",
+          "operation": "subtract",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "capacity"
+              },
+              "field": "entries"
+            },
+            {
+              "k": "nat",
+              "value": "1"
+            }
+          ],
+          "type": {
+            "kind": "Nat"
+          }
+        },
+        "retainedBytes": {
+          "k": "prim",
+          "operation": "subtract",
+          "args": [
+            {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "capacity"
+              },
+              "field": "retainedBytes"
+            },
+            {
+              "k": "var",
+              "name": "bytes"
+            }
+          ],
+          "type": {
+            "kind": "Nat"
+          }
+        },
+        "tombstones": {
+          "k": "binary",
+          "op": "+",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "capacity"
+            },
+            "field": "tombstones"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.assemblyCurrent": {
+    "module": "Stitch.Relay",
+    "name": "assemblyCurrent",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "<=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "last"
+        },
+        "right": {
+          "k": "var",
+          "name": "now"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "<?",
+          "left": {
+            "k": "var",
+            "name": "now"
+          },
+          "right": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "started"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "bounds"
+              },
+              "field": "assemblyAge"
+            }
+          }
+        },
+        "right": {
+          "k": "not",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "verifying"
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.appendAllowed": {
+    "module": "Stitch.Relay",
+    "name": "appendAllowed",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      },
+      {
+        "name": "frame",
+        "type": {
+          "kind": "Frame"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "duplicate",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "duplicate"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "call",
+          "name": "assemblyCurrent",
+          "args": [
+            {
+              "k": "var",
+              "name": "bounds"
+            },
+            {
+              "k": "var",
+              "name": "state"
+            },
+            {
+              "k": "var",
+              "name": "now"
+            }
+          ]
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "call",
+            "name": "sameIdentity",
+            "args": [
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "state"
+                },
+                "field": "identity"
+              },
+              {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "frame"
+                },
+                "field": "identity"
+              }
+            ]
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "receivedFrames"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "1"
+                }
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "identity"
+                },
+                "field": "frames"
+              }
+            },
+            "right": {
+              "k": "binary",
+              "op": "<=?",
+              "left": {
+                "k": "binary",
+                "op": "+",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "receivedBytes"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "frame"
+                  },
+                  "field": "payloadBytes"
+                }
+              },
+              "right": {
+                "k": "project",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "identity"
+                },
+                "field": "messageBytes"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.append": {
+    "module": "Stitch.Relay",
+    "name": "append",
+    "params": [
+      {
+        "name": "bounds",
+        "type": {
+          "kind": "Limits"
+        }
+      },
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      },
+      {
+        "name": "frame",
+        "type": {
+          "kind": "Frame"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "duplicate",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Assembly"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "call",
+        "name": "appendAllowed",
+        "args": [
+          {
+            "k": "var",
+            "name": "bounds"
+          },
+          {
+            "k": "var",
+            "name": "state"
+          },
+          {
+            "k": "var",
+            "name": "frame"
+          },
+          {
+            "k": "var",
+            "name": "now"
+          },
+          {
+            "k": "var",
+            "name": "duplicate"
+          }
+        ]
+      },
+      "yes": {
+        "k": "record",
+        "name": "Assembly",
+        "values": {
+          "identity": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "identity"
+          },
+          "receivedFrames": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "receivedFrames"
+            },
+            "right": {
+              "k": "nat",
+              "value": "1"
+            }
+          },
+          "receivedBytes": {
+            "k": "binary",
+            "op": "+",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "state"
+              },
+              "field": "receivedBytes"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "frame"
+              },
+              "field": "payloadBytes"
+            }
+          },
+          "started": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "started"
+          },
+          "last": {
+            "k": "var",
+            "name": "now"
+          },
+          "verifying": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      },
+      "no": {
+        "k": "var",
+        "name": "state"
+      }
+    }
+  },
+  "Stitch.Relay.ready": {
+    "module": "Stitch.Relay",
+    "name": "ready",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "receivedFrames"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "identity"
+          },
+          "field": "frames"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "receivedBytes"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "state"
+            },
+            "field": "identity"
+          },
+          "field": "messageBytes"
+        }
+      }
+    }
+  },
+  "Stitch.Relay.beginVerification": {
+    "module": "Stitch.Relay",
+    "name": "beginVerification",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Assembly"
+    },
+    "body": {
+      "k": "record",
+      "name": "Assembly",
+      "values": {
+        "identity": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "identity"
+        },
+        "receivedFrames": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "receivedFrames"
+        },
+        "receivedBytes": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "receivedBytes"
+        },
+        "started": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "started"
+        },
+        "last": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "state"
+          },
+          "field": "last"
+        },
+        "verifying": {
+          "k": "call",
+          "name": "ready",
+          "args": [
+            {
+              "k": "var",
+              "name": "state"
+            }
+          ]
+        }
+      }
+    }
+  },
+  "Stitch.Relay.deliveryAllowed": {
+    "module": "Stitch.Relay",
+    "name": "deliveryAllowed",
+    "params": [
+      {
+        "name": "state",
+        "type": {
+          "kind": "Assembly"
+        }
+      },
+      {
+        "name": "digestVerified",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "utf8Valid",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "envelopeValid",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sessionCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "consentCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "digestVerified"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "utf8Valid"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "envelopeValid"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "sessionCurrent"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "var",
+                "name": "consentCurrent"
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "state"
+                  },
+                  "field": "verifying"
+                },
+                "right": {
+                  "k": "call",
+                  "name": "ready",
+                  "args": [
+                    {
+                      "k": "var",
+                      "name": "state"
+                    }
+                  ]
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Stitch.Relay.effectAllowed": {
+    "module": "Stitch.Relay",
+    "name": "effectAllowed",
+    "params": [
+      {
+        "name": "closed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "currentGeneration",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "capturedGeneration",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "sessionMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "consentCurrent",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "closed"
+        }
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "currentGeneration"
+          },
+          "right": {
+            "k": "var",
+            "name": "capturedGeneration"
+          }
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "sessionMatches"
+          },
+          "right": {
+            "k": "var",
+            "name": "consentCurrent"
+          }
+        }
+      }
+    }
+  },
   "Stitch.System.admitAction": {
     "module": "Stitch.System",
     "name": "admitAction",
@@ -23002,6 +28279,4121 @@ const definitions = {
         }
       }
     }
+  },
+  "Product.Experience.initialFacts": {
+    "module": "Product.Experience",
+    "name": "initialFacts",
+    "params": [],
+    "result": {
+      "kind": "Facts"
+    },
+    "body": {
+      "k": "record",
+      "name": "Facts",
+      "values": {
+        "disclosureAccepted": {
+          "k": "bool",
+          "value": false
+        },
+        "meshJoined": {
+          "k": "bool",
+          "value": false
+        },
+        "peersReachable": {
+          "k": "bool",
+          "value": false
+        },
+        "relayEnabled": {
+          "k": "bool",
+          "value": false
+        },
+        "hasObject": {
+          "k": "bool",
+          "value": false
+        },
+        "hasPartial": {
+          "k": "bool",
+          "value": false
+        },
+        "recoverablePlacement": {
+          "k": "bool",
+          "value": false
+        },
+        "hasJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "unfinishedJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "replayedJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "vmBooting": {
+          "k": "bool",
+          "value": false
+        },
+        "vmReady": {
+          "k": "bool",
+          "value": false
+        },
+        "vmFailed": {
+          "k": "bool",
+          "value": false
+        },
+        "authorityPinned": {
+          "k": "bool",
+          "value": false
+        },
+        "headRetained": {
+          "k": "bool",
+          "value": false
+        },
+        "dnsConfigured": {
+          "k": "bool",
+          "value": false
+        },
+        "publicationBusy": {
+          "k": "bool",
+          "value": false
+        },
+        "publicationUnknown": {
+          "k": "bool",
+          "value": false
+        },
+        "publicationPublished": {
+          "k": "bool",
+          "value": false
+        },
+        "policyBlocked": {
+          "k": "bool",
+          "value": false
+        },
+        "policyAttention": {
+          "k": "bool",
+          "value": false
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyMesh": {
+    "module": "Product.Experience",
+    "name": "journeyMesh",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "target": {
+          "k": "string",
+          "value": "meshPanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Join a mesh"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Review public signaling disclosure, join explicitly, then inspect reachable peers."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyObjects": {
+    "module": "Product.Experience",
+    "name": "journeyObjects",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "objects"
+        },
+        "target": {
+          "k": "string",
+          "value": "objectsPanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Store, place and recover objects"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Separate local integrity from conditional peer custody and actual recovery."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyCompute": {
+    "module": "Product.Experience",
+    "name": "journeyCompute",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "compute"
+        },
+        "target": {
+          "k": "string",
+          "value": "computePanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Run and resume pure jobs"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Replay deterministic checkpoints before continuation; VM effects have a separate contract."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyVm": {
+    "module": "Product.Experience",
+    "name": "journeyVm",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vm"
+        },
+        "target": {
+          "k": "string",
+          "value": "vmPanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Inspect host VM effects"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Boot and execute only through the observed VM lifecycle. Output integrity does not certify execution."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyPointers": {
+    "module": "Product.Experience",
+    "name": "journeyPointers",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "target": {
+          "k": "string",
+          "value": "pointersPanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Pin, discover and publish pointers"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Pin authority independently, retain the local head, and reconcile uncertain provider writes."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeyResources": {
+    "module": "Product.Experience",
+    "name": "journeyResources",
+    "params": [],
+    "result": {
+      "kind": "Journey"
+    },
+    "body": {
+      "k": "record",
+      "name": "Journey",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "resources"
+        },
+        "target": {
+          "k": "string",
+          "value": "resourcesPanel"
+        },
+        "title": {
+          "k": "string",
+          "value": "Inspect and renew allowances"
+        },
+        "summary": {
+          "k": "string",
+          "value": "Inspect bounded application charges, export them, and explicitly grant a new epoch."
+        }
+      }
+    }
+  },
+  "Product.Experience.journeys": {
+    "module": "Product.Experience",
+    "name": "journeys",
+    "params": [],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "Journey"
+      }
+    },
+    "body": {
+      "k": "cons",
+      "head": {
+        "k": "call",
+        "name": "journeyMesh",
+        "args": []
+      },
+      "tail": {
+        "k": "cons",
+        "head": {
+          "k": "call",
+          "name": "journeyObjects",
+          "args": []
+        },
+        "tail": {
+          "k": "cons",
+          "head": {
+            "k": "call",
+            "name": "journeyCompute",
+            "args": []
+          },
+          "tail": {
+            "k": "cons",
+            "head": {
+              "k": "call",
+              "name": "journeyVm",
+              "args": []
+            },
+            "tail": {
+              "k": "cons",
+              "head": {
+                "k": "call",
+                "name": "journeyPointers",
+                "args": []
+              },
+              "tail": {
+                "k": "cons",
+                "head": {
+                  "k": "call",
+                  "name": "journeyResources",
+                  "args": []
+                },
+                "tail": {
+                  "k": "nil",
+                  "type": {
+                    "kind": "Journey"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.meshDisclosure": {
+    "module": "Product.Experience",
+    "name": "meshDisclosure",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "meshDisclosure"
+        },
+        "journey": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "title": {
+          "k": "string",
+          "value": "Review disclosure"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NOT JOINED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Joining sends mesh topic, signaling messages and ICE connection metadata to public ntfy signaling and STUN services. Mesh keys are not passwords. Object and job bytes require the separate public relay opt-in."
+        }
+      }
+    }
+  },
+  "Product.Experience.meshReady": {
+    "module": "Product.Experience",
+    "name": "meshReady",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "meshReady"
+        },
+        "journey": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "title": {
+          "k": "string",
+          "value": "Ready for explicit join"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "DISCLOSURE ACCEPTED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "No connection is established by accepting disclosure alone. Choose Join Mesh and Sync to start."
+        }
+      }
+    }
+  },
+  "Product.Experience.meshSearching": {
+    "module": "Product.Experience",
+    "name": "meshSearching",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "meshSearching"
+        },
+        "journey": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "title": {
+          "k": "string",
+          "value": "Joined; looking for peers"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NO OPEN PEER OBSERVED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "A join request does not establish peer availability. Keep this tab open or explicitly rejoin after changing the mesh key."
+        }
+      }
+    }
+  },
+  "Product.Experience.meshConnected": {
+    "module": "Product.Experience",
+    "name": "meshConnected",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "meshConnected"
+        },
+        "journey": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "title": {
+          "k": "string",
+          "value": "Peer channel observed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "OPEN CHANNEL OBSERVED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "An open channel is a current local observation, not durable custody, authority, or a distinct failure domain."
+        }
+      }
+    }
+  },
+  "Product.Experience.objectsEmpty": {
+    "module": "Product.Experience",
+    "name": "objectsEmpty",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "objectsEmpty"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "No local object bytes"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NO RECOVERY EVIDENCE"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Store an object, or fetch retained fragments. Recovery needs two distinct valid fragments of the exact encoding; an empty result is not a successful recovery."
+        }
+      }
+    }
+  },
+  "Product.Experience.objectsPartial": {
+    "module": "Product.Experience",
+    "name": "objectsPartial",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "objectsPartial"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Waiting for enough fragments"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PARTIAL FRAGMENTS"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Insufficient fragments do not establish object integrity. Fetch again when holders are reachable; do not erase other retained copies."
+        }
+      }
+    }
+  },
+  "Product.Experience.objectsLocal": {
+    "module": "Product.Experience",
+    "name": "objectsLocal",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "objectsLocal"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Local object verified"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "DIGEST MATCH; REMOTE CUSTODY UNESTABLISHED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Local bytes match the complete commitment. Placement requests alone do not establish retained remote fragments or durability."
+        }
+      }
+    }
+  },
+  "Product.Experience.objectsPlaced": {
+    "module": "Product.Experience",
+    "name": "objectsPlaced",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "objectsPlaced"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Conditional placement observed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "DIGEST-CHECKED PEER ASSERTIONS"
+        },
+        "detail": {
+          "k": "string",
+          "value": "At least one object has two current committed fragment assertions. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."
+        }
+      }
+    }
+  },
+  "Product.Experience.computeEmpty": {
+    "module": "Product.Experience",
+    "name": "computeEmpty",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "computeEmpty"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "title": {
+          "k": "string",
+          "value": "No pure jobs observed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "NO EXECUTION EVIDENCE"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Start a deterministic job or scan reachable checkpoints. Host and VM effects are not replay-certified."
+        }
+      }
+    }
+  },
+  "Product.Experience.computeUnverified": {
+    "module": "Product.Experience",
+    "name": "computeUnverified",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "computeUnverified"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "title": {
+          "k": "string",
+          "value": "Unfinished job requires replay"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "UNVERIFIED CHECKPOINT"
+        },
+        "detail": {
+          "k": "string",
+          "value": "A checkpoint claim is not execution evidence. Resume scans validate identity, program and checkpoint chain and replay before continuation."
+        }
+      }
+    }
+  },
+  "Product.Experience.computeReplay": {
+    "module": "Product.Experience",
+    "name": "computeReplay",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "computeReplay"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "title": {
+          "k": "string",
+          "value": "Pure continuation checked locally"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "REPLAYED PURE CHECKPOINT"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Observed pure checkpoints were independently replayed by this browser adapter. This does not certify VM effects, a remote worker, availability, or durable retention."
+        }
+      }
+    }
+  },
+  "Product.Experience.computeDone": {
+    "module": "Product.Experience",
+    "name": "computeDone",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "computeDone"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "title": {
+          "k": "string",
+          "value": "Pure job state observed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PURE JOB STATE; INSPECT EACH ROW"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Completion and replay are separate. Each job row reports its own execution evidence; no aggregate claim certifies every job."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmIdle": {
+    "module": "Product.Experience",
+    "name": "vmIdle",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmIdle"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM not running"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST EFFECT NOT STARTED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Boot loads the local v86 assets. Guest execution and its network effects remain host assumptions, separate from deterministic pure-job replay."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmBooting": {
+    "module": "Product.Experience",
+    "name": "vmBooting",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmBooting"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM boot in progress"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST EFFECT PENDING"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Wait for an observed ready or failed lifecycle. Repeated boot and command execution are unavailable while booting."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmReady": {
+    "module": "Product.Experience",
+    "name": "vmReady",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmReady"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM reports ready"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST-OBSERVED READY"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Commands execute in the guest. Stored stdout can receive an object digest, but that digest is not evidence that the command executed correctly or only once."
+        }
+      }
+    }
+  },
+  "Product.Experience.vmFailed": {
+    "module": "Product.Experience",
+    "name": "vmFailed",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "vmFailed"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "title": {
+          "k": "string",
+          "value": "VM failed or interrupted"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "HOST EFFECT FAILED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Inspect the VM error before choosing another boot. Do not treat a timeout or missing output as proof that guest effects did not occur."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerUnpinned": {
+    "module": "Product.Experience",
+    "name": "pointerUnpinned",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerUnpinned"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Authority must be pinned"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "UNTRUSTED DISCOVERY"
+        },
+        "detail": {
+          "k": "string",
+          "value": "DNS records are discovery hints. Enter a key learned independently or explicitly trust the demo session key. A discovered key cannot authorize itself."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerPinned": {
+    "module": "Product.Experience",
+    "name": "pointerPinned",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerPinned"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Authority pinned; no retained head"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PINNED KEY ONLY"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Discover or paste a signed pointer. With no retained head only a valid bootstrap is accepted; a lost later head requires a trusted recent anchor."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerLocal": {
+    "module": "Product.Experience",
+    "name": "pointerLocal",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerLocal"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Local pointer admitted"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "OBSERVER-LOCAL HEAD; NOT PUBLISHED"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The signature, authority and succession were accepted against this session head. This is not a provider publication receipt or global consensus."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerPending": {
+    "module": "Product.Experience",
+    "name": "pointerPending",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerPending"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Provider operation pending"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PUBLICATION PENDING"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Wait for the provider observation. Do not start another candidate while the current operation is in flight."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerUnknown": {
+    "module": "Product.Experience",
+    "name": "pointerUnknown",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerUnknown"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Reconcile the exact candidate"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PUBLICATION UNKNOWN"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The write may have completed. The retained candidate remains the reconciliation target. Read the provider without repeating the write or advancing to another candidate."
+        }
+      }
+    }
+  },
+  "Product.Experience.pointerPublished": {
+    "module": "Product.Experience",
+    "name": "pointerPublished",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "pointerPublished"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "title": {
+          "k": "string",
+          "value": "Provider record observed"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "PROVIDER CONFIRMED; OBSERVER-LOCAL"
+        },
+        "detail": {
+          "k": "string",
+          "value": "The provider confirmed this candidate or a read found its exact bytes. This does not establish global DNS ordering, resolver propagation, or consensus."
+        }
+      }
+    }
+  },
+  "Product.Experience.resourcesActive": {
+    "module": "Product.Experience",
+    "name": "resourcesActive",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "resourcesActive"
+        },
+        "journey": {
+          "k": "string",
+          "value": "resources"
+        },
+        "title": {
+          "k": "string",
+          "value": "Application allowance active"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "APPLICATION ACCOUNTING ONLY"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Requests, application transfer bytes, new cache allocations and pure ring steps are bounded. TLS, ICE/STUN, VM work and host overhead are outside this accounting."
+        }
+      }
+    }
+  },
+  "Product.Experience.resourcesBlocked": {
+    "module": "Product.Experience",
+    "name": "resourcesBlocked",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "resourcesBlocked"
+        },
+        "journey": {
+          "k": "string",
+          "value": "resources"
+        },
+        "title": {
+          "k": "string",
+          "value": "Review exhausted or refused allowance"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "ALLOWANCE OR REFUSAL NEEDS REVIEW"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Inspect and export retained charges. Each operation still checks its exact resource vector; a zero or exhausted dimension does not forbid work that consumes none of it. An expired epoch or full reservation log needs renewal. Renewal retains charges and does not retry effects."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionJoin": {
+    "module": "Product.Experience",
+    "name": "actionJoin",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "0"
+        },
+        "id": {
+          "k": "string",
+          "value": "join"
+        },
+        "control": {
+          "k": "string",
+          "value": "reconnectBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "mesh"
+        },
+        "label": {
+          "k": "string",
+          "value": "Join Mesh and Sync"
+        },
+        "help": {
+          "k": "string",
+          "value": "Requires explicit signaling disclosure and an available application allowance."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionStore": {
+    "module": "Product.Experience",
+    "name": "actionStore",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "1"
+        },
+        "id": {
+          "k": "string",
+          "value": "store"
+        },
+        "control": {
+          "k": "string",
+          "value": "dbPutBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Store and Request Placement"
+        },
+        "help": {
+          "k": "string",
+          "value": "Commit local bytes; request conditional placement with reachable peers."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionClear": {
+    "module": "Product.Experience",
+    "name": "actionClear",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "2"
+        },
+        "id": {
+          "k": "string",
+          "value": "clear"
+        },
+        "control": {
+          "k": "string",
+          "value": "dbWipeLocalBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Clear Local Object Bytes"
+        },
+        "help": {
+          "k": "string",
+          "value": "Only local bytes are cleared. Recovery may fail if no other fragments remain."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRecover": {
+    "module": "Product.Experience",
+    "name": "actionRecover",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "3"
+        },
+        "id": {
+          "k": "string",
+          "value": "recover"
+        },
+        "control": {
+          "k": "string",
+          "value": "dbSyncBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Fetch Reachable Fragments"
+        },
+        "help": {
+          "k": "string",
+          "value": "Checks fragments and complete object commitment before recovery."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionStart": {
+    "module": "Product.Experience",
+    "name": "actionStart",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "4"
+        },
+        "id": {
+          "k": "string",
+          "value": "start"
+        },
+        "control": {
+          "k": "string",
+          "value": "startJobBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "label": {
+          "k": "string",
+          "value": "Start Pure Replayable Job"
+        },
+        "help": {
+          "k": "string",
+          "value": "Deterministic ring work; not guest execution."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionResume": {
+    "module": "Product.Experience",
+    "name": "actionResume",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "5"
+        },
+        "id": {
+          "k": "string",
+          "value": "resume"
+        },
+        "control": {
+          "k": "string",
+          "value": "takeoverJobsBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "compute"
+        },
+        "label": {
+          "k": "string",
+          "value": "Scan and Resume Pure Jobs"
+        },
+        "help": {
+          "k": "string",
+          "value": "Replay accepted checkpoints before continuation."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionBoot": {
+    "module": "Product.Experience",
+    "name": "actionBoot",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "6"
+        },
+        "id": {
+          "k": "string",
+          "value": "boot"
+        },
+        "control": {
+          "k": "string",
+          "value": "bootVmBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Boot Linux VM"
+        },
+        "help": {
+          "k": "string",
+          "value": "Allowed only outside ready or booting lifecycle."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionExecute": {
+    "module": "Product.Experience",
+    "name": "actionExecute",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "7"
+        },
+        "id": {
+          "k": "string",
+          "value": "execute"
+        },
+        "control": {
+          "k": "string",
+          "value": "runVmCmdBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "vm"
+        },
+        "label": {
+          "k": "string",
+          "value": "Run Guest Command and Store Stdout"
+        },
+        "help": {
+          "k": "string",
+          "value": "Host effect; a stored output digest does not certify execution."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionSrv": {
+    "module": "Product.Experience",
+    "name": "actionSrv",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "8"
+        },
+        "id": {
+          "k": "string",
+          "value": "srv"
+        },
+        "control": {
+          "k": "string",
+          "value": "resolveSrvBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Discover SRV Records"
+        },
+        "help": {
+          "k": "string",
+          "value": "DNS is discovery evidence only."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionTxt": {
+    "module": "Product.Experience",
+    "name": "actionTxt",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "9"
+        },
+        "id": {
+          "k": "string",
+          "value": "txt"
+        },
+        "control": {
+          "k": "string",
+          "value": "resolveTxtBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Discover and Check TXT Pointers"
+        },
+        "help": {
+          "k": "string",
+          "value": "Only independently pinned keys can authorize admitted pointer heads."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionPin": {
+    "module": "Product.Experience",
+    "name": "actionPin",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "10"
+        },
+        "id": {
+          "k": "string",
+          "value": "pin"
+        },
+        "control": {
+          "k": "string",
+          "value": "pinSessionAuthorityBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Explicitly Trust Demo Session Key"
+        },
+        "help": {
+          "k": "string",
+          "value": "Demo identity lasts only in this session; use an independently trusted key for real authority."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionAdmit": {
+    "module": "Product.Experience",
+    "name": "actionAdmit",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "11"
+        },
+        "id": {
+          "k": "string",
+          "value": "admit"
+        },
+        "control": {
+          "k": "string",
+          "value": "admitPointerBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Admit Pasted Pointer"
+        },
+        "help": {
+          "k": "string",
+          "value": "Requires a pinned authority and available application allowance."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionPublish": {
+    "module": "Product.Experience",
+    "name": "actionPublish",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "12"
+        },
+        "id": {
+          "k": "string",
+          "value": "publish"
+        },
+        "control": {
+          "k": "string",
+          "value": "writeSignedDnsBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Admit Next Pointer and Publish TXT"
+        },
+        "help": {
+          "k": "string",
+          "value": "Without provider credentials, only the local head is admitted. Unresolved writes cannot advance candidates."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionReconcile": {
+    "module": "Product.Experience",
+    "name": "actionReconcile",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "13"
+        },
+        "id": {
+          "k": "string",
+          "value": "reconcile"
+        },
+        "control": {
+          "k": "string",
+          "value": "reconcilePointerBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "pointers"
+        },
+        "label": {
+          "k": "string",
+          "value": "Reconcile Unknown Publication"
+        },
+        "help": {
+          "k": "string",
+          "value": "Read the exact scoped provider candidate; do not repeat the uncertain write."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionRenew": {
+    "module": "Product.Experience",
+    "name": "actionRenew",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "14"
+        },
+        "id": {
+          "k": "string",
+          "value": "renew"
+        },
+        "control": {
+          "k": "string",
+          "value": "renewBudgetBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "resources"
+        },
+        "label": {
+          "k": "string",
+          "value": "Start New Epoch with These Limits"
+        },
+        "help": {
+          "k": "string",
+          "value": "Grants a fresh bounded allowance; retains prior epochs and does not retry effects."
+        }
+      }
+    }
+  },
+  "Product.Experience.actionExport": {
+    "module": "Product.Experience",
+    "name": "actionExport",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "15"
+        },
+        "id": {
+          "k": "string",
+          "value": "export"
+        },
+        "control": {
+          "k": "string",
+          "value": "exportBudgetHistoryBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "resources"
+        },
+        "label": {
+          "k": "string",
+          "value": "Export Policy History"
+        },
+        "help": {
+          "k": "string",
+          "value": "Export existing accounting without changing or refunding charges."
+        }
+      }
+    }
+  },
+  "Product.Experience.actions": {
+    "module": "Product.Experience",
+    "name": "actions",
+    "params": [],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "Action"
+      }
+    },
+    "body": {
+      "k": "cons",
+      "head": {
+        "k": "call",
+        "name": "actionJoin",
+        "args": []
+      },
+      "tail": {
+        "k": "cons",
+        "head": {
+          "k": "call",
+          "name": "actionStore",
+          "args": []
+        },
+        "tail": {
+          "k": "cons",
+          "head": {
+            "k": "call",
+            "name": "actionClear",
+            "args": []
+          },
+          "tail": {
+            "k": "cons",
+            "head": {
+              "k": "call",
+              "name": "actionRecover",
+              "args": []
+            },
+            "tail": {
+              "k": "cons",
+              "head": {
+                "k": "call",
+                "name": "actionStart",
+                "args": []
+              },
+              "tail": {
+                "k": "cons",
+                "head": {
+                  "k": "call",
+                  "name": "actionResume",
+                  "args": []
+                },
+                "tail": {
+                  "k": "cons",
+                  "head": {
+                    "k": "call",
+                    "name": "actionBoot",
+                    "args": []
+                  },
+                  "tail": {
+                    "k": "cons",
+                    "head": {
+                      "k": "call",
+                      "name": "actionExecute",
+                      "args": []
+                    },
+                    "tail": {
+                      "k": "cons",
+                      "head": {
+                        "k": "call",
+                        "name": "actionSrv",
+                        "args": []
+                      },
+                      "tail": {
+                        "k": "cons",
+                        "head": {
+                          "k": "call",
+                          "name": "actionTxt",
+                          "args": []
+                        },
+                        "tail": {
+                          "k": "cons",
+                          "head": {
+                            "k": "call",
+                            "name": "actionPin",
+                            "args": []
+                          },
+                          "tail": {
+                            "k": "cons",
+                            "head": {
+                              "k": "call",
+                              "name": "actionAdmit",
+                              "args": []
+                            },
+                            "tail": {
+                              "k": "cons",
+                              "head": {
+                                "k": "call",
+                                "name": "actionPublish",
+                                "args": []
+                              },
+                              "tail": {
+                                "k": "cons",
+                                "head": {
+                                  "k": "call",
+                                  "name": "actionReconcile",
+                                  "args": []
+                                },
+                                "tail": {
+                                  "k": "cons",
+                                  "head": {
+                                    "k": "call",
+                                    "name": "actionRenew",
+                                    "args": []
+                                  },
+                                  "tail": {
+                                    "k": "cons",
+                                    "head": {
+                                      "k": "call",
+                                      "name": "actionExport",
+                                      "args": []
+                                    },
+                                    "tail": {
+                                      "k": "nil",
+                                      "type": {
+                                        "kind": "Action"
+                                      }
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.meshView": {
+    "module": "Product.Experience",
+    "name": "meshView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "disclosureAccepted"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "meshJoined"
+        },
+        "yes": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "peersReachable"
+          },
+          "yes": {
+            "k": "call",
+            "name": "meshConnected",
+            "args": []
+          },
+          "no": {
+            "k": "call",
+            "name": "meshSearching",
+            "args": []
+          }
+        },
+        "no": {
+          "k": "call",
+          "name": "meshReady",
+          "args": []
+        }
+      },
+      "no": {
+        "k": "call",
+        "name": "meshDisclosure",
+        "args": []
+      }
+    }
+  },
+  "Product.Experience.objectsView": {
+    "module": "Product.Experience",
+    "name": "objectsView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "hasObject"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "recoverablePlacement"
+        },
+        "yes": {
+          "k": "call",
+          "name": "objectsPlaced",
+          "args": []
+        },
+        "no": {
+          "k": "call",
+          "name": "objectsLocal",
+          "args": []
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "hasPartial"
+        },
+        "yes": {
+          "k": "call",
+          "name": "objectsPartial",
+          "args": []
+        },
+        "no": {
+          "k": "call",
+          "name": "objectsEmpty",
+          "args": []
+        }
+      }
+    }
+  },
+  "Product.Experience.computeView": {
+    "module": "Product.Experience",
+    "name": "computeView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "unfinishedJobs"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "replayedJobs"
+        },
+        "yes": {
+          "k": "call",
+          "name": "computeReplay",
+          "args": []
+        },
+        "no": {
+          "k": "call",
+          "name": "computeUnverified",
+          "args": []
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "hasJobs"
+        },
+        "yes": {
+          "k": "call",
+          "name": "computeDone",
+          "args": []
+        },
+        "no": {
+          "k": "call",
+          "name": "computeEmpty",
+          "args": []
+        }
+      }
+    }
+  },
+  "Product.Experience.vmView": {
+    "module": "Product.Experience",
+    "name": "vmView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "vmBooting"
+      },
+      "yes": {
+        "k": "call",
+        "name": "vmBooting",
+        "args": []
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "vmReady"
+        },
+        "yes": {
+          "k": "call",
+          "name": "vmReady",
+          "args": []
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "vmFailed"
+          },
+          "yes": {
+            "k": "call",
+            "name": "vmFailed",
+            "args": []
+          },
+          "no": {
+            "k": "call",
+            "name": "vmIdle",
+            "args": []
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.pointersView": {
+    "module": "Product.Experience",
+    "name": "pointersView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "authorityPinned"
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "publicationBusy"
+        },
+        "yes": {
+          "k": "call",
+          "name": "pointerPending",
+          "args": []
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "publicationUnknown"
+          },
+          "yes": {
+            "k": "call",
+            "name": "pointerUnknown",
+            "args": []
+          },
+          "no": {
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "publicationPublished"
+            },
+            "yes": {
+              "k": "call",
+              "name": "pointerPublished",
+              "args": []
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "facts"
+                },
+                "field": "headRetained"
+              },
+              "yes": {
+                "k": "call",
+                "name": "pointerLocal",
+                "args": []
+              },
+              "no": {
+                "k": "call",
+                "name": "pointerPinned",
+                "args": []
+              }
+            }
+          }
+        }
+      },
+      "no": {
+        "k": "call",
+        "name": "pointerUnpinned",
+        "args": []
+      }
+    }
+  },
+  "Product.Experience.resourcesView": {
+    "module": "Product.Experience",
+    "name": "resourcesView",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "||",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "policyBlocked"
+        },
+        "right": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "policyAttention"
+        }
+      },
+      "yes": {
+        "k": "call",
+        "name": "resourcesBlocked",
+        "args": []
+      },
+      "no": {
+        "k": "call",
+        "name": "resourcesActive",
+        "args": []
+      }
+    }
+  },
+  "Product.Experience.joinAllowed": {
+    "module": "Product.Experience",
+    "name": "joinAllowed",
+    "params": [
+      {
+        "name": "disclosed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "disclosed"
+      },
+      "right": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "blocked"
+        }
+      }
+    }
+  },
+  "Product.Experience.publicationAllowed": {
+    "module": "Product.Experience",
+    "name": "publicationAllowed",
+    "params": [
+      {
+        "name": "pinned",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "candidate",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "unknown",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "pinned"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "candidate"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "not",
+            "value": {
+              "k": "var",
+              "name": "busy"
+            }
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "unknown"
+              }
+            },
+            "right": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "blocked"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.reconciliationAllowed": {
+    "module": "Product.Experience",
+    "name": "reconciliationAllowed",
+    "params": [
+      {
+        "name": "pinned",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "configured",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "unknown",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "busy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "pinned"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "configured"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "unknown"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "busy"
+              }
+            },
+            "right": {
+              "k": "not",
+              "value": {
+                "k": "var",
+                "name": "blocked"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.executionAllowed": {
+    "module": "Product.Experience",
+    "name": "executionAllowed",
+    "params": [
+      {
+        "name": "ready",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "blocked",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "ready"
+      },
+      "right": {
+        "k": "not",
+        "value": {
+          "k": "var",
+          "name": "blocked"
+        }
+      }
+    }
+  },
+  "Product.Experience.actionAllowed": {
+    "module": "Product.Experience",
+    "name": "actionAllowed",
+    "params": [
+      {
+        "name": "action",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "action"
+        },
+        "right": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "yes": {
+        "k": "call",
+        "name": "joinAllowed",
+        "args": [
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "disclosureAccepted"
+          },
+          {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "policyBlocked"
+          }
+        ]
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "action"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "yes": {
+          "k": "not",
+          "value": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "policyBlocked"
+          }
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "action"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "hasObject"
+          },
+          "no": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "action"
+              },
+              "right": {
+                "k": "nat",
+                "value": "3"
+              }
+            },
+            "yes": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "||",
+                "left": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "meshJoined"
+                },
+                "right": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "relayEnabled"
+                }
+              },
+              "right": {
+                "k": "not",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "policyBlocked"
+                }
+              }
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "var",
+                  "name": "action"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "4"
+                }
+              },
+              "yes": {
+                "k": "not",
+                "value": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "policyBlocked"
+                }
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "binary",
+                  "op": "=?",
+                  "left": {
+                    "k": "var",
+                    "name": "action"
+                  },
+                  "right": {
+                    "k": "nat",
+                    "value": "5"
+                  }
+                },
+                "yes": {
+                  "k": "binary",
+                  "op": "&&",
+                  "left": {
+                    "k": "binary",
+                    "op": "||",
+                    "left": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "facts"
+                      },
+                      "field": "unfinishedJobs"
+                    },
+                    "right": {
+                      "k": "binary",
+                      "op": "||",
+                      "left": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
+                        },
+                        "field": "meshJoined"
+                      },
+                      "right": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
+                        },
+                        "field": "relayEnabled"
+                      }
+                    }
+                  },
+                  "right": {
+                    "k": "not",
+                    "value": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "facts"
+                      },
+                      "field": "policyBlocked"
+                    }
+                  }
+                },
+                "no": {
+                  "k": "if",
+                  "cond": {
+                    "k": "binary",
+                    "op": "=?",
+                    "left": {
+                      "k": "var",
+                      "name": "action"
+                    },
+                    "right": {
+                      "k": "nat",
+                      "value": "6"
+                    }
+                  },
+                  "yes": {
+                    "k": "binary",
+                    "op": "&&",
+                    "left": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
+                        },
+                        "field": "vmReady"
+                      }
+                    },
+                    "right": {
+                      "k": "not",
+                      "value": {
+                        "k": "project",
+                        "value": {
+                          "k": "var",
+                          "name": "facts"
+                        },
+                        "field": "vmBooting"
+                      }
+                    }
+                  },
+                  "no": {
+                    "k": "if",
+                    "cond": {
+                      "k": "binary",
+                      "op": "=?",
+                      "left": {
+                        "k": "var",
+                        "name": "action"
+                      },
+                      "right": {
+                        "k": "nat",
+                        "value": "7"
+                      }
+                    },
+                    "yes": {
+                      "k": "call",
+                      "name": "executionAllowed",
+                      "args": [
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "vmReady"
+                        },
+                        {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "policyBlocked"
+                        }
+                      ]
+                    },
+                    "no": {
+                      "k": "if",
+                      "cond": {
+                        "k": "binary",
+                        "op": "=?",
+                        "left": {
+                          "k": "var",
+                          "name": "action"
+                        },
+                        "right": {
+                          "k": "nat",
+                          "value": "8"
+                        }
+                      },
+                      "yes": {
+                        "k": "not",
+                        "value": {
+                          "k": "project",
+                          "value": {
+                            "k": "var",
+                            "name": "facts"
+                          },
+                          "field": "policyBlocked"
+                        }
+                      },
+                      "no": {
+                        "k": "if",
+                        "cond": {
+                          "k": "binary",
+                          "op": "=?",
+                          "left": {
+                            "k": "var",
+                            "name": "action"
+                          },
+                          "right": {
+                            "k": "nat",
+                            "value": "9"
+                          }
+                        },
+                        "yes": {
+                          "k": "not",
+                          "value": {
+                            "k": "project",
+                            "value": {
+                              "k": "var",
+                              "name": "facts"
+                            },
+                            "field": "policyBlocked"
+                          }
+                        },
+                        "no": {
+                          "k": "if",
+                          "cond": {
+                            "k": "binary",
+                            "op": "=?",
+                            "left": {
+                              "k": "var",
+                              "name": "action"
+                            },
+                            "right": {
+                              "k": "nat",
+                              "value": "10"
+                            }
+                          },
+                          "yes": {
+                            "k": "bool",
+                            "value": true
+                          },
+                          "no": {
+                            "k": "if",
+                            "cond": {
+                              "k": "binary",
+                              "op": "=?",
+                              "left": {
+                                "k": "var",
+                                "name": "action"
+                              },
+                              "right": {
+                                "k": "nat",
+                                "value": "11"
+                              }
+                            },
+                            "yes": {
+                              "k": "binary",
+                              "op": "&&",
+                              "left": {
+                                "k": "project",
+                                "value": {
+                                  "k": "var",
+                                  "name": "facts"
+                                },
+                                "field": "authorityPinned"
+                              },
+                              "right": {
+                                "k": "not",
+                                "value": {
+                                  "k": "project",
+                                  "value": {
+                                    "k": "var",
+                                    "name": "facts"
+                                  },
+                                  "field": "policyBlocked"
+                                }
+                              }
+                            },
+                            "no": {
+                              "k": "if",
+                              "cond": {
+                                "k": "binary",
+                                "op": "=?",
+                                "left": {
+                                  "k": "var",
+                                  "name": "action"
+                                },
+                                "right": {
+                                  "k": "nat",
+                                  "value": "12"
+                                }
+                              },
+                              "yes": {
+                                "k": "call",
+                                "name": "publicationAllowed",
+                                "args": [
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "facts"
+                                    },
+                                    "field": "authorityPinned"
+                                  },
+                                  {
+                                    "k": "binary",
+                                    "op": "||",
+                                    "left": {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "hasObject"
+                                    },
+                                    "right": {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "headRetained"
+                                    }
+                                  },
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "facts"
+                                    },
+                                    "field": "publicationBusy"
+                                  },
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "facts"
+                                    },
+                                    "field": "publicationUnknown"
+                                  },
+                                  {
+                                    "k": "project",
+                                    "value": {
+                                      "k": "var",
+                                      "name": "facts"
+                                    },
+                                    "field": "policyBlocked"
+                                  }
+                                ]
+                              },
+                              "no": {
+                                "k": "if",
+                                "cond": {
+                                  "k": "binary",
+                                  "op": "=?",
+                                  "left": {
+                                    "k": "var",
+                                    "name": "action"
+                                  },
+                                  "right": {
+                                    "k": "nat",
+                                    "value": "13"
+                                  }
+                                },
+                                "yes": {
+                                  "k": "call",
+                                  "name": "reconciliationAllowed",
+                                  "args": [
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "authorityPinned"
+                                    },
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "dnsConfigured"
+                                    },
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "publicationUnknown"
+                                    },
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "publicationBusy"
+                                    },
+                                    {
+                                      "k": "project",
+                                      "value": {
+                                        "k": "var",
+                                        "name": "facts"
+                                      },
+                                      "field": "policyBlocked"
+                                    }
+                                  ]
+                                },
+                                "no": {
+                                  "k": "if",
+                                  "cond": {
+                                    "k": "binary",
+                                    "op": "=?",
+                                    "left": {
+                                      "k": "var",
+                                      "name": "action"
+                                    },
+                                    "right": {
+                                      "k": "nat",
+                                      "value": "14"
+                                    }
+                                  },
+                                  "yes": {
+                                    "k": "bool",
+                                    "value": true
+                                  },
+                                  "no": {
+                                    "k": "if",
+                                    "cond": {
+                                      "k": "binary",
+                                      "op": "=?",
+                                      "left": {
+                                        "k": "var",
+                                        "name": "action"
+                                      },
+                                      "right": {
+                                        "k": "nat",
+                                        "value": "15"
+                                      }
+                                    },
+                                    "yes": {
+                                      "k": "bool",
+                                      "value": true
+                                    },
+                                    "no": {
+                                      "k": "bool",
+                                      "value": false
+                                    }
+                                  }
+                                }
+                              }
+                            }
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.integrityLabel": {
+    "module": "Product.Experience",
+    "name": "integrityLabel",
+    "params": [
+      {
+        "name": "verified",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "verified"
+      },
+      "yes": {
+        "k": "string",
+        "value": "DIGEST MATCH"
+      },
+      "no": {
+        "k": "string",
+        "value": "PARTIAL"
+      }
+    }
+  },
+  "Product.Experience.executionLabel": {
+    "module": "Product.Experience",
+    "name": "executionLabel",
+    "params": [
+      {
+        "name": "replayed",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "var",
+        "name": "replayed"
+      },
+      "yes": {
+        "k": "string",
+        "value": "REPLAYED PURE CHECKPOINT"
+      },
+      "no": {
+        "k": "string",
+        "value": "UNVERIFIED"
+      }
+    }
+  },
+  "Product.Experience.productTitle": {
+    "module": "Product.Experience",
+    "name": "productTitle",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Stitch / recoverable objects and replayable pure jobs"
+    }
+  },
+  "Product.Experience.disclosureLabel": {
+    "module": "Product.Experience",
+    "name": "disclosureLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Allow public mesh signaling (topic, signaling messages and ICE metadata; not private)"
+    }
+  },
+  "Product.Experience.relayLabel": {
+    "module": "Product.Experience",
+    "name": "relayLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Public object relay: share object/job bytes on ntfy.sh (not private)"
+    }
+  },
+  "Product.Experience.provenanceLabel": {
+    "module": "Product.Experience",
+    "name": "provenanceLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Journeys, evidence labels and action admission are projected from Product.Experience. Browser observations and adapter tests are not whole-host certification."
+    }
+  },
+  "Product.Experience.unknownPublicationFacts": {
+    "module": "Product.Experience",
+    "name": "unknownPublicationFacts",
+    "params": [],
+    "result": {
+      "kind": "Facts"
+    },
+    "body": {
+      "k": "record",
+      "name": "Facts",
+      "values": {
+        "disclosureAccepted": {
+          "k": "bool",
+          "value": false
+        },
+        "meshJoined": {
+          "k": "bool",
+          "value": false
+        },
+        "peersReachable": {
+          "k": "bool",
+          "value": false
+        },
+        "relayEnabled": {
+          "k": "bool",
+          "value": false
+        },
+        "hasObject": {
+          "k": "bool",
+          "value": true
+        },
+        "hasPartial": {
+          "k": "bool",
+          "value": false
+        },
+        "recoverablePlacement": {
+          "k": "bool",
+          "value": false
+        },
+        "hasJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "unfinishedJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "replayedJobs": {
+          "k": "bool",
+          "value": false
+        },
+        "vmBooting": {
+          "k": "bool",
+          "value": false
+        },
+        "vmReady": {
+          "k": "bool",
+          "value": false
+        },
+        "vmFailed": {
+          "k": "bool",
+          "value": false
+        },
+        "authorityPinned": {
+          "k": "bool",
+          "value": true
+        },
+        "headRetained": {
+          "k": "bool",
+          "value": true
+        },
+        "dnsConfigured": {
+          "k": "bool",
+          "value": true
+        },
+        "publicationBusy": {
+          "k": "bool",
+          "value": false
+        },
+        "publicationUnknown": {
+          "k": "bool",
+          "value": true
+        },
+        "publicationPublished": {
+          "k": "bool",
+          "value": false
+        },
+        "policyBlocked": {
+          "k": "bool",
+          "value": false
+        },
+        "policyAttention": {
+          "k": "bool",
+          "value": false
+        }
+      }
+    }
+  },
+  "Product.Experience.evidenceStyles": {
+    "module": "Product.Experience",
+    "name": "evidenceStyles",
+    "params": [],
+    "result": {
+      "kind": "List",
+      "element": {
+        "kind": "EvidenceStyle"
+      }
+    },
+    "body": {
+      "k": "cons",
+      "head": {
+        "k": "record",
+        "name": "EvidenceStyle",
+        "values": {
+          "id": {
+            "k": "string",
+            "value": "observed"
+          },
+          "color": {
+            "k": "string",
+            "value": "#8ce6ac"
+          }
+        }
+      },
+      "tail": {
+        "k": "cons",
+        "head": {
+          "k": "record",
+          "name": "EvidenceStyle",
+          "values": {
+            "id": {
+              "k": "string",
+              "value": "attention"
+            },
+            "color": {
+              "k": "string",
+              "value": "#f5b66b"
+            }
+          }
+        },
+        "tail": {
+          "k": "cons",
+          "head": {
+            "k": "record",
+            "name": "EvidenceStyle",
+            "values": {
+              "id": {
+                "k": "string",
+                "value": "pending"
+              },
+              "color": {
+                "k": "string",
+                "value": "#9bc4ff"
+              }
+            }
+          },
+          "tail": {
+            "k": "cons",
+            "head": {
+              "k": "record",
+              "name": "EvidenceStyle",
+              "values": {
+                "id": {
+                  "k": "string",
+                  "value": "unestablished"
+                },
+                "color": {
+                  "k": "string",
+                  "value": "#c4c4c4"
+                }
+              }
+            },
+            "tail": {
+              "k": "nil",
+              "type": {
+                "kind": "EvidenceStyle"
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.viewStyle": {
+    "module": "Product.Experience",
+    "name": "viewStyle",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      },
+      {
+        "name": "journey",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "journey"
+        },
+        "right": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "yes": {
+        "k": "if",
+        "cond": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "disclosureAccepted"
+        },
+        "yes": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "peersReachable"
+          },
+          "yes": {
+            "k": "string",
+            "value": "observed"
+          },
+          "no": {
+            "k": "string",
+            "value": "pending"
+          }
+        },
+        "no": {
+          "k": "string",
+          "value": "attention"
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "journey"
+          },
+          "right": {
+            "k": "nat",
+            "value": "1"
+          }
+        },
+        "yes": {
+          "k": "if",
+          "cond": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "hasObject"
+          },
+          "yes": {
+            "k": "string",
+            "value": "observed"
+          },
+          "no": {
+            "k": "string",
+            "value": "unestablished"
+          }
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "journey"
+            },
+            "right": {
+              "k": "nat",
+              "value": "2"
+            }
+          },
+          "yes": {
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "replayedJobs"
+            },
+            "yes": {
+              "k": "string",
+              "value": "observed"
+            },
+            "no": {
+              "k": "string",
+              "value": "unestablished"
+            }
+          },
+          "no": {
+            "k": "if",
+            "cond": {
+              "k": "binary",
+              "op": "=?",
+              "left": {
+                "k": "var",
+                "name": "journey"
+              },
+              "right": {
+                "k": "nat",
+                "value": "3"
+              }
+            },
+            "yes": {
+              "k": "if",
+              "cond": {
+                "k": "project",
+                "value": {
+                  "k": "var",
+                  "name": "facts"
+                },
+                "field": "vmBooting"
+              },
+              "yes": {
+                "k": "string",
+                "value": "pending"
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "vmFailed"
+                },
+                "yes": {
+                  "k": "string",
+                  "value": "attention"
+                },
+                "no": {
+                  "k": "string",
+                  "value": "unestablished"
+                }
+              }
+            },
+            "no": {
+              "k": "if",
+              "cond": {
+                "k": "binary",
+                "op": "=?",
+                "left": {
+                  "k": "var",
+                  "name": "journey"
+                },
+                "right": {
+                  "k": "nat",
+                  "value": "4"
+                }
+              },
+              "yes": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "publicationUnknown"
+                },
+                "yes": {
+                  "k": "string",
+                  "value": "attention"
+                },
+                "no": {
+                  "k": "if",
+                  "cond": {
+                    "k": "project",
+                    "value": {
+                      "k": "var",
+                      "name": "facts"
+                    },
+                    "field": "publicationBusy"
+                  },
+                  "yes": {
+                    "k": "string",
+                    "value": "pending"
+                  },
+                  "no": {
+                    "k": "if",
+                    "cond": {
+                      "k": "project",
+                      "value": {
+                        "k": "var",
+                        "name": "facts"
+                      },
+                      "field": "headRetained"
+                    },
+                    "yes": {
+                      "k": "string",
+                      "value": "observed"
+                    },
+                    "no": {
+                      "k": "string",
+                      "value": "unestablished"
+                    }
+                  }
+                }
+              },
+              "no": {
+                "k": "if",
+                "cond": {
+                  "k": "project",
+                  "value": {
+                    "k": "var",
+                    "name": "facts"
+                  },
+                  "field": "policyBlocked"
+                },
+                "yes": {
+                  "k": "string",
+                  "value": "attention"
+                },
+                "no": {
+                  "k": "string",
+                  "value": "observed"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.statusLivePolicy": {
+    "module": "Product.Experience",
+    "name": "statusLivePolicy",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "polite"
+    }
+  },
+  "Product.Experience.navigationLabel": {
+    "module": "Product.Experience",
+    "name": "navigationLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Stitch operator journeys"
+    }
+  },
+  "Product.Experience.focusNavigationTarget": {
+    "module": "Product.Experience",
+    "name": "focusNavigationTarget",
+    "params": [],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "bool",
+      "value": true
+    }
+  },
+  "Product.Experience.navigationScrollBehavior": {
+    "module": "Product.Experience",
+    "name": "navigationScrollBehavior",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "auto"
+    }
+  },
+  "Product.Experience.journeyVisible": {
+    "module": "Product.Experience",
+    "name": "journeyVisible",
+    "params": [
+      {
+        "name": "selected",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "journey",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "=?",
+      "left": {
+        "k": "var",
+        "name": "selected"
+      },
+      "right": {
+        "k": "var",
+        "name": "journey"
+      }
+    }
+  },
+  "Product.Experience.explanationInitiallyOpen": {
+    "module": "Product.Experience",
+    "name": "explanationInitiallyOpen",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      },
+      {
+        "name": "journey",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "if",
+      "cond": {
+        "k": "binary",
+        "op": "=?",
+        "left": {
+          "k": "var",
+          "name": "journey"
+        },
+        "right": {
+          "k": "nat",
+          "value": "0"
+        }
+      },
+      "yes": {
+        "k": "not",
+        "value": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "disclosureAccepted"
+        }
+      },
+      "no": {
+        "k": "if",
+        "cond": {
+          "k": "binary",
+          "op": "=?",
+          "left": {
+            "k": "var",
+            "name": "journey"
+          },
+          "right": {
+            "k": "nat",
+            "value": "4"
+          }
+        },
+        "yes": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "publicationUnknown"
+        },
+        "no": {
+          "k": "if",
+          "cond": {
+            "k": "binary",
+            "op": "=?",
+            "left": {
+              "k": "var",
+              "name": "journey"
+            },
+            "right": {
+              "k": "nat",
+              "value": "5"
+            }
+          },
+          "yes": {
+            "k": "binary",
+            "op": "||",
+            "left": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "policyBlocked"
+            },
+            "right": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "policyAttention"
+            }
+          },
+          "no": {
+            "k": "bool",
+            "value": false
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.publicationSetupVisible": {
+    "module": "Product.Experience",
+    "name": "publicationSetupVisible",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "authorityPinned"
+      },
+      "right": {
+        "k": "binary",
+        "op": "||",
+        "left": {
+          "k": "project",
+          "value": {
+            "k": "var",
+            "name": "facts"
+          },
+          "field": "hasObject"
+        },
+        "right": {
+          "k": "binary",
+          "op": "||",
+          "left": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "headRetained"
+          },
+          "right": {
+            "k": "project",
+            "value": {
+              "k": "var",
+              "name": "facts"
+            },
+            "field": "publicationUnknown"
+          }
+        }
+      }
+    }
+  },
+  "Product.Experience.explanationLabel": {
+    "module": "Product.Experience",
+    "name": "explanationLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "What this evidence means"
+    }
+  },
+  "Product.Experience.recoveryPolicyLabel": {
+    "module": "Product.Experience",
+    "name": "recoveryPolicyLabel",
+    "params": [],
+    "result": {
+      "kind": "String"
+    },
+    "body": {
+      "k": "string",
+      "value": "Review resource policy"
+    }
+  },
+  "Product.Experience.recoveryPolicyVisible": {
+    "module": "Product.Experience",
+    "name": "recoveryPolicyVisible",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "||",
+      "left": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "policyBlocked"
+      },
+      "right": {
+        "k": "project",
+        "value": {
+          "k": "var",
+          "name": "facts"
+        },
+        "field": "policyAttention"
+      }
+    }
+  },
+  "Product.Experience.admissionInputVisible": {
+    "module": "Product.Experience",
+    "name": "admissionInputVisible",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "project",
+      "value": {
+        "k": "var",
+        "name": "facts"
+      },
+      "field": "authorityPinned"
+    }
+  },
+  "Product.Experience.vmCommandVisible": {
+    "module": "Product.Experience",
+    "name": "vmCommandVisible",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "project",
+      "value": {
+        "k": "var",
+        "name": "facts"
+      },
+      "field": "vmReady"
+    }
+  },
+  "Product.Experience.publicationSetupInitiallyOpen": {
+    "module": "Product.Experience",
+    "name": "publicationSetupInitiallyOpen",
+    "params": [
+      {
+        "name": "facts",
+        "type": {
+          "kind": "Facts"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "project",
+      "value": {
+        "k": "var",
+        "name": "facts"
+      },
+      "field": "publicationUnknown"
+    }
   }
 };
 const types = {
@@ -23957,6 +33349,376 @@ const types = {
       }
     ]
   },
+  "Stitch.Effects.Transport": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "closed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "channelKey",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "localPeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.TransportCallback": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "channelKey",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "localPeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "remotePeer",
+        "type": {
+          "kind": "Bytes"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.DnsPhase": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Idle",
+        "fields": []
+      },
+      {
+        "name": "Published",
+        "fields": []
+      },
+      {
+        "name": "Refused",
+        "fields": []
+      },
+      {
+        "name": "Unknown",
+        "fields": []
+      }
+    ]
+  },
+  "Stitch.Effects.DnsDecision": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Refuse",
+        "fields": []
+      },
+      {
+        "name": "Reconciled",
+        "fields": []
+      },
+      {
+        "name": "Wait",
+        "fields": []
+      },
+      {
+        "name": "Create",
+        "fields": []
+      },
+      {
+        "name": "Update",
+        "fields": []
+      }
+    ]
+  },
+  "Stitch.Effects.DnsScope": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "zoneId",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "name",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "authorityKey",
+        "type": {
+          "kind": "Bytes"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.DnsPublication": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "scope",
+        "type": {
+          "kind": "DnsScope"
+        }
+      },
+      {
+        "name": "phase",
+        "type": {
+          "kind": "DnsPhase"
+        }
+      },
+      {
+        "name": "pointerDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "recordId",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "hasRecordId",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.DnsCandidate": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "scope",
+        "type": {
+          "kind": "DnsScope"
+        }
+      },
+      {
+        "name": "pointerDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "previousDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "hasPrevious",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "revision",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "validFrom",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "validUntil",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.DnsRead": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "scope",
+        "type": {
+          "kind": "DnsScope"
+        }
+      },
+      {
+        "name": "candidateDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "complete",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "authenticated",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recordPresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recordId",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "pointerDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "revision",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.DnsWriteResult": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "scope",
+        "type": {
+          "kind": "DnsScope"
+        }
+      },
+      {
+        "name": "candidateDigest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "recordId",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "recordIdValid",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "acknowledged",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "refused",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.VmPhase": {
+    "kind": "inductive",
+    "constructors": [
+      {
+        "name": "Idle",
+        "fields": []
+      },
+      {
+        "name": "Booting",
+        "fields": []
+      },
+      {
+        "name": "Ready",
+        "fields": []
+      },
+      {
+        "name": "Failed",
+        "fields": []
+      }
+    ]
+  },
+  "Stitch.Effects.Vm": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "generation",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "phase",
+        "type": {
+          "kind": "VmPhase"
+        }
+      }
+    ]
+  },
+  "Stitch.Effects.C1Progress": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "startedAt",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "lastSequence",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "hasSequence",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "consecutive",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
   "Stitch.Encoding.DependencyKind": {
     "kind": "inductive",
     "constructors": [
@@ -24872,6 +34634,211 @@ const types = {
       }
     ]
   },
+  "Stitch.Relay.Limits": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "wireBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "chunkBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "messageBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "frames",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "entries",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "retainedBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "tombstones",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "assemblyAge",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "futureSkew",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "requestTimeout",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Relay.Capacity": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "entries",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "retainedBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "tombstones",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Relay.Identity": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "channel",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "session",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "digest",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "purpose",
+        "type": {
+          "kind": "Bytes"
+        }
+      },
+      {
+        "name": "created",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "messageBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "frames",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Relay.Frame": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "identity",
+        "type": {
+          "kind": "Identity"
+        }
+      },
+      {
+        "name": "index",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "payloadBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "wireBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      }
+    ]
+  },
+  "Stitch.Relay.Assembly": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "identity",
+        "type": {
+          "kind": "Identity"
+        }
+      },
+      {
+        "name": "receivedFrames",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "receivedBytes",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "started",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "last",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "verifying",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
   "Stitch.System.ActionKind": {
     "kind": "inductive",
     "constructors": [
@@ -25030,15 +34997,268 @@ const types = {
         }
       }
     ]
+  },
+  "Product.Experience.Facts": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "disclosureAccepted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "meshJoined",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "peersReachable",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "relayEnabled",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "hasObject",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "hasPartial",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoverablePlacement",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "hasJobs",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "unfinishedJobs",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "replayedJobs",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmBooting",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmReady",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "vmFailed",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "authorityPinned",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "headRetained",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "dnsConfigured",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "publicationBusy",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "publicationUnknown",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "publicationPublished",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "policyBlocked",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "policyAttention",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ]
+  },
+  "Product.Experience.Journey": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "id",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "target",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "title",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "summary",
+        "type": {
+          "kind": "String"
+        }
+      }
+    ]
+  },
+  "Product.Experience.View": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "id",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "journey",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "title",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "evidence",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "detail",
+        "type": {
+          "kind": "String"
+        }
+      }
+    ]
+  },
+  "Product.Experience.Action": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "code",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "id",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "control",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "journey",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "label",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "help",
+        "type": {
+          "kind": "String"
+        }
+      }
+    ]
+  },
+  "Product.Experience.EvidenceStyle": {
+    "kind": "structure",
+    "fields": [
+      {
+        "name": "id",
+        "type": {
+          "kind": "String"
+        }
+      },
+      {
+        "name": "color",
+        "type": {
+          "kind": "String"
+        }
+      }
+    ]
   }
 };
-export const modelSourceDigest = "sha256:a75d7f66b6d6f7cb150e7c2c5cd3c8accfbe50f1b75f5b8dfa2aeb98bd2fb175";
-export const modelExecutionDigest = "sha256:39a7458de201afdca99cfbce80d618aa37b8b0fee68ccefb282f2be6656bedd3";
+export const modelSourceDigest = "sha256:04c94807cd975660d4fce50e6e4e9e9a7c4f00ba73275b72091191f4970ef9a7";
+export const modelExecutionDigest = "sha256:ecc091631fc927eb537b65f7ec6c57deaf65be4263e4b5734ad9272c4f898c10";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:a75d7f66b6d6f7cb150e7c2c5cd3c8accfbe50f1b75f5b8dfa2aeb98bd2fb175",
-  "executionDigest": "sha256:39a7458de201afdca99cfbce80d618aa37b8b0fee68ccefb282f2be6656bedd3",
+  "sourceDigest": "sha256:04c94807cd975660d4fce50e6e4e9e9a7c4f00ba73275b72091191f4970ef9a7",
+  "executionDigest": "sha256:ecc091631fc927eb537b65f7ec6c57deaf65be4263e4b5734ad9272c4f898c10",
   "executionIdentity": {
     "adapterSources": [
       {
@@ -25047,7 +35267,7 @@ export const MODEL_SOURCE = Object.freeze({
       },
       {
         "path": "src/layer1-uor/custody.js",
-        "sha256": "013317a0800b44cfa7cadbbe0247262f7289fccbc3d597bfe5cd05df58b34b50"
+        "sha256": "ea422b9fe6422ff95ea2759616bf048e9480a65396a7747b379b0951fee7e6ec"
       },
       {
         "path": "src/layer1-uor/index.js",
@@ -26279,7 +36499,7 @@ export const MODEL_SOURCE = Object.freeze({
       }
     }
   },
-  "generatorSha256": "6d7c181891b1e167d5deacf50d198b1590ffcf992a89f2ca3f186583dde6c295",
+  "generatorSha256": "34049f97cea5602b8b433a86cc9e3a1ccf602c7a86442de66c68baa9a3f9fb8d",
   "bindingSources": [
     {
       "path": "app/src/Foundation/Arch.lex.tex",
@@ -26298,12 +36518,16 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
     },
     {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+    },
+    {
       "path": "app/src/Product/Host.lex.tex",
       "sha256": "60e8927f3f2c1cd499549545481a3e2dc234febf9439b3d95bb80f5c48a741ac"
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "d2b3beb379082d364e006c67ca5e8c658de713ce97a5c6d65528ed464bad74f9"
+      "sha256": "6adf8c24a0ec7a678e4cece4009b0067aa60f5fb045ac367fe459a8d5ee45ad5"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -26316,6 +36540,10 @@ export const MODEL_SOURCE = Object.freeze({
     {
       "path": "app/src/Stitch/Custody.lex.tex",
       "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
@@ -26340,6 +36568,10 @@ export const MODEL_SOURCE = Object.freeze({
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
+    },
+    {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
     },
     {
       "path": "app/src/Stitch/System.lex.tex",
@@ -26492,6 +36724,10 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
     },
     {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
+    },
+    {
       "path": "app/src/Stitch/Encoding.lex.tex",
       "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
     },
@@ -26516,8 +36752,16 @@ export const MODEL_SOURCE = Object.freeze({
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
     }
   ],
   "theorems": [
@@ -27404,6 +37648,114 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Effects.closedTransportCannotSend",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.closingAdvancesGeneration",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unknownReadNeverWrites",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unknownGatedReadNeverWrites",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unknownCannotAuthorizeWrite",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unknownOffersReconciliation",
+      "proof": "decide",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.vmPositiveGenerationFilterFact",
+      "proof": "cases",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.vmOldGenerationDifference",
+      "proof": "constructor",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.bootingCannotBootAgain",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.failedVmCanRetry",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.bootingCannotExecute",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.staleTransportGenerationCannotCallback",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.reconnectCannotReviveCapturedCallback",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.staleVmGenerationCannotCallback",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.staleVmCannotResurrectReadiness",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.unresolvedDnsReadCannotWrite",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.fewerThanTenCannotQualify",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Effects.expiredConnectionCannotQualify",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Effects.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Encoding.rawRecoveryExact",
       "proof": "reflexivity",
       "source": "app/src/Stitch/Encoding.lex.tex",
@@ -27503,6 +37855,36 @@ export const MODEL_SOURCE = Object.freeze({
       "id": "Stitch.Pointer.rollbackRefused",
       "proof": "linear_arithmetic",
       "source": "app/src/Stitch/Pointer.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Relay.duplicateDoesNotAdvanceAssembly",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Relay.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Relay.unverifiedMessageCannotDeliver",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Relay.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Relay.closedSessionCannotPublish",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Relay.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Relay.effectFalseGuard",
+      "proof": "decide",
+      "source": "app/src/Stitch/Relay.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Relay.withdrawnConsentCannotPublish",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Relay.lex.tex",
       "status": "source-obligation-not-kernel-checked"
     },
     {
@@ -27660,9 +38042,157 @@ export const MODEL_SOURCE = Object.freeze({
       "proof": "reflexivity",
       "source": "app/src/Stitch/System.lex.tex",
       "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.unknownPublicationDoesNotPermitNewCandidate",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.unknownPublicationOffersReconciliation",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.unknownPublicationIsVisible",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.initialMeshCannotJoinWithoutDisclosure",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.initialVmCannotExecute",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.initialPolicyCanBeExported",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.unknownNeverPermitsPublication",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.undisclosedNeverPermitsJoin",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.unreadyNeverPermitsGuestExecution",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.budgetBlockNeverPermitsPublication",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Product.Experience.knownPublicationNeverOffersReconciliation",
+      "proof": "decide",
+      "source": "app/src/Product/Experience.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
     }
   ],
   "definitions": [
+    "Product.Experience.actionAdmit",
+    "Product.Experience.actionAllowed",
+    "Product.Experience.actionBoot",
+    "Product.Experience.actionClear",
+    "Product.Experience.actionExecute",
+    "Product.Experience.actionExport",
+    "Product.Experience.actionJoin",
+    "Product.Experience.actionPin",
+    "Product.Experience.actionPublish",
+    "Product.Experience.actionReconcile",
+    "Product.Experience.actionRecover",
+    "Product.Experience.actionRenew",
+    "Product.Experience.actionResume",
+    "Product.Experience.actionSrv",
+    "Product.Experience.actionStart",
+    "Product.Experience.actionStore",
+    "Product.Experience.actionTxt",
+    "Product.Experience.actions",
+    "Product.Experience.admissionInputVisible",
+    "Product.Experience.computeDone",
+    "Product.Experience.computeEmpty",
+    "Product.Experience.computeReplay",
+    "Product.Experience.computeUnverified",
+    "Product.Experience.computeView",
+    "Product.Experience.disclosureLabel",
+    "Product.Experience.evidenceStyles",
+    "Product.Experience.executionAllowed",
+    "Product.Experience.executionLabel",
+    "Product.Experience.explanationInitiallyOpen",
+    "Product.Experience.explanationLabel",
+    "Product.Experience.focusNavigationTarget",
+    "Product.Experience.initialFacts",
+    "Product.Experience.integrityLabel",
+    "Product.Experience.joinAllowed",
+    "Product.Experience.journeyCompute",
+    "Product.Experience.journeyMesh",
+    "Product.Experience.journeyObjects",
+    "Product.Experience.journeyPointers",
+    "Product.Experience.journeyResources",
+    "Product.Experience.journeyVisible",
+    "Product.Experience.journeyVm",
+    "Product.Experience.journeys",
+    "Product.Experience.meshConnected",
+    "Product.Experience.meshDisclosure",
+    "Product.Experience.meshReady",
+    "Product.Experience.meshSearching",
+    "Product.Experience.meshView",
+    "Product.Experience.navigationLabel",
+    "Product.Experience.navigationScrollBehavior",
+    "Product.Experience.objectsEmpty",
+    "Product.Experience.objectsLocal",
+    "Product.Experience.objectsPartial",
+    "Product.Experience.objectsPlaced",
+    "Product.Experience.objectsView",
+    "Product.Experience.pointerLocal",
+    "Product.Experience.pointerPending",
+    "Product.Experience.pointerPinned",
+    "Product.Experience.pointerPublished",
+    "Product.Experience.pointerUnknown",
+    "Product.Experience.pointerUnpinned",
+    "Product.Experience.pointersView",
+    "Product.Experience.productTitle",
+    "Product.Experience.provenanceLabel",
+    "Product.Experience.publicationAllowed",
+    "Product.Experience.publicationSetupInitiallyOpen",
+    "Product.Experience.publicationSetupVisible",
+    "Product.Experience.reconciliationAllowed",
+    "Product.Experience.recoveryPolicyLabel",
+    "Product.Experience.recoveryPolicyVisible",
+    "Product.Experience.relayLabel",
+    "Product.Experience.resourcesActive",
+    "Product.Experience.resourcesBlocked",
+    "Product.Experience.resourcesView",
+    "Product.Experience.statusLivePolicy",
+    "Product.Experience.unknownPublicationFacts",
+    "Product.Experience.viewStyle",
+    "Product.Experience.vmBooting",
+    "Product.Experience.vmCommandVisible",
+    "Product.Experience.vmFailed",
+    "Product.Experience.vmIdle",
+    "Product.Experience.vmReady",
+    "Product.Experience.vmView",
     "Stitch.Budget.addResources",
     "Stitch.Budget.admitAction",
     "Stitch.Budget.budgetValid",
@@ -27790,6 +38320,40 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Custody.selectionOfTruth",
     "Stitch.Custody.sourceLive",
     "Stitch.Custody.sourcePlaced",
+    "Stitch.Effects.c1ConnectionQualified",
+    "Stitch.Effects.c1DirectSuccess",
+    "Stitch.Effects.c1InWindow",
+    "Stitch.Effects.c1ObserveProbe",
+    "Stitch.Effects.c1ProbeAccepted",
+    "Stitch.Effects.dnsBeginWrite",
+    "Stitch.Effects.dnsDecisionWrites",
+    "Stitch.Effects.dnsFinishWrite",
+    "Stitch.Effects.dnsMayReconcile",
+    "Stitch.Effects.dnsMayWritePhase",
+    "Stitch.Effects.dnsReadDecision",
+    "Stitch.Effects.dnsReconciled",
+    "Stitch.Effects.dnsRequestAllowed",
+    "Stitch.Effects.dnsScopeMatches",
+    "Stitch.Effects.dnsSelectGatedRead",
+    "Stitch.Effects.dnsSelectRead",
+    "Stitch.Effects.transportCanSend",
+    "Stitch.Effects.transportChannelCallbackAllowed",
+    "Stitch.Effects.transportClose",
+    "Stitch.Effects.transportOpen",
+    "Stitch.Effects.transportPeerAllocationAllowed",
+    "Stitch.Effects.transportPeerCallbackAllowed",
+    "Stitch.Effects.transportSessionMatches",
+    "Stitch.Effects.transportSignalAllowed",
+    "Stitch.Effects.vmCallbackAllowed",
+    "Stitch.Effects.vmCanBoot",
+    "Stitch.Effects.vmCanExecute",
+    "Stitch.Effects.vmFail",
+    "Stitch.Effects.vmFailAllowed",
+    "Stitch.Effects.vmGenerationFilter",
+    "Stitch.Effects.vmIsBooting",
+    "Stitch.Effects.vmObserveReady",
+    "Stitch.Effects.vmReadyCandidate",
+    "Stitch.Effects.vmStart",
     "Stitch.Encoding.dependenciesReady",
     "Stitch.Encoding.exactRecovery",
     "Stitch.Encoding.rawDecode",
@@ -27826,6 +38390,21 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Observation.updateObservation",
     "Stitch.Pointer.acceptPointer",
     "Stitch.Pointer.successorAllowed",
+    "Stitch.Relay.admissionAllowed",
+    "Stitch.Relay.admitCapacity",
+    "Stitch.Relay.append",
+    "Stitch.Relay.appendAllowed",
+    "Stitch.Relay.assemblyCurrent",
+    "Stitch.Relay.beginVerification",
+    "Stitch.Relay.deliveryAllowed",
+    "Stitch.Relay.effectAllowed",
+    "Stitch.Relay.frameAllowed",
+    "Stitch.Relay.limits",
+    "Stitch.Relay.ready",
+    "Stitch.Relay.release",
+    "Stitch.Relay.sameIdentity",
+    "Stitch.Relay.signalLifetime",
+    "Stitch.Relay.warmLifetime",
     "Stitch.System.admitAction",
     "Stitch.System.applyMigration",
     "Stitch.System.choosePlacement",

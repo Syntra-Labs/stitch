@@ -1,0 +1,708 @@
+\begin{lexlean}{Product.Experience}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Facts,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: disclosureAccepted, type: Bool},
+    {name: meshJoined, type: Bool},
+    {name: peersReachable, type: Bool},
+    {name: relayEnabled, type: Bool},
+    {name: hasObject, type: Bool},
+    {name: hasPartial, type: Bool},
+    {name: recoverablePlacement, type: Bool},
+    {name: hasJobs, type: Bool},
+    {name: unfinishedJobs, type: Bool},
+    {name: replayedJobs, type: Bool},
+    {name: vmBooting, type: Bool},
+    {name: vmReady, type: Bool},
+    {name: vmFailed, type: Bool},
+    {name: authorityPinned, type: Bool},
+    {name: headRetained, type: Bool},
+    {name: dnsConfigured, type: Bool},
+    {name: publicationBusy, type: Bool},
+    {name: publicationUnknown, type: Bool},
+    {name: publicationPublished, type: Bool},
+    {name: policyBlocked, type: Bool},
+    {name: policyAttention, type: Bool}
+  ]
+}
+
+structure{
+  name: Journey,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: target, type: String},
+    {name: title, type: String},
+    {name: summary, type: String}
+  ]
+}
+
+structure{
+  name: View,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: journey, type: String},
+    {name: title, type: String},
+    {name: evidence, type: String},
+    {name: detail, type: String}
+  ]
+}
+
+structure{
+  name: Action,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: code, type: Nat},
+    {name: id, type: String},
+    {name: control, type: String},
+    {name: journey, type: String},
+    {name: label, type: String},
+    {name: help, type: String}
+  ]
+}
+
+definition{
+  name: initialFacts,
+  parameters: [],
+  result: Facts,
+  body: (record Facts {disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := false, hasPartial := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := false, headRetained := false, dnsConfigured := false, publicationBusy := false, publicationUnknown := false, publicationPublished := false, policyBlocked := false, policyAttention := false})
+}
+
+definition{
+  name: journeyMesh,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "mesh", target := "meshPanel", title := "Join a mesh", summary := "Review public signaling disclosure, join explicitly, then inspect reachable peers."})
+}
+
+definition{
+  name: journeyObjects,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "objects", target := "objectsPanel", title := "Store, place and recover objects", summary := "Separate local integrity from conditional peer custody and actual recovery."})
+}
+
+definition{
+  name: journeyCompute,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "compute", target := "computePanel", title := "Run and resume pure jobs", summary := "Replay deterministic checkpoints before continuation; VM effects have a separate contract."})
+}
+
+definition{
+  name: journeyVm,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "vm", target := "vmPanel", title := "Inspect host VM effects", summary := "Boot and execute only through the observed VM lifecycle. Output integrity does not certify execution."})
+}
+
+definition{
+  name: journeyPointers,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "pointers", target := "pointersPanel", title := "Pin, discover and publish pointers", summary := "Pin authority independently, retain the local head, and reconcile uncertain provider writes."})
+}
+
+definition{
+  name: journeyResources,
+  parameters: [],
+  result: Journey,
+  body: (record Journey {id := "resources", target := "resourcesPanel", title := "Inspect and renew allowances", summary := "Inspect bounded application charges, export them, and explicitly grant a new epoch."})
+}
+
+definition{
+  name: journeys,
+  parameters: [],
+  result: (List Journey),
+  body: (cons (journeyMesh) (cons (journeyObjects) (cons (journeyCompute) (cons (journeyVm) (cons (journeyPointers) (cons (journeyResources) (nil Journey)))))))
+}
+
+definition{
+  name: meshDisclosure,
+  parameters: [],
+  result: View,
+  body: (record View {id := "meshDisclosure", journey := "mesh", title := "Review disclosure", evidence := "NOT JOINED", detail := "Joining sends mesh topic, signaling messages and ICE connection metadata to public ntfy signaling and STUN services. Mesh keys are not passwords. Object and job bytes require the separate public relay opt-in."})
+}
+
+definition{
+  name: meshReady,
+  parameters: [],
+  result: View,
+  body: (record View {id := "meshReady", journey := "mesh", title := "Ready for explicit join", evidence := "DISCLOSURE ACCEPTED", detail := "No connection is established by accepting disclosure alone. Choose Join Mesh and Sync to start."})
+}
+
+definition{
+  name: meshSearching,
+  parameters: [],
+  result: View,
+  body: (record View {id := "meshSearching", journey := "mesh", title := "Joined; looking for peers", evidence := "NO OPEN PEER OBSERVED", detail := "A join request does not establish peer availability. Keep this tab open or explicitly rejoin after changing the mesh key."})
+}
+
+definition{
+  name: meshConnected,
+  parameters: [],
+  result: View,
+  body: (record View {id := "meshConnected", journey := "mesh", title := "Peer channel observed", evidence := "OPEN CHANNEL OBSERVED", detail := "An open channel is a current local observation, not durable custody, authority, or a distinct failure domain."})
+}
+
+definition{
+  name: objectsEmpty,
+  parameters: [],
+  result: View,
+  body: (record View {id := "objectsEmpty", journey := "objects", title := "No local object bytes", evidence := "NO RECOVERY EVIDENCE", detail := "Store an object, or fetch retained fragments. Recovery needs two distinct valid fragments of the exact encoding; an empty result is not a successful recovery."})
+}
+
+definition{
+  name: objectsPartial,
+  parameters: [],
+  result: View,
+  body: (record View {id := "objectsPartial", journey := "objects", title := "Waiting for enough fragments", evidence := "PARTIAL FRAGMENTS", detail := "Insufficient fragments do not establish object integrity. Fetch again when holders are reachable; do not erase other retained copies."})
+}
+
+definition{
+  name: objectsLocal,
+  parameters: [],
+  result: View,
+  body: (record View {id := "objectsLocal", journey := "objects", title := "Local object verified", evidence := "DIGEST MATCH; REMOTE CUSTODY UNESTABLISHED", detail := "Local bytes match the complete commitment. Placement requests alone do not establish retained remote fragments or durability."})
+}
+
+definition{
+  name: objectsPlaced,
+  parameters: [],
+  result: View,
+  body: (record View {id := "objectsPlaced", journey := "objects", title := "Conditional placement observed", evidence := "DIGEST-CHECKED PEER ASSERTIONS", detail := "At least one object has two current committed fragment assertions. Recovery still depends on truthful, reachable holders and exact encoding. Distinct peer identifiers do not establish independent machines."})
+}
+
+definition{
+  name: computeEmpty,
+  parameters: [],
+  result: View,
+  body: (record View {id := "computeEmpty", journey := "compute", title := "No pure jobs observed", evidence := "NO EXECUTION EVIDENCE", detail := "Start a deterministic job or scan reachable checkpoints. Host and VM effects are not replay-certified."})
+}
+
+definition{
+  name: computeUnverified,
+  parameters: [],
+  result: View,
+  body: (record View {id := "computeUnverified", journey := "compute", title := "Unfinished job requires replay", evidence := "UNVERIFIED CHECKPOINT", detail := "A checkpoint claim is not execution evidence. Resume scans validate identity, program and checkpoint chain and replay before continuation."})
+}
+
+definition{
+  name: computeReplay,
+  parameters: [],
+  result: View,
+  body: (record View {id := "computeReplay", journey := "compute", title := "Pure continuation checked locally", evidence := "REPLAYED PURE CHECKPOINT", detail := "Observed pure checkpoints were independently replayed by this browser adapter. This does not certify VM effects, a remote worker, availability, or durable retention."})
+}
+
+definition{
+  name: computeDone,
+  parameters: [],
+  result: View,
+  body: (record View {id := "computeDone", journey := "compute", title := "Pure job state observed", evidence := "PURE JOB STATE; INSPECT EACH ROW", detail := "Completion and replay are separate. Each job row reports its own execution evidence; no aggregate claim certifies every job."})
+}
+
+definition{
+  name: vmIdle,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmIdle", journey := "vm", title := "VM not running", evidence := "HOST EFFECT NOT STARTED", detail := "Boot loads the local v86 assets. Guest execution and its network effects remain host assumptions, separate from deterministic pure-job replay."})
+}
+
+definition{
+  name: vmBooting,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmBooting", journey := "vm", title := "VM boot in progress", evidence := "HOST EFFECT PENDING", detail := "Wait for an observed ready or failed lifecycle. Repeated boot and command execution are unavailable while booting."})
+}
+
+definition{
+  name: vmReady,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmReady", journey := "vm", title := "VM reports ready", evidence := "HOST-OBSERVED READY", detail := "Commands execute in the guest. Stored stdout can receive an object digest, but that digest is not evidence that the command executed correctly or only once."})
+}
+
+definition{
+  name: vmFailed,
+  parameters: [],
+  result: View,
+  body: (record View {id := "vmFailed", journey := "vm", title := "VM failed or interrupted", evidence := "HOST EFFECT FAILED", detail := "Inspect the VM error before choosing another boot. Do not treat a timeout or missing output as proof that guest effects did not occur."})
+}
+
+definition{
+  name: pointerUnpinned,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerUnpinned", journey := "pointers", title := "Authority must be pinned", evidence := "UNTRUSTED DISCOVERY", detail := "DNS records are discovery hints. Enter a key learned independently or explicitly trust the demo session key. A discovered key cannot authorize itself."})
+}
+
+definition{
+  name: pointerPinned,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerPinned", journey := "pointers", title := "Authority pinned; no retained head", evidence := "PINNED KEY ONLY", detail := "Discover or paste a signed pointer. With no retained head only a valid bootstrap is accepted; a lost later head requires a trusted recent anchor."})
+}
+
+definition{
+  name: pointerLocal,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerLocal", journey := "pointers", title := "Local pointer admitted", evidence := "OBSERVER-LOCAL HEAD; NOT PUBLISHED", detail := "The signature, authority and succession were accepted against this session head. This is not a provider publication receipt or global consensus."})
+}
+
+definition{
+  name: pointerPending,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerPending", journey := "pointers", title := "Provider operation pending", evidence := "PUBLICATION PENDING", detail := "Wait for the provider observation. Do not start another candidate while the current operation is in flight."})
+}
+
+definition{
+  name: pointerUnknown,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerUnknown", journey := "pointers", title := "Reconcile the exact candidate", evidence := "PUBLICATION UNKNOWN", detail := "The write may have completed. The retained candidate remains the reconciliation target. Read the provider without repeating the write or advancing to another candidate."})
+}
+
+definition{
+  name: pointerPublished,
+  parameters: [],
+  result: View,
+  body: (record View {id := "pointerPublished", journey := "pointers", title := "Provider record observed", evidence := "PROVIDER CONFIRMED; OBSERVER-LOCAL", detail := "The provider confirmed this candidate or a read found its exact bytes. This does not establish global DNS ordering, resolver propagation, or consensus."})
+}
+
+definition{
+  name: resourcesActive,
+  parameters: [],
+  result: View,
+  body: (record View {id := "resourcesActive", journey := "resources", title := "Application allowance active", evidence := "APPLICATION ACCOUNTING ONLY", detail := "Requests, application transfer bytes, new cache allocations and pure ring steps are bounded. TLS, ICE/STUN, VM work and host overhead are outside this accounting."})
+}
+
+definition{
+  name: resourcesBlocked,
+  parameters: [],
+  result: View,
+  body: (record View {id := "resourcesBlocked", journey := "resources", title := "Review exhausted or refused allowance", evidence := "ALLOWANCE OR REFUSAL NEEDS REVIEW", detail := "Inspect and export retained charges. Each operation still checks its exact resource vector; a zero or exhausted dimension does not forbid work that consumes none of it. An expired epoch or full reservation log needs renewal. Renewal retains charges and does not retry effects."})
+}
+
+definition{
+  name: actionJoin,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 0, id := "join", control := "reconnectBtn", journey := "mesh", label := "Join Mesh and Sync", help := "Requires explicit signaling disclosure and an available application allowance."})
+}
+
+definition{
+  name: actionStore,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 1, id := "store", control := "dbPutBtn", journey := "objects", label := "Store and Request Placement", help := "Commit local bytes; request conditional placement with reachable peers."})
+}
+
+definition{
+  name: actionClear,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 2, id := "clear", control := "dbWipeLocalBtn", journey := "objects", label := "Clear Local Object Bytes", help := "Only local bytes are cleared. Recovery may fail if no other fragments remain."})
+}
+
+definition{
+  name: actionRecover,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 3, id := "recover", control := "dbSyncBtn", journey := "objects", label := "Fetch Reachable Fragments", help := "Checks fragments and complete object commitment before recovery."})
+}
+
+definition{
+  name: actionStart,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 4, id := "start", control := "startJobBtn", journey := "compute", label := "Start Pure Replayable Job", help := "Deterministic ring work; not guest execution."})
+}
+
+definition{
+  name: actionResume,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 5, id := "resume", control := "takeoverJobsBtn", journey := "compute", label := "Scan and Resume Pure Jobs", help := "Replay accepted checkpoints before continuation."})
+}
+
+definition{
+  name: actionBoot,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 6, id := "boot", control := "bootVmBtn", journey := "vm", label := "Boot Linux VM", help := "Allowed only outside ready or booting lifecycle."})
+}
+
+definition{
+  name: actionExecute,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 7, id := "execute", control := "runVmCmdBtn", journey := "vm", label := "Run Guest Command and Store Stdout", help := "Host effect; a stored output digest does not certify execution."})
+}
+
+definition{
+  name: actionSrv,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 8, id := "srv", control := "resolveSrvBtn", journey := "pointers", label := "Discover SRV Records", help := "DNS is discovery evidence only."})
+}
+
+definition{
+  name: actionTxt,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 9, id := "txt", control := "resolveTxtBtn", journey := "pointers", label := "Discover and Check TXT Pointers", help := "Only independently pinned keys can authorize admitted pointer heads."})
+}
+
+definition{
+  name: actionPin,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 10, id := "pin", control := "pinSessionAuthorityBtn", journey := "pointers", label := "Explicitly Trust Demo Session Key", help := "Demo identity lasts only in this session; use an independently trusted key for real authority."})
+}
+
+definition{
+  name: actionAdmit,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 11, id := "admit", control := "admitPointerBtn", journey := "pointers", label := "Admit Pasted Pointer", help := "Requires a pinned authority and available application allowance."})
+}
+
+definition{
+  name: actionPublish,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 12, id := "publish", control := "writeSignedDnsBtn", journey := "pointers", label := "Admit Next Pointer and Publish TXT", help := "Without provider credentials, only the local head is admitted. Unresolved writes cannot advance candidates."})
+}
+
+definition{
+  name: actionReconcile,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 13, id := "reconcile", control := "reconcilePointerBtn", journey := "pointers", label := "Reconcile Unknown Publication", help := "Read the exact scoped provider candidate; do not repeat the uncertain write."})
+}
+
+definition{
+  name: actionRenew,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 14, id := "renew", control := "renewBudgetBtn", journey := "resources", label := "Start New Epoch with These Limits", help := "Grants a fresh bounded allowance; retains prior epochs and does not retry effects."})
+}
+
+definition{
+  name: actionExport,
+  parameters: [],
+  result: Action,
+  body: (record Action {code := 15, id := "export", control := "exportBudgetHistoryBtn", journey := "resources", label := "Export Policy History", help := "Export existing accounting without changing or refunding charges."})
+}
+
+definition{
+  name: actions,
+  parameters: [],
+  result: (List Action),
+  body: (cons (actionJoin) (cons (actionStore) (cons (actionClear) (cons (actionRecover) (cons (actionStart) (cons (actionResume) (cons (actionBoot) (cons (actionExecute) (cons (actionSrv) (cons (actionTxt) (cons (actionPin) (cons (actionAdmit) (cons (actionPublish) (cons (actionReconcile) (cons (actionRenew) (cons (actionExport) (nil Action)))))))))))))))))
+}
+
+definition{
+  name: meshView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if (project facts disclosureAccepted) then (if (project facts meshJoined) then (if (project facts peersReachable) then (meshConnected) else (meshSearching)) else (meshReady)) else (meshDisclosure))
+}
+
+definition{
+  name: objectsView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if (project facts hasObject) then (if (project facts recoverablePlacement) then (objectsPlaced) else (objectsLocal)) else (if (project facts hasPartial) then (objectsPartial) else (objectsEmpty)))
+}
+
+definition{
+  name: computeView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if (project facts unfinishedJobs) then (if (project facts replayedJobs) then (computeReplay) else (computeUnverified)) else (if (project facts hasJobs) then (computeDone) else (computeEmpty)))
+}
+
+definition{
+  name: vmView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if (project facts vmBooting) then (vmBooting) else (if (project facts vmReady) then (vmReady) else (if (project facts vmFailed) then (vmFailed) else (vmIdle))))
+}
+
+definition{
+  name: pointersView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if (project facts authorityPinned) then (if (project facts publicationBusy) then (pointerPending) else (if (project facts publicationUnknown) then (pointerUnknown) else (if (project facts publicationPublished) then (pointerPublished) else (if (project facts headRetained) then (pointerLocal) else (pointerPinned))))) else (pointerUnpinned))
+}
+
+definition{
+  name: resourcesView,
+  parameters: [facts : Facts],
+  result: View,
+  body: (if ((project facts policyBlocked) || (project facts policyAttention)) then (resourcesBlocked) else (resourcesActive))
+}
+
+definition{
+  name: joinAllowed,
+  parameters: [disclosed : Bool, blocked : Bool],
+  result: Bool,
+  body: (disclosed && (not blocked))
+}
+
+definition{
+  name: publicationAllowed,
+  parameters: [pinned : Bool, candidate : Bool, busy : Bool, unknown : Bool, blocked : Bool],
+  result: Bool,
+  body: (pinned && (candidate && ((not busy) && ((not unknown) && (not blocked)))))
+}
+
+definition{
+  name: reconciliationAllowed,
+  parameters: [pinned : Bool, configured : Bool, unknown : Bool, busy : Bool, blocked : Bool],
+  result: Bool,
+  body: (pinned && (configured && (unknown && ((not busy) && (not blocked)))))
+}
+
+definition{
+  name: executionAllowed,
+  parameters: [ready : Bool, blocked : Bool],
+  result: Bool,
+  body: (ready && (not blocked))
+}
+
+definition{
+  name: actionAllowed,
+  parameters: [action : Nat, facts : Facts],
+  result: Bool,
+  body: (if (action =? 0) then (joinAllowed (project facts disclosureAccepted) (project facts policyBlocked)) else (if (action =? 1) then (not (project facts policyBlocked)) else (if (action =? 2) then (project facts hasObject) else (if (action =? 3) then (((project facts meshJoined) || (project facts relayEnabled)) && (not (project facts policyBlocked))) else (if (action =? 4) then (not (project facts policyBlocked)) else (if (action =? 5) then (((project facts unfinishedJobs) || ((project facts meshJoined) || (project facts relayEnabled))) && (not (project facts policyBlocked))) else (if (action =? 6) then ((not (project facts vmReady)) && (not (project facts vmBooting))) else (if (action =? 7) then (executionAllowed (project facts vmReady) (project facts policyBlocked)) else (if (action =? 8) then (not (project facts policyBlocked)) else (if (action =? 9) then (not (project facts policyBlocked)) else (if (action =? 10) then true else (if (action =? 11) then ((project facts authorityPinned) && (not (project facts policyBlocked))) else (if (action =? 12) then (publicationAllowed (project facts authorityPinned) ((project facts hasObject) || (project facts headRetained)) (project facts publicationBusy) (project facts publicationUnknown) (project facts policyBlocked)) else (if (action =? 13) then (reconciliationAllowed (project facts authorityPinned) (project facts dnsConfigured) (project facts publicationUnknown) (project facts publicationBusy) (project facts policyBlocked)) else (if (action =? 14) then true else (if (action =? 15) then true else false))))))))))))))))
+}
+
+definition{
+  name: integrityLabel,
+  parameters: [verified : Bool],
+  result: String,
+  body: (if verified then "DIGEST MATCH" else "PARTIAL")
+}
+
+definition{
+  name: executionLabel,
+  parameters: [replayed : Bool],
+  result: String,
+  body: (if replayed then "REPLAYED PURE CHECKPOINT" else "UNVERIFIED")
+}
+
+definition{
+  name: productTitle,
+  parameters: [],
+  result: String,
+  body: "Stitch / recoverable objects and replayable pure jobs"
+}
+
+definition{
+  name: disclosureLabel,
+  parameters: [],
+  result: String,
+  body: "Allow public mesh signaling (topic, signaling messages and ICE metadata; not private)"
+}
+
+definition{
+  name: relayLabel,
+  parameters: [],
+  result: String,
+  body: "Public object relay: share object/job bytes on ntfy.sh (not private)"
+}
+
+definition{
+  name: provenanceLabel,
+  parameters: [],
+  result: String,
+  body: "Journeys, evidence labels and action admission are projected from Product.Experience. Browser observations and adapter tests are not whole-host certification."
+}
+
+definition{
+  name: unknownPublicationFacts,
+  parameters: [],
+  result: Facts,
+  body: (record Facts {disclosureAccepted := false, meshJoined := false, peersReachable := false, relayEnabled := false, hasObject := true, hasPartial := false, recoverablePlacement := false, hasJobs := false, unfinishedJobs := false, replayedJobs := false, vmBooting := false, vmReady := false, vmFailed := false, authorityPinned := true, headRetained := true, dnsConfigured := true, publicationBusy := false, publicationUnknown := true, publicationPublished := false, policyBlocked := false, policyAttention := false})
+}
+
+theorem{
+  name: unknownPublicationDoesNotPermitNewCandidate,
+  parameters: [],
+  statement: ((actionAllowed 12 (unknownPublicationFacts)) = false),
+  proof: decide{}
+}
+
+theorem{
+  name: unknownPublicationOffersReconciliation,
+  parameters: [],
+  statement: ((actionAllowed 13 (unknownPublicationFacts)) = true),
+  proof: decide{}
+}
+
+theorem{
+  name: unknownPublicationIsVisible,
+  parameters: [],
+  statement: ((project (pointersView (unknownPublicationFacts)) id) = "pointerUnknown"),
+  proof: decide{}
+}
+
+theorem{
+  name: initialMeshCannotJoinWithoutDisclosure,
+  parameters: [],
+  statement: ((actionAllowed 0 (initialFacts)) = false),
+  proof: decide{}
+}
+
+theorem{
+  name: initialVmCannotExecute,
+  parameters: [],
+  statement: ((actionAllowed 7 (initialFacts)) = false),
+  proof: decide{}
+}
+
+theorem{
+  name: initialPolicyCanBeExported,
+  parameters: [],
+  statement: ((actionAllowed 15 (initialFacts)) = true),
+  proof: decide{}
+}
+
+structure{
+  name: EvidenceStyle,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: id, type: String}, {name: color, type: String}]
+}
+
+definition{
+  name: evidenceStyles,
+  parameters: [],
+  result: (List EvidenceStyle),
+  body: (cons (record EvidenceStyle {id := "observed", color := "#8ce6ac"}) (cons (record EvidenceStyle {id := "attention", color := "#f5b66b"}) (cons (record EvidenceStyle {id := "pending", color := "#9bc4ff"}) (cons (record EvidenceStyle {id := "unestablished", color := "#c4c4c4"}) (nil EvidenceStyle)))))
+}
+
+definition{
+  name: viewStyle,
+  parameters: [facts : Facts, journey : Nat],
+  result: String,
+  body: (if (journey =? 0) then (if (project facts disclosureAccepted) then (if (project facts peersReachable) then "observed" else "pending") else "attention") else (if (journey =? 1) then (if (project facts hasObject) then "observed" else "unestablished") else (if (journey =? 2) then (if (project facts replayedJobs) then "observed" else "unestablished") else (if (journey =? 3) then (if (project facts vmBooting) then "pending" else (if (project facts vmFailed) then "attention" else "unestablished")) else (if (journey =? 4) then (if (project facts publicationUnknown) then "attention" else (if (project facts publicationBusy) then "pending" else (if (project facts headRetained) then "observed" else "unestablished"))) else (if (project facts policyBlocked) then "attention" else "observed"))))))
+}
+
+definition{name: statusLivePolicy, parameters: [], result: String, body: "polite"}
+
+definition{name: navigationLabel, parameters: [], result: String, body: "Stitch operator journeys"}
+
+definition{name: focusNavigationTarget, parameters: [], result: Bool, body: true}
+
+definition{name: navigationScrollBehavior, parameters: [], result: String, body: "auto"}
+
+theorem{
+  name: unknownNeverPermitsPublication,
+  parameters: [],
+  statement: (forall (pinned : Bool), (forall (candidate : Bool), (forall (busy : Bool), (forall (blocked : Bool), ((publicationAllowed pinned candidate busy true blocked) = false))))),
+  proof: decide{}
+}
+
+theorem{
+  name: undisclosedNeverPermitsJoin,
+  parameters: [],
+  statement: (forall (blocked : Bool), ((joinAllowed false blocked) = false)),
+  proof: decide{}
+}
+
+theorem{
+  name: unreadyNeverPermitsGuestExecution,
+  parameters: [],
+  statement: (forall (blocked : Bool), ((executionAllowed false blocked) = false)),
+  proof: decide{}
+}
+
+theorem{
+  name: budgetBlockNeverPermitsPublication,
+  parameters: [],
+  statement: (forall (pinned : Bool), (forall (candidate : Bool), (forall (busy : Bool), (forall (unknown : Bool), ((publicationAllowed pinned candidate busy unknown true) = false))))),
+  proof: decide{}
+}
+
+theorem{
+  name: knownPublicationNeverOffersReconciliation,
+  parameters: [],
+  statement: (forall (pinned : Bool), (forall (configured : Bool), (forall (busy : Bool), (forall (blocked : Bool), ((reconciliationAllowed pinned configured false busy blocked) = false))))),
+  proof: decide{}
+}
+
+definition{
+  name: journeyVisible,
+  parameters: [selected : Nat, journey : Nat],
+  result: Bool,
+  body: (selected =? journey)
+}
+
+definition{
+  name: explanationInitiallyOpen,
+  parameters: [facts : Facts, journey : Nat],
+  result: Bool,
+  body: (if (journey =? 0) then (not (project facts disclosureAccepted)) else (if (journey =? 4) then (project facts publicationUnknown) else (if (journey =? 5) then ((project facts policyBlocked) || (project facts policyAttention)) else false)))
+}
+
+definition{
+  name: publicationSetupVisible,
+  parameters: [facts : Facts],
+  result: Bool,
+  body: ((project facts authorityPinned) && ((project facts hasObject) || ((project facts headRetained) || (project facts publicationUnknown))))
+}
+
+definition{name: explanationLabel, parameters: [], result: String, body: "What this evidence means"}
+
+definition{
+  name: recoveryPolicyLabel,
+  parameters: [],
+  result: String,
+  body: "Review resource policy"
+}
+
+definition{
+  name: recoveryPolicyVisible,
+  parameters: [facts : Facts],
+  result: Bool,
+  body: ((project facts policyBlocked) || (project facts policyAttention))
+}
+
+definition{
+  name: admissionInputVisible,
+  parameters: [facts : Facts],
+  result: Bool,
+  body: (project facts authorityPinned)
+}
+
+definition{
+  name: vmCommandVisible,
+  parameters: [facts : Facts],
+  result: Bool,
+  body: (project facts vmReady)
+}
+
+definition{
+  name: publicationSetupInitiallyOpen,
+  parameters: [facts : Facts],
+  result: Bool,
+  body: (project facts publicationUnknown)
+}
+\end{semanticmodule}
+\end{lexlean}

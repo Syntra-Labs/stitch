@@ -124,6 +124,7 @@ test('close invalidates pending work and same-topic reconnect starts a fresh ses
   node.connect('old');
   await node.handleSignal({ kind: 'announce', from: 'remote', channelKey: 'old' });
   assert.notEqual(node.peers.get('remote'), old);
+  await Promise.all([...node.relayPending.values()].map(job => job.completion));
   assert.ok(effects.some(([type, frame]) => type === 'signal' && frame.kind === 'offer' && frame.channelKey === 'old'));
 });
 
@@ -151,4 +152,37 @@ test('already queued old heartbeat cannot broadcast after reconnect', t => {
   tick();
   assert.equal(effects.length, before);
   assert.deepEqual(node.admission.state, budget);
+});
+
+test('malformed Unicode identities refuse before invalidating a live signaling session', async t => {
+  const { node, effects } = fixture(t);
+  node.connect('valid-😀-é');
+  const before = effects.length, budget = node.admission.state, generation = node.generation;
+  for (const invalid of ['\ud800', '\ud801']) assert.throws(() => node.connect(invalid), error => error.code === 'InvalidCanonicalValue');
+  assert.equal(node.channelKey, 'valid-😀-é');
+  assert.equal(node.generation, generation); assert.equal(node.closed, false);
+  await node.handleSignal({ kind: 'announce', from: '\ud800', channelKey: node.channelKey });
+  assert.equal(node.peers.size, 0); assert.equal(effects.length, before); assert.deepEqual(node.admission.state, budget);
+  assert.throws(() => new WebRtcTransportNode({ peerId: '\ud800' }), error => error.code === 'InvalidCanonicalValue');
+});
+
+
+test('invalid local identity types refuse before invalidating a live signaling session', t => {
+  const { node } = fixture(t); node.connect('current');
+  const generation = node.generation;
+  assert.throws(() => node.connect(123), TypeError);
+  assert.equal(node.generation, generation);
+  assert.equal(node.channelKey, 'current');
+  assert.equal(node.closed, false);
+  assert.throws(() => new WebRtcTransportNode({ peerId: 123 }), TypeError);
+});
+
+test('bounded application channel parsing discards duplicate-key and malformed Unicode payloads', t => {
+  const { node, events } = fixture(t), channel = node.getOrCreatePeer('remote', true).dc;
+  const count = events.length;
+  channel.onmessage({ data: '{"type":"ping","type":"uor_shard","manifest":{}}' });
+  channel.onmessage({ data: '{"type":"uor_shard","label":"\\ud800"}' });
+  assert.equal(events.length, count);
+  channel.onmessage({ data: '{"type":"eth_frame","frame":[1]}' });
+  assert.equal(events.at(-1).type, 'mesh_message');
 });

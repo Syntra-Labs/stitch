@@ -11,6 +11,8 @@ import { fileURLToPath } from 'node:url';
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const output = resolve(root, 'src/layer1-uor/generated-model.js');
 const sourceRoot = resolve(root, 'app/src/Stitch');
+// Product.Experience intentionally uses this same declared subset for browser journeys.
+const selectedSources = [...readdirSync(sourceRoot).filter(x=>x.endsWith('.lex.tex')).sort().map(x=>resolve(sourceRoot,x)), resolve(root,'app/src/Product/Experience.lex.tex')];
 const modes = new Set(process.argv.slice(2));
 if ([...modes].some(x => !['--write', '--check', '--inventory'].includes(x)) || modes.has('--write') && modes.has('--check')) throw Error('usage: node scripts/check-model.mjs [--write|--check] [--inventory]');
 const hash = value => createHash('sha256').update(value).digest('hex');
@@ -100,12 +102,13 @@ class TermParser {
   finish() { const out=this.term(); if(this.i!==this.tokens.length)throw Error(`trailing expression tokens: ${this.tokens.slice(this.i).join(' ')}`); return out; }
 }
 const sources=[], defs={}, types={}, theorems=[];
-for (const file of readdirSync(sourceRoot).filter(x=>x.endsWith('.lex.tex')).sort()) {
-  const text=readFileSync(resolve(sourceRoot,file),'utf8');
+for (const sourcePath of selectedSources) {
+  const file=relative(root,sourcePath);
+  const text=readFileSync(sourcePath,'utf8');
   if(text.includes('\r'))throw Error(`${file}: CRLF refused`);
   if(/\b(?:sorry|unsafe)\b/.test(text.replace(/name: admit,/g,'')))throw Error(`${file}: forbidden unchecked escape`);
-  const module=/^\\begin\{lexlean\}\{(Stitch\.[A-Za-z]+)\}/.exec(text)?.[1];
-  if(!module||module!==`Stitch.${file.slice(0,-8)}`)throw Error(`${file}: module/path mismatch`);
+  const module=/^\\begin\{lexlean\}\{(Stitch\.[A-Za-z]+|Product\.Experience)\}/.exec(text)?.[1];
+  if(!module||file!==`app/src/${module.replace('.', '/')}.lex.tex`)throw Error(`${file}: module/path mismatch`);
   const body=text.split('\\begin{semanticmodule}\n')[1]?.split('\\end{semanticmodule}')[0];
   if(!body)throw Error(`${file}: missing semantic module`);
   const tokens=lex(body); let i=0;
@@ -119,9 +122,9 @@ for (const file of readdirSync(sourceRoot).filter(x=>x.endsWith('.lex.tex')).sor
     if(kind==='definition') { if(defs[id])throw Error('duplicate definition'); defs[id]={module,name,params:parameters(f.parameters),result:type(f.result),body:new TermParser(f.body).finish()}; }
     if(kind==='structure')types[id]={kind,fields:list(f.fields).map(x=>{const ff=fields(x);return{name:single(ff.name),type:type(ff.type)};})};
     if(kind==='inductive')types[id]={kind,constructors:list(f.constructors).map(x=>{const ff=fields(x);return{name:single(ff.name),fields:list(ff.fields).map(type)};})};
-    if(kind==='theorem') { if(!f.proof||!f.statement)throw Error('theorem without proof');theorems.push({id,proof:single(f.proof.slice(0,1)),source:relative(root,resolve(sourceRoot,file)),status:'source-obligation-not-kernel-checked'}); }
+    if(kind==='theorem') { if(!f.proof||!f.statement)throw Error('theorem without proof');theorems.push({id,proof:single(f.proof.slice(0,1)),source:relative(root,sourcePath),status:'source-obligation-not-kernel-checked'}); }
   }
-  sources.push({path:relative(root,resolve(sourceRoot,file)),sha256:hash(text)});
+  sources.push({path:relative(root,sourcePath),sha256:hash(text)});
 }
 function qualify(module,name) { return name.includes('::') ? name.replace('::','.') : `${module}.${name}`; }
 const primitiveArity={subtract:2,multiply:2,quotient:3,remainder:3,equal:2};
@@ -294,4 +297,4 @@ ${Object.entries(aliases).map(([name,id])=>`export const ${name} = model[${JSON.
 if(modes.has('--write')) {mkdirSync(dirname(output),{recursive:true});writeFileSync(output,generated);}
 else if(readFileSync(output,'utf8')!==generated)throw Error('stale source bindings: run node scripts/check-model.mjs --write, then review');
 if(modes.has('--inventory'))console.log(JSON.stringify(inventory,null,2));
-else console.log(`model bindings: ${sources.length} domain modules, ${Object.keys(defs).length} definitions, ${theorems.length} unverified theorem obligations; ${modes.has('--write')?'written':'fresh'}`);
+else console.log(`model bindings: ${sources.length} selected domain/experience modules, ${Object.keys(defs).length} definitions, ${theorems.length} unverified theorem obligations; ${modes.has('--write')?'written':'fresh'}`);

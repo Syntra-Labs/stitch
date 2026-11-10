@@ -85,7 +85,7 @@ test('late object mirror cannot write into a replacement VM or report success', 
   const f = fixture(t); f.node.boot();
   let resume;
   f.node.v86.create_file = () => new Promise(r => { resume = r; });
-  const pending = f.node.mountUorObject('uor:ca:123', new Uint8Array([1]), 'label');
+  const pending = f.node.mountUorObject('sha256:' + '1'.repeat(64), new Uint8Array([1]), 'label');
   f.expire(); f.node.boot();
   resume();
   assert.equal(await pending, false);
@@ -104,4 +104,27 @@ test('boot timeout configuration must be finite, positive and schedulable', t =>
   for (const bootTimeoutMs of [0, -1, Infinity, NaN, 2147483648]) {
     assert.throws(() => new LinuxVmNode({ bootTimeoutMs }), /Invalid VM boot timeout/);
   }
+});
+
+test('VM object filenames preserve the complete root and label aliases cannot collide across content', async t => {
+  const f = fixture(t); f.node.boot();
+  const first = 'sha256:' + 'abcde' + '1'.repeat(59), second = 'sha256:' + 'abcde' + '2'.repeat(59);
+  assert.equal(await f.node.mountUorObject(first, Uint8Array.of(1), '../same/label'), true);
+  assert.equal(await f.node.mountUorObject(second, Uint8Array.of(2), '.._same_label'), true);
+  const files = f.node.v86.files;
+  assert.equal(files.length, 4); assert.equal(new Set(files).size, 4);
+  assert.ok(files[0].includes(first.slice(7))); assert.ok(files[2].includes(second.slice(7)));
+  assert.ok(files[1].includes(first.slice(7))); assert.ok(files[3].includes(second.slice(7)));
+  for (const filename of files) { assert.equal(filename.includes('/'), false); assert.ok(filename.length < 255); }
+  assert.equal(await f.node.mountUorObject('sha256:abcde', Uint8Array.of(3)), false);
+  assert.equal(f.node.v86.files.length, 4);
+});
+
+test('VM mirror snapshots bytes before asynchronous canonical and label writes', async t => {
+  const f = fixture(t); f.node.boot(); let resume; const writes = [];
+  f.node.v86.create_file = async (name, data) => { writes.push({ name, data: data.slice() }); if (writes.length === 1) await new Promise(resolve => { resume = resolve; }); };
+  const bytes = Uint8Array.of(1, 2), pending = f.node.mountUorObject('sha256:' + 'a'.repeat(64), bytes, 'label');
+  bytes.fill(99); resume();
+  assert.equal(await pending, true);
+  assert.deepEqual(writes.map(write => Array.from(write.data)), [[1, 2], [1, 2]]);
 });

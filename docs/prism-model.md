@@ -24,7 +24,7 @@ The official skill was discovered through https://uor.foundation/agents.md and i
 
 ## Object wire contract
 
-`src/layer1-uor/custody.js` specifies the exact canonical JSON subset and hash frame. It is not unrestricted RFC 8785: only safe integer numbers are accepted. Accessors, custom prototypes, hidden/unknown fields, lone surrogates, malformed digests and oversized input are refused.
+`src/layer1-uor/custody.js` implements RFC 8785 JCS canonicalization over finite IEEE 754 binary64 numbers, Unicode scalar strings and UTF-16-sorted object names, with UTF-8 output. Negative zero serializes as zero; NaN and infinities are refused. `parseCanonicalJson` rejects duplicate names (including escape-equivalent names) before signature processing. Accessors, custom prototypes, hidden fields, invalid Unicode and explicit resource-budget excess are refused. Application schemas independently reject unknown fields, fractional revisions and malformed digests. See [canonical JSON](canonical-json.md) for standard coverage, compatibility and evidence boundaries.
 
 Each hash frames a versioned ASCII domain, unsigned 64-bit big-endian payload length and exact bytes. Object, encoding, fragment and manifest domains differ. A fragment binds its encoding digest and unsigned index. A manifest never hashes its own digest field. Initial encoding is raw, self-contained bytes; unsupported dependencies/encodings fail closed.
 

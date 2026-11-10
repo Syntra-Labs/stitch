@@ -486,12 +486,12 @@ export class LiveUorMeshDatabase {
 
   _publish(packet) {
     if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'place', { ...packet, from: this.transport.peerId, tsMs: Date.now() });
-    return this.transport.publishWarmEnvelope(packet);
+    return this.transport.publishWarmEnvelope(packet, { publicData: true });
   }
 
   _fetch(sinceWindow) {
     if (this.transport.admission !== this.admission) this.admission.reserve('retrieve', { requests: 1, transferBytes: 2 * 1024 * 1024 });
-    return this.transport.fetchWarmEnvelopes(sinceWindow);
+    return this.transport.fetchWarmEnvelopes(sinceWindow, { publicData: true });
   }
 
   clearLocal() {
@@ -691,7 +691,6 @@ export class LiveUorMeshDatabase {
         : typeof payload === 'string' ? new TextEncoder().encode(payload) : null;
       if (!bytes) throw new CustodyError('InvalidBytes', 'Payload must be bytes or text');
       if (bytes.length > this.maxWireObjectBytes) throw new CustodyError('SizeLimit', 'Payload exceeds live wire limit');
-      if (persistWarm && bytes.length > 2048) throw new CustodyError('SizeLimit', 'Public warm relay demonstration supports objects up to 2048 bytes');
       // Reserve the new local bytes and conservative fragment allocation ceiling
       // before encoding or any placement/relay/VM effect.
       this.admission.reserve('place', { storageBytes: bytes.length + 3 * Math.ceil(bytes.length / 2) });

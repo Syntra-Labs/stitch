@@ -6,6 +6,14 @@
 
 import { ResourceAdmission, reserveNetwork, wireBytes } from '../layer2-schedulers/policy.js';
 import { refuse } from '../layer1-uor/contracts.js';
+import { parseCanonicalJson } from '../layer1-uor/custody.js';
+import { queryDnsMessage } from './dns-wire.js';
+import { captureTransport, transportCanSend, transportSessionCurrent, transportPeerCurrent, transportChannelCurrent,
+  transportSignalAllowed, transportPeerAllocationAllowed, closeTransport, openTransport,
+  observeC1Probe, c1ConnectionQualified, c1DirectSuccess, c1SampleQualified, c1SampleStructurallyValid } from '../layer1-uor/effects.js';
+
+import { RELAY_EVENT_BYTES, RELAY_LIMITS, RelayReassembler, snapshotRelayMessage, frameRelayMessage,
+  newRelaySession, relayCapacity, relayAdmissionAllowed, relayEffectAllowed } from './relay-framing.js';
 
 /** Bounded application response body, not a bound on browser/network overhead. */
 export async function readBoundedText(response, maxBytes) {
@@ -139,23 +147,72 @@ export async function verifyPointerTxt(rawTxt, publicKeyOrB64Url) {
   };
 }
 
+const DNS_TYPES = Object.freeze({ A: 1, NS: 2, CNAME: 5, SOA: 6, PTR: 12, MX: 15, TXT: 16, AAAA: 28, SRV: 33, DS: 43, RRSIG: 46, DNSKEY: 48, TLSA: 52, SVCB: 64, HTTPS: 65, ANY: 255, CAA: 257 });
+const dnsName = value => {
+  if (typeof value !== 'string' || value.length === 0 || value.length > 254 || /[^A-Za-z0-9_.-]/.test(value)) refuse('dns-invalid-name');
+  if (value === '.') return '.';
+  const name = value.endsWith('.') ? value.slice(0, -1) : value;
+  if (name.length > 253 || name.split('.').some(label => label.length === 0 || label.length > 63)) refuse('dns-invalid-name');
+  return name.toLowerCase();
+};
 export function parseSrvRecord(srvData) {
-  const parts = String(srvData).trim().split(/\s+/);
-  if (parts.length < 4) return null;
-  return {
-    priority: Number(parts[0]),
-    weight: Number(parts[1]),
-    port: Number(parts[2]),
-    target: parts[3].replace(/\.$/, '')
-  };
+  if (typeof srvData !== 'string') return null;
+  const parts = srvData.trim().split(/\s+/);
+  if (parts.length !== 4 || parts.slice(0, 3).some(part => !/^\d+$/.test(part) || Number(part) > 65535)) return null;
+  let target;
+  try { target = dnsName(parts[3]); } catch { return null; }
+  // RFC2782 root target means the service is unavailable, not an empty host.
+  if (target !== '.' && target.split('.').some(label => !/^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$/.test(label))) return null;
+  return { priority: Number(parts[0]), weight: Number(parts[1]), port: Number(parts[2]), target };
+}
+
+/** Validate and associate the provider's JSON projection. This does not decode
+ * RFC8484 DNS wire messages or establish DNSSEC authentication/cache semantics.
+ */
+export function associateDnsJson(body, name, typeCode) {
+  const query = dnsName(name);
+  if (!body || typeof body !== 'object' || !Number.isSafeInteger(body.Status) || body.Status !== 0) refuse('dns-response-status');
+  if (body.TC !== undefined && body.TC !== false) refuse('dns-response-truncated');
+  if (body.Question !== undefined && (!Array.isArray(body.Question) || body.Question.length !== 1
+    || dnsName(body.Question[0]?.name) !== query || body.Question[0]?.type !== typeCode)) refuse('dns-question-mismatch');
+  if (body.Answer !== undefined && !Array.isArray(body.Answer)) refuse('dns-invalid-answer');
+  const answers = body.Answer ?? [];
+  for (const answer of answers) {
+    if (!answer || typeof answer !== 'object' || !Number.isSafeInteger(answer.type) || answer.type < 1 || answer.type > 65535
+      || !Number.isSafeInteger(answer.TTL) || answer.TTL < 0 || answer.TTL > 2147483647 || typeof answer.data !== 'string'
+      || (answer.class !== undefined && answer.class !== 1) || (answer.Class !== undefined && answer.Class !== 1)) refuse('dns-invalid-answer');
+    dnsName(answer.name);
+  }
+  let terminal = query;
+  const path = new Set([query]), chain = [];
+  if (typeCode !== DNS_TYPES.CNAME) {
+    for (;;) {
+      const aliases = answers.filter(answer => answer.type === DNS_TYPES.CNAME && dnsName(answer.name) === terminal);
+      if (aliases.length === 0) break;
+      const targets = new Set(aliases.map(answer => dnsName(answer.data)));
+      if (targets.size !== 1 || aliases.length !== 1) refuse('dns-cname-conflict');
+      terminal = [...targets][0];
+      if (path.has(terminal)) refuse('dns-cname-cycle');
+      path.add(terminal); chain.push(aliases[0]);
+    }
+  }
+  const selected = answers.filter(answer => dnsName(answer.name) === terminal && (typeCode === DNS_TYPES.ANY || answer.type === typeCode));
+  // Do not turn unrelated owners/types or an alias/data conflict into evidence
+  // of absence. Additional-section processing is a separate DNS wire concern.
+  if (answers.some(answer => !chain.includes(answer) && !selected.includes(answer))) refuse('dns-answer-mismatch');
+  return { selected, ttlSeconds: answers.length ? Math.min(...answers.map(answer => answer.TTL)) : 0 };
 }
 
 /**
- * RFC 8484 DNS-over-HTTPS Resolver + Lightweight Public Dynamic DNS TXT Writer.
+ * RFC8484 DNS-message lookup + scoped Cloudflare TXT writer.
+ * Explicit format:"json" retains the separate provider-specific legacy API.
  */
 export class DohResolver {
   constructor(options = {}) {
     this.endpoint = options.endpoint ?? DEFAULT_DOH_ENDPOINT;
+    this.format = options.format ?? "wire";
+    this.method = options.method ?? "POST";
+    if (!["wire", "json"].includes(this.format)) refuse("dns-query-format");
     this.fetchImpl = options.fetchImpl ?? globalThis.fetch?.bind(globalThis);
     this.history = [];
     this.admission = options.admission ?? new ResourceAdmission();
@@ -163,11 +220,27 @@ export class DohResolver {
   }
 
   async resolve(name, type = 'SRV') {
+    if (this.format === 'wire') {
+      const result = await queryDnsMessage({ name, type, endpoint: this.endpoint,
+        method: this.method, fetchImpl: this.fetchImpl, admission: this.admission });
+      const record = { name, type, status: result.status, ttl_seconds: result.ttlSeconds,
+        rtt_ms: result.rttMs, cache_hit_inferred: false, http_age_seconds: result.httpAgeSeconds,
+        negative: result.negative, authenticated_data: result.authenticatedData,
+        dnssec_validated_by_client: false,
+        rawRecords: result.selected.map(r => r.text ?? r.data),
+        records: result.selected.map(r => r.srv ?? (r.type === 16 ? parsePointerTxt(r.text ?? r.data) : r.data)) };
+      this.history.push(record); if (this.history.length > 128) this.history.shift();
+      return record;
+    }
     if (!this.fetchImpl) {
       throw new Error('fetch is not available in this runtime');
     }
+    const queryName = dnsName(name);
+    const typeName = typeof type === 'string' ? type.toUpperCase() : type;
+    const typeCode = DNS_TYPES[typeName] ?? (/^\d+$/.test(String(typeName)) ? Number(typeName) : 0);
+    if (!Number.isSafeInteger(typeCode) || typeCode < 1 || typeCode > 65535) refuse('dns-query-type');
     const t0 = performance.now();
-    const url = `${this.endpoint}?name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+    const url = `${this.endpoint}?name=${encodeURIComponent(queryName)}&type=${encodeURIComponent(typeCode)}`;
     this.admission.reserve('retrieve', { requests: 1, transferBytes: wireBytes(url) + this.maxResponseBytes });
     const res = await this.fetchImpl(url, { headers: { accept: 'application/dns-json' } });
     if (!res.ok) {
@@ -176,10 +249,7 @@ export class DohResolver {
     const body = res.body?.getReader || res.text
       ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
     const rttMs = Number((performance.now() - t0).toFixed(1));
-    const answers = Array.isArray(body.Answer) ? body.Answer : [];
-    const ttlSeconds = answers.length > 0
-      ? Math.min(...answers.map(a => Number(a.TTL) || 30))
-      : 0;
+    const { selected: answers, ttlSeconds } = associateDnsJson(body, queryName, typeCode);
 
     const prev = this.history.length > 0 ? this.history[this.history.length - 1] : null;
     const cacheHitInferred = Boolean(
@@ -187,15 +257,15 @@ export class DohResolver {
     );
 
     const parsedRecords = answers.map(a => {
-      if (type === 'SRV') return parseSrvRecord(a.data);
-      if (type === 'TXT') return parsePointerTxt(a.data);
+      if (typeCode === DNS_TYPES.SRV) { const record = parseSrvRecord(a.data); if (!record) refuse('dns-invalid-srv'); return record; }
+      if (typeCode === DNS_TYPES.TXT) return parsePointerTxt(a.data);
       return a.data;
     }).filter(Boolean);
 
     const record = {
       name,
       type,
-      status: body.Status ?? 0,
+      status: body.Status,
       ttl_seconds: ttlSeconds,
       rtt_ms: rttMs,
       cache_hit_inferred: cacheHitInferred,
@@ -269,26 +339,36 @@ export class DohResolver {
     ttl = 60,
     apiBase = 'https://api.cloudflare.com/client/v4'
   }) {
-    if (!this.fetchImpl) throw new Error('fetch unavailable');
-    const url = recordId
-      ? `${apiBase}/zones/${encodeURIComponent(zoneId)}/dns_records/${encodeURIComponent(recordId)}`
-      : `${apiBase}/zones/${encodeURIComponent(zoneId)}/dns_records`;
-    const body = {
-      type,
-      name,
-      ttl: Math.max(30, Number(ttl) || 60)
-    };
-    if (type === 'SRV' && srvData) {
-      body.data = {
-        priority: Number(srvData.priority ?? 10),
-        weight: Number(srvData.weight ?? 10),
-        port: Number(srvData.port ?? 443),
-        target: String(srvData.target)
+    let url, body;
+    try {
+      if (!this.fetchImpl) throw new Error('fetch unavailable');
+      url = recordId
+        ? `${apiBase}/zones/${encodeURIComponent(zoneId)}/dns_records/${encodeURIComponent(recordId)}`
+        : `${apiBase}/zones/${encodeURIComponent(zoneId)}/dns_records`;
+      body = {
+        type,
+        name,
+        ttl: Math.max(30, Number(ttl) || 60)
       };
-    } else {
-      body.content = String(content);
+      if (type === 'SRV' && srvData) {
+        body.data = {
+          priority: Number(srvData.priority ?? 10),
+          weight: Number(srvData.weight ?? 10),
+          port: Number(srvData.port ?? 443),
+          target: String(srvData.target)
+        };
+      } else {
+        body.content = String(content);
+      }
+      this.admission.reserve('refresh', { requests: 1, transferBytes: wireBytes(url) + wireBytes(body) + this.maxResponseBytes });
+    } catch (cause) {
+      const error = new Error(cause.message, { cause });
+      error.code = cause.code;
+      // A host adapter fact, set only before fetch invocation. No provider
+      // failure, timeout or lost response is classified as definite non-dispatch.
+      error.effectDispatched = false;
+      throw error;
     }
-    this.admission.reserve('refresh', { requests: 1, transferBytes: wireBytes(url) + wireBytes(body) + this.maxResponseBytes });
     // Only pre-dispatch validation/admission errors throw. Once attempted, a lost
     // or malformed response is uncertainty, never evidence that no write occurred.
     try {
@@ -299,7 +379,8 @@ export class DohResolver {
       });
       const json = res.body?.getReader || res.text
         ? JSON.parse(await readBoundedText(res, this.maxResponseBytes)) : await res.json();
-      if (json?.success === false) return { ok: false, outcome: 'refused', errors: json.errors || [] };
+      if (json?.success === false && [400, 401, 403, 404, 422].includes(res.status)) return { ok: false, outcome: 'refused', errors: json.errors || [] };
+      if (json?.success === false) return { ok: false, outcome: 'unknown' };
       if (!res.ok || json?.success !== true || typeof json?.result?.id !== 'string'
         || !/^[A-Za-z0-9_-]{1,128}$/.test(json.result.id)
         || (recordId && json.result.id !== recordId)) return { ok: false, outcome: 'unknown' };
@@ -360,7 +441,7 @@ export class DohResolver {
  * Objective O5: Pre-registered JSONL Experiment Trial Logger for C1-C8 falsification runs.
  */
 export class ExperimentTrialLogger {
-  constructor({ contractVersion = '1.0.0' } = {}) {
+  constructor({ contractVersion = '1.1.0' } = {}) {
     this.contractVersion = contractVersion;
     this.entries = [];
   }
@@ -377,26 +458,27 @@ export class ExperimentTrialLogger {
   }
 
   summarizeC1(networkPairClass = null) {
-    const c1 = this.entries.filter(
-      e => e.claim_id === 'C1' && (!networkPairClass || e.network_pair_class === networkPairClass)
+    const rows = this.entries.filter(
+      e => e.claim_id === 'C1' && e.contract_version === '1.1.0' && (!networkPairClass || e.network_pair_class === networkPairClass)
     );
+    const c1 = rows.filter(c1SampleStructurallyValid), invalidSamples = rows.length - c1.length;
     if (c1.length === 0) {
-      return { trials: 0, direct_success_rate: 0, median_ice_setup_sec: 0, c1_status: 'UNTESTED' };
+      return { trials: 0, invalid_samples: invalidSamples, direct_success_rate: 0, median_ice_setup_sec: null,
+        c1_status: invalidSamples ? 'INSUFFICIENT_EVIDENCE' : 'UNTESTED' };
     }
-    const successes = c1.filter(e => e.success && !e.used_turn).length;
+    const successes = c1.filter(e => e.success === true && c1SampleQualified(e)).length;
     const directSuccessRate = Number((successes / c1.length).toFixed(3));
-    const sortedIce = c1
-      .filter(e => typeof e.ice_setup_sec === 'number')
-      .map(e => e.ice_setup_sec)
-      .sort((a, b) => a - b);
-    const medianIce = sortedIce.length > 0 ? sortedIce[Math.floor(sortedIce.length / 2)] : 0;
-    const c1Status = c1.length < 30
-      ? 'INCOMPLETE_N_LT_30'
-      : (directSuccessRate >= 0.60 && medianIce <= 10.0 ? 'VERIFIED' : 'REFUTED');
+    const sortedIce = c1.map(e => e.ice_setup_sec === null ? Infinity : e.ice_setup_sec).sort((a, b) => a - b);
+    const middle = Math.floor(sortedIce.length / 2);
+    const median = sortedIce.length % 2 ? sortedIce[middle] : (sortedIce[middle - 1] + sortedIce[middle]) / 2;
+    const medianIce = Number.isFinite(median) ? Number(median.toFixed(2)) : null;
+    const c1Status = c1.length < 30 ? invalidSamples ? 'INSUFFICIENT_EVIDENCE' : 'INCOMPLETE_N_LT_30'
+      : (directSuccessRate >= 0.60 && medianIce !== null && medianIce <= 10.0 ? 'THRESHOLDS_MET' : 'THRESHOLDS_NOT_MET');
     return {
       trials: c1.length,
+      invalid_samples: invalidSamples,
       direct_success_rate: directSuccessRate,
-      median_ice_setup_sec: Number(medianIce.toFixed(2)),
+      median_ice_setup_sec: medianIce,
       c1_status: c1Status
     };
   }
@@ -406,6 +488,15 @@ export class ExperimentTrialLogger {
   }
 }
 
+/** Local identities must fit the same strict JSON profile used on the wire.
+ * Validate before closing a previous live session or allocating a provider.
+ */
+function validateTransportIdentity(peerId, channelKey) {
+  if (typeof peerId !== 'string' || typeof channelKey !== 'string') throw new TypeError('Transport identities must be strings');
+  if (peerId.length === 0 || peerId.length > 128) refuse('relay-peer-identity');
+  snapshotRelayMessage({ kind: 'announce', from: peerId, channelKey });
+}
+
 /**
  * Multi-Peer WebRTC DataChannel Mesh + Warm Relay Cache (`ntfy.sh` ring buffer).
  * Supports N concurrent peers, binary/JSON replication, and raw Ethernet frame bridging for v86.
@@ -413,11 +504,19 @@ export class ExperimentTrialLogger {
 export class WebRtcTransportNode {
   constructor(options = {}) {
     this.admission = options.admission ?? new ResourceAdmission();
+    this.relayPending = new Map();
+    this.relayVerificationPool = new Map();
+    this.relaySession = null;
+    this.signalAssembler = null;
+    this.warmPollBusy = null;
+    this.publicRelayConsent = options.publicRelayConsent ?? (() => true);
+    if (typeof this.publicRelayConsent !== 'function') throw new TypeError('Relay consent must be a callback');
     this.maxRelayResponseBytes = 2 * 1024 * 1024;
     this.maxDataMessageBytes = 512 * 1024;
     this.maxPeers = 64;
     this.peerId = options.peerId || ('node-' + Math.random().toString(36).slice(2, 8));
     this.channelKey = options.channelKey ?? 'syntra-uor-bus-01';
+    validateTransportIdentity(this.peerId, this.channelKey);
     this.heartbeatIntervalMs = options.heartbeatIntervalMs ?? 5000;
     this.networkPairClass = options.networkPairClass ?? 'declared-pair';
     this.trialLogger = options.trialLogger ?? null;
@@ -434,6 +533,10 @@ export class WebRtcTransportNode {
     this.heartbeatTimestampsSec = [];
     this.bytesSent = 0;
     this.bytesReceived = 0;
+  }
+
+  get lifecycle() {
+    return { generation: this.generation, closed: this.closed, canConnect: true, canSend: transportCanSend(this) };
   }
 
   emit(type, data = {}) {
@@ -471,7 +574,12 @@ export class WebRtcTransportNode {
       return entry;
     }
 
-    if (this.peers.size >= this.maxPeers) refuse('peer-capacity');
+    if (!transportPeerAllocationAllowed(this)) refuse('peer-capacity');
+    if (entry) {
+      if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
+      if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
+      entry.c1Logged = true;
+    }
     this.admission.reserve('refresh', { requests: 1 });
     const pc = new RTCPeerConnection({ iceServers: DEFAULT_ICE_SERVERS });
     entry = {
@@ -483,11 +591,20 @@ export class WebRtcTransportNode {
       iceSetupSec: null,
       usedTurn: false,
       heartbeatsPassed: 0,
+      lastHeartbeatSeq: null,
+      pendingHeartbeats: new Map(),
+      c1Deadline: null,
+      statsDeadline: null,
+      c1Finalizing: false,
       c1Logged: false
     };
     this.peers.set(remoteId, entry);
-    const generation = this.generation;
-    const current = () => !this.closed && this.generation === generation && this.peers.get(remoteId) === entry;
+    const callback = captureTransport(this, remoteId);
+    const current = () => transportPeerCurrent(this, callback, remoteId, entry);
+    entry.c1Deadline = setTimeout(() => {
+      if (current()) this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, 'heartbeat-deadline');
+    }, 10000);
+    entry.c1Deadline?.unref?.();
 
     pc.onicecandidate = e => {
       if (!current()) return;
@@ -510,18 +627,7 @@ export class WebRtcTransportNode {
       const state = pc.iceConnectionState || 'closed';
       this.emit('ice_state', { remoteId, state });
       if (state === 'disconnected' || state === 'failed' || state === 'closed') {
-        if (!entry.c1Logged && this.trialLogger) {
-          entry.c1Logged = true;
-          this.trialLogger.logTrial('C1', {
-            remote_peer: remoteId,
-            network_pair_class: this.networkPairClass,
-            success: false,
-            used_turn: entry.usedTurn,
-            ice_setup_sec: entry.iceSetupSec ?? Number(((performance.now() - entry.startedAtMs) / 1000).toFixed(2)),
-            heartbeats_passed: entry.heartbeatsPassed,
-            reason: `ice_${state}`
-          });
-        }
+        this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, `ice_${state}`);
         this.peers.delete(remoteId);
         this.emit('peer_disconnected', { remoteId, state });
       }
@@ -544,14 +650,16 @@ export class WebRtcTransportNode {
     const entry = this.peers.get(remoteId);
     if (!entry || this.closed) { channel.close(); return; }
     entry.dc = channel;
-    const generation = this.generation;
-    const current = () => !this.closed && this.generation === generation
-      && this.peers.get(remoteId) === entry && entry.dc === channel;
+    entry.pendingHeartbeats.clear();
+    entry.lastHeartbeatSeq = null;
+    entry.heartbeatsPassed = 0;
+    const callback = captureTransport(this, remoteId);
+    const current = () => transportChannelCurrent(this, callback, remoteId, entry, channel);
 
     channel.onopen = () => {
       if (!current()) return;
       if (entry && entry.iceSetupSec === null) {
-        entry.iceSetupSec = Number(((performance.now() - entry.startedAtMs) / 1000).toFixed(2));
+        entry.iceSetupSec = (performance.now() - entry.startedAtMs) / 1000;
       }
       this.emit('channel_open', { remoteId, label: channel.label, iceSetupSec: entry?.iceSetupSec ?? 0 });
       if (current()) this.startHeartbeat();
@@ -559,17 +667,19 @@ export class WebRtcTransportNode {
 
     channel.onclose = () => {
       if (!current()) return;
+      this.finishConnectionTrial(remoteId, entry, performance.now(), false, false, 'channel-closed');
       this.peers.delete(remoteId);
       this.emit('channel_close', { remoteId });
     };
 
     channel.onmessage = e => {
       if (!current()) return;
-      const rawLen = typeof e.data === 'string' ? e.data.length : (e.data?.byteLength || 0);
+      const rawLen = typeof e.data === 'string' ? wireBytes(e.data) : (e.data?.byteLength || 0);
       this.bytesReceived += rawLen;
       try {
         if (rawLen > this.maxDataMessageBytes) return;
-        const msg = JSON.parse(e.data);
+        if (typeof e.data !== 'string') return;
+        const msg = parseCanonicalJson(e.data, { maxBytes: this.maxDataMessageBytes, maxEntries: this.maxDataMessageBytes, maxStringLength: this.maxDataMessageBytes });
         this.handleDataMessage(remoteId, msg);
       } catch {
         // Ignore malformed frame
@@ -582,20 +692,26 @@ export class WebRtcTransportNode {
     const entry = this.peers.get(remoteId);
     if (entry) entry.lastSeenSec = nowMs / 1000;
 
+    if (!msg || typeof msg !== 'object') return;
     if (msg.type === 'ping') {
-      this.sendToPeer(remoteId, {
-        type: 'pong',
-        seq: msg.seq,
-        sentAtMs: msg.sentAtMs,
-        from: this.peerId
-      });
+      if (msg.from !== remoteId || !Number.isSafeInteger(msg.seq) || msg.seq < 0 || !Number.isFinite(msg.sentAtMs)) return;
+      this.sendToPeer(remoteId, { type: 'pong', seq: msg.seq, sentAtMs: msg.sentAtMs, from: this.peerId });
       this.recordHeartbeat(remoteId, nowMs, null);
     } else if (msg.type === 'pong') {
-      const rttMs = msg.sentAtMs ? nowMs - msg.sentAtMs : null;
-      if (entry && rttMs !== null) entry.rttMs = rttMs;
-      this.recordHeartbeat(remoteId, nowMs, rttMs);
+      const probe = entry?.pendingHeartbeats.get(msg.seq), observedAt = performance.now();
+      const correlated = !!probe && msg.from === remoteId && probe.sentAtMs === msg.sentAtMs
+        && probe.generation === this.generation && probe.channel === entry.dc && probe.monotonicAt <= observedAt;
+      if (probe) entry.pendingHeartbeats.delete(msg.seq);
+      if (correlated) {
+        const rttMs = observedAt - probe.monotonicAt;
+        entry.rttMs = rttMs;
+        observeC1Probe(entry, msg.seq, observedAt, true);
+        this.recordHeartbeat(remoteId, nowMs, rttMs);
+        if (!entry.c1Logged && !entry.c1Finalizing && c1ConnectionQualified(entry, observedAt)) {
+          this.observeConnectionPath(remoteId, entry, observedAt);
+        }
+      }
     } else {
-      // Forward application payload (uor_shard, uor_sync_req, compute_task, compute_ckpt, eth_frame)
       this.emit('mesh_message', { from: remoteId, msg });
     }
   }
@@ -604,36 +720,67 @@ export class WebRtcTransportNode {
     const nowSec = nowMs / 1000;
     this.heartbeatTimestampsSec.push(nowSec);
     if (this.heartbeatTimestampsSec.length > 64) this.heartbeatTimestampsSec.shift();
-    const entry = this.peers.get(remoteId);
-    if (entry) {
-      entry.heartbeatsPassed++;
-      if (!entry.c1Logged && entry.heartbeatsPassed >= 10) {
-        entry.c1Logged = true;
-        const c1Payload = {
-          remote_peer: remoteId,
-          network_pair_class: this.networkPairClass,
-          success: (entry.iceSetupSec ?? 0) <= 10.0 && !entry.usedTurn,
-          used_turn: entry.usedTurn,
-          ice_setup_sec: entry.iceSetupSec ?? 0,
-          heartbeats_passed: entry.heartbeatsPassed
-        };
-        if (this.trialLogger) this.trialLogger.logTrial('C1', c1Payload);
-        this.emit('c1_trial_complete', c1Payload);
-      }
+    this.emit('heartbeat', { remoteId, count: this.heartbeatTimestampsSec.length, rttMs, timestampSec: nowSec });
+  }
+
+  rememberHeartbeatProbe(entry, payload) {
+    if (!(entry.pendingHeartbeats instanceof Map) || payload.type !== 'ping' || !Number.isSafeInteger(payload.seq) || payload.seq < 0 || !Number.isFinite(payload.sentAtMs)) return;
+    entry.pendingHeartbeats.set(payload.seq, { sentAtMs: payload.sentAtMs, monotonicAt: performance.now(), generation: this.generation, channel: entry.dc });
+    while (entry.pendingHeartbeats.size > 64) entry.pendingHeartbeats.delete(entry.pendingHeartbeats.keys().next().value);
+  }
+
+  finishConnectionTrial(remoteId, entry, observedAt, selectedPathObserved, usedRelay, reason) {
+    if (entry.c1Logged) return;
+    entry.c1Logged = true;
+    if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
+    if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
+    entry.c1Deadline = entry.statsDeadline = null;
+    const payload = { remote_peer: remoteId, network_pair_class: this.networkPairClass,
+      success: c1DirectSuccess(entry, observedAt, selectedPathObserved, usedRelay),
+      connection_qualified: c1ConnectionQualified(entry, observedAt), selected_path_observed: selectedPathObserved,
+      ordered_channel: entry.dc?.ordered === true, used_turn: usedRelay,
+      ice_setup_sec: entry.iceSetupSec,
+      qualification_elapsed_sec: (observedAt - entry.startedAtMs) / 1000,
+      heartbeats_passed: entry.heartbeatsPassed, reason };
+    this.trialLogger?.logTrial('C1', payload);
+    this.emit('c1_trial_complete', payload);
+  }
+
+  async observeConnectionPath(remoteId, entry, qualifiedAt) {
+    entry.c1Finalizing = true;
+    if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
+    entry.c1Deadline = null;
+    const callback = captureTransport(this, remoteId);
+    const current = () => transportPeerCurrent(this, callback, remoteId, entry) && !entry.c1Logged;
+    // Local RTC stats observation adds no traffic. A bounded missing observation
+    // cannot turn an unobserved path into a direct-connect success.
+    entry.statsDeadline = setTimeout(() => {
+      if (current()) this.finishConnectionTrial(remoteId, entry, qualifiedAt, false, false, 'selected-path-unobserved');
+    }, 1000);
+    entry.statsDeadline?.unref?.();
+    try {
+      const reports = await entry.pc.getStats();
+      if (!current()) return;
+      const rows = [...reports.values()];
+      const selected = new Set(rows.filter(row => row.type === 'transport' && typeof row.selectedCandidatePairId === 'string').map(row => row.selectedCandidatePairId));
+      const pair = selected.size === 1 ? reports.get([...selected][0]) : null;
+      const local = pair && reports.get(pair.localCandidateId), remote = pair && reports.get(pair.remoteCandidateId);
+      const validType = value => ['host', 'srflx', 'prflx', 'relay'].includes(value);
+      const observed = pair?.type === 'candidate-pair' && pair.state === 'succeeded'
+        && local?.type === 'local-candidate' && remote?.type === 'remote-candidate'
+        && validType(local.candidateType) && validType(remote.candidateType);
+      const relay = observed && (local.candidateType === 'relay' || remote.candidateType === 'relay');
+      this.finishConnectionTrial(remoteId, entry, qualifiedAt, observed, relay, observed ? relay ? 'relay-path-observed' : 'direct-path-observed' : 'selected-path-unobserved');
+    } catch {
+      if (current()) this.finishConnectionTrial(remoteId, entry, qualifiedAt, false, false, 'selected-path-unobserved');
     }
-    this.emit('heartbeat', {
-      remoteId,
-      count: this.heartbeatTimestampsSec.length,
-      rttMs,
-      timestampSec: nowSec
-    });
   }
 
   startHeartbeat() {
     if (this.closed || this.hbTimer) return;
-    const generation = this.generation;
+    const callback = captureTransport(this);
     this.hbTimer = setInterval(() => {
-      if (this.closed || this.generation !== generation) return;
+      if (!transportSessionCurrent(this, callback)) return;
       this.seq++;
       const now = Date.now();
       this.broadcast({ type: 'ping', seq: this.seq, sentAtMs: now, from: this.peerId });
@@ -652,7 +799,8 @@ export class WebRtcTransportNode {
     if (!entry || !entry.dc || entry.dc.readyState !== 'open') return false;
     const raw = JSON.stringify(payloadObj);
     reserveNetwork(this.admission, 'place', raw);
-    entry.dc.send(raw);
+    this.rememberHeartbeatProbe(entry, payloadObj);
+    try { entry.dc.send(raw); } catch (error) { entry.pendingHeartbeats?.delete(payloadObj.seq); throw error; }
     this.bytesSent += raw.length;
     return true;
   }
@@ -660,10 +808,12 @@ export class WebRtcTransportNode {
   broadcast(payloadObj) {
     const raw = JSON.stringify(payloadObj);
     let sentCount = 0;
-    for (const { dc } of this.openPeers()) {
+    for (const entry of this.openPeers()) {
+      const { dc } = entry;
       try {
         reserveNetwork(this.admission, 'place', raw);
-        dc.send(raw);
+        this.rememberHeartbeatProbe(entry, payloadObj);
+        try { dc.send(raw); } catch (error) { entry.pendingHeartbeats?.delete(payloadObj.seq); throw error; }
         this.bytesSent += raw.length;
         sentCount++;
       } catch {}
@@ -671,63 +821,145 @@ export class WebRtcTransportNode {
     return sentCount;
   }
 
-  /**
-   * Publish a state/shard envelope into the public warm relay ring-buffer (`ntfy.sh`)
-   * so newly opened browsers can recover state even after a 0-peer gap (all tabs closed).
-   */
-  async publishWarmEnvelope(envelopeObj) {
-    if (typeof fetch === 'undefined') return false;
+  /** Queue is an in-flight memory bound, not a second resource ledger. */
+  _queueRelay(snapshot, scope, consentCurrent, localBroadcast = null) {
+    const callback = captureTransport(this);
+    if (!transportSessionCurrent(this, callback) || !consentCurrent()) refuse('relay-not-authorized');
+    const retained = [...this.relayPending.values()].reduce((sum, job) => sum + job.snapshot.byteLength, 0);
+    if (!relayAdmissionAllowed(relayCapacity(this.relayPending.size, retained), snapshot.byteLength)) refuse('relay-outbound-capacity');
+    this.relaySession ??= newRelaySession();
+    const job = { snapshot, scope, callback, session: this.relaySession, channelKey: this.channelKey,
+      consentCurrent, localBroadcast, fetchImpl: globalThis.fetch?.bind(globalThis), controller: new AbortController(), timedOut: false,
+      url: `https://ntfy.sh/${scope === 'warm' ? this.warmCacheTopic() : this.signalTopic()}` };
+    this.relayPending.set(job, job);
+    job.deadline = setTimeout(() => { job.timedOut = true; job.controller.abort(); }, RELAY_LIMITS.requestTimeout);
+    job.deadline.unref?.();
+    job.completion = this._dispatchRelay(job).finally(() => { clearTimeout(job.deadline); this.relayPending.delete(job); });
+    return job.completion;
+  }
+
+  async _dispatchRelay(job) {
+    const current = () => relayEffectAllowed(this, job.callback.generation,
+      !job.controller.signal.aborted && this.relaySession === job.session && transportSessionCurrent(this, job.callback), job.consentCurrent());
+    let planned = 0, attempted = 0, acknowledged = 0, httpStatus = null, outcome = 'cancelled';
     try {
-      const raw = JSON.stringify({ ...envelopeObj, from: this.peerId, tsMs: Date.now() });
-      reserveNetwork(this.admission, 'place', raw);
-      this.bytesSent += raw.length;
-      const res = await fetch(`https://ntfy.sh/${this.warmCacheTopic()}`, {
-        method: 'POST',
-        body: raw
-      });
-      return res.ok;
-    } catch {
+      const framed = job.fetchImpl ? await frameRelayMessage(job.snapshot, {
+        channelKey: job.channelKey, session: job.session, scope: job.scope }) : { frames: [], bytes: 0 };
+      planned = framed.frames.length;
+      if (!current()) { outcome = job.timedOut ? 'timeout' : 'cancelled'; return false; }
+      const local = !!job.localBroadcast && this.bc === job.localBroadcast;
+      // One atomic reservation includes every serialized frame's metadata and
+      // every actual destination. A failed/partial batch never receives a refund.
+      const requests = planned + (local ? 1 : 0);
+      if (!requests) { outcome = 'unavailable'; return false; }
+      this.admission.reserve(job.scope === 'warm' ? 'place' : 'refresh', { requests,
+        transferBytes: framed.bytes + (local ? job.snapshot.byteLength : 0) });
+      if (local && current() && this.bc === job.localBroadcast) {
+        job.localBroadcast.postMessage(JSON.parse(job.snapshot.raw));
+        this.bytesSent += job.snapshot.byteLength;
+      }
+      for (const body of framed.frames) {
+        if (!current()) { outcome = acknowledged ? 'partial' : (job.timedOut ? 'timeout' : 'cancelled'); return false; }
+        attempted++;
+        this.bytesSent += wireBytes(body);
+        let response;
+        try {
+          response = await job.fetchImpl(job.url, { method: 'POST', body, signal: job.controller.signal,
+            headers: { 'Content-Type': 'text/plain; charset=utf-8', Cache: job.scope === 'signal' ? 'no' : 'yes' } });
+        } catch {
+          outcome = acknowledged ? 'partial' : 'unknown'; return false;
+        }
+        httpStatus = response.status ?? null;
+        if (!response.ok) { outcome = acknowledged ? 'partial' : 'refused'; return false; }
+        acknowledged++;
+      }
+      if (!current()) { outcome = acknowledged ? 'partial' : (job.timedOut ? 'timeout' : 'cancelled'); return false; }
+      outcome = planned ? 'acknowledged' : 'local-only';
+      return planned > 0 && acknowledged === planned;
+    } catch (error) {
+      outcome = acknowledged ? 'partial' : 'refused';
+      if (transportSessionCurrent(this, job.callback)) this.emit('policy_refused', { code: error.code || 'relay-failed' });
+      return false;
+    } finally {
+      // HTTP acknowledgement is not recipient delivery or a retention receipt.
+      if (transportSessionCurrent(this, job.callback)) this.emit('relay_publish_result', {
+        scope: job.scope, outcome, planned, attempted, acknowledged, httpStatus, timedOut: job.timedOut });
+    }
+  }
+
+  /** All frames must be HTTP-acknowledged. This is not a durability receipt. */
+  async publishWarmEnvelope(envelopeObj, { publicData = false, consentCurrent = () => publicData } = {}) {
+    if (publicData !== true || !consentCurrent() || !this.publicRelayConsent() || !transportCanSend(this) || typeof fetch === 'undefined') return false;
+    try {
+      const snapshot = snapshotRelayMessage({ ...envelopeObj, from: this.peerId, tsMs: Date.now() });
+      return await this._queueRelay(snapshot, 'warm', () => publicData === true && consentCurrent() && this.publicRelayConsent());
+    } catch (error) {
+      this.emit('policy_refused', { code: error.code || 'relay-failed' });
       return false;
     }
   }
 
-  /**
-   * Poll the warm relay ring-buffer (`?poll=1&since=30m`) to recover shards/checkpoints
-   * that were published before all previous browsers closed.
+  /** One bounded poll snapshot. Incomplete messages are never exposed, and are
+   * released at the end of this poll. A later poll may recover a complete copy.
+   * The 30-minute application window does not promise provider retention.
    */
-  async fetchWarmEnvelopes(sinceWindow = '30m') {
-    if (typeof fetch === 'undefined') return [];
+  async fetchWarmEnvelopes(sinceWindow = '30m', { publicData = false, consentCurrent = () => publicData } = {}) {
+    if (publicData !== true || !consentCurrent() || !this.publicRelayConsent() || !transportCanSend(this) || typeof fetch === 'undefined') return [];
+    if (this.warmPollBusy) { this.emit('policy_refused', { code: 'relay-poll-busy' }); return []; }
+    const token = { controller: new AbortController() }, callback = captureTransport(this);
+    const current = () => !token.controller.signal.aborted && transportSessionCurrent(this, callback) && publicData === true && consentCurrent() && this.publicRelayConsent();
+    const assembler = new RelayReassembler({ channelKey: this.channelKey, scope: 'warm', admission: this.admission,
+      current, consentCurrent, chargeIngress: false, verificationPool: this.relayVerificationPool });
+    token.assembler = assembler;
+    token.deadline = setTimeout(() => token.controller.abort(), RELAY_LIMITS.requestTimeout);
+    token.deadline.unref?.();
+    this.warmPollBusy = token;
     try {
+      if (typeof sinceWindow !== 'string' || !/^(?:[1-9][0-9]{0,5}[smh]|all)$/.test(sinceWindow)) refuse('relay-poll-window');
       const url = `https://ntfy.sh/${this.warmCacheTopic()}/json?poll=1&since=${encodeURIComponent(sinceWindow)}`;
       this.admission.reserve('retrieve', { requests: 1, transferBytes: wireBytes(url) + this.maxRelayResponseBytes });
-      const res = await fetch(url);
-      if (!res.ok) return [];
+      if (!current()) return [];
+      const res = await fetch(url, { signal: token.controller.signal });
+      if (!current() || !res.ok) return [];
       const text = await readBoundedText(res, this.maxRelayResponseBytes);
-      const lines = text.split('\n').filter(Boolean);
       const envelopes = [];
-      for (const line of lines) {
+      let offset = 0, refused = 0;
+      while (offset < text.length && current()) {
+        let end = text.indexOf('\n', offset);
+        if (end < 0) end = text.length;
+        const line = text.slice(offset, end); offset = end + 1;
+        if (!line) continue;
         try {
+          if (line.length > RELAY_EVENT_BYTES || wireBytes(line) > RELAY_EVENT_BYTES) refuse('relay-event-limit');
           const outer = JSON.parse(line);
-          if (outer.event === 'message' && outer.message) {
-            const inner = JSON.parse(outer.message);
-            envelopes.push(inner);
-          }
-        } catch {}
+          if (outer.event !== 'message' || typeof outer.message !== 'string' || outer.attachment) continue;
+          const envelope = await assembler.accept(outer.message);
+          if (envelope) envelopes.push(envelope);
+        } catch { refused++; }
       }
+      if (!current()) return [];
+      this.emit('relay_poll_result', { completed: envelopes.length, refused, incomplete: assembler.state.entries });
       return envelopes;
-    } catch {
+    } catch (error) {
+      if (transportSessionCurrent(this, callback)) this.emit('policy_refused', { code: error.code || 'relay-poll-failed' });
       return [];
+    } finally {
+      clearTimeout(token.deadline); assembler.dispose();
+      if (this.warmPollBusy === token) this.warmPollBusy = null;
     }
   }
 
   connect(channelKey = this.channelKey) {
+    validateTransportIdentity(this.peerId, channelKey);
     // Invalidate callbacks before closing: close events may run synchronously.
     // Rejoining the same topic is also a new signaling session.
     this.close();
-    this.closed = false;
-    this.channelKey = channelKey;
-    const generation = this.generation;
-    const current = () => !this.closed && this.generation === generation;
+    openTransport(this, channelKey);
+    const callback = captureTransport(this);
+    const current = () => transportSessionCurrent(this, callback);
+    this.signalAssembler = new RelayReassembler({ channelKey: this.channelKey, scope: 'signal',
+      admission: this.admission, current, verificationPool: this.relayVerificationPool });
+    const signalAssembler = this.signalAssembler;
     const receive = msg => {
       if (!current()) return;
       this.handleSignal(msg).catch(error => {
@@ -753,15 +985,17 @@ export class WebRtcTransportNode {
           if (!current()) return;
           this.sendSignal({ kind: 'announce' });
         };
-        this.ws.onmessage = e => {
+        this.ws.onmessage = async e => {
           if (!current()) return;
           try {
-            if (typeof e.data !== 'string' || e.data.length > this.maxDataMessageBytes) return;
+            if (typeof e.data !== 'string' || e.data.length > RELAY_EVENT_BYTES || wireBytes(e.data) > RELAY_EVENT_BYTES) return;
             const env = JSON.parse(e.data);
-            if (env.event !== 'message' || !env.message) return;
-            const msg = JSON.parse(env.message);
-            if (msg && msg.from !== this.peerId) receive(msg);
-          } catch {}
+            if (env.event !== 'message' || typeof env.message !== 'string' || env.attachment) return;
+            const msg = await signalAssembler.accept(env.message);
+            if (current() && msg && msg.from !== this.peerId) receive(msg);
+          } catch (error) {
+            if (current()) this.emit('relay_frame_refused', { scope: 'signal', code: error.code || 'relay-frame' });
+          }
         };
       } catch {
         this.sendSignal({ kind: 'announce' });
@@ -771,28 +1005,32 @@ export class WebRtcTransportNode {
     }
   }
 
+  /** True means locally queued, not published or delivered. Result events
+   * distinguish local-only, HTTP acknowledgements, partial and unknown batches.
+   */
   sendSignal(payload) {
-    if (this.closed) return false;
-    const frame = { ...payload, from: this.peerId, channelKey: this.channelKey };
-    try { reserveNetwork(this.admission, 'refresh', frame, (this.bc ? 1 : 0) + (typeof fetch !== 'undefined' ? 1 : 0)); }
-    catch (error) { this.emit('policy_refused', { code: error.code || 'budget-exhausted' }); return false; }
-    if (this.bc) this.bc.postMessage(frame);
-    if (typeof fetch !== 'undefined') {
-      fetch(`https://ntfy.sh/${this.signalTopic()}`, {
-        method: 'POST',
-        body: JSON.stringify(frame)
-      }).catch(() => {});
+    if (!transportCanSend(this)) return false;
+    try {
+      const snapshot = snapshotRelayMessage({ ...payload, from: this.peerId, channelKey: this.channelKey });
+      if (!this.bc && typeof fetch === 'undefined') return false;
+      this._queueRelay(snapshot, 'signal', () => true, this.bc).catch(() => {});
+      return true;
+    } catch (error) {
+      this.emit('policy_refused', { code: error.code || 'relay-failed' });
+      return false;
     }
   }
 
   async handleSignal(msg) {
-    if (this.closed || !msg || msg.channelKey !== this.channelKey) return;
-    const generation = this.generation;
-    const current = entry => !this.closed && this.generation === generation
-      && this.peers.get(msg.from) === entry;
-    if (msg.to && msg.to !== this.peerId) return;
+    if (!msg || msg.channelKey !== this.channelKey || typeof msg.from !== 'string' || msg.from.length === 0 || msg.from.length > 128) return;
+    try {
+      parseCanonicalJson(JSON.stringify(msg.from), { maxBytes: 1024, maxDepth: 0, maxEntries: 1, maxStringLength: 128 });
+      if (msg.to != null) parseCanonicalJson(JSON.stringify(msg.to), { maxBytes: 1024, maxDepth: 0, maxEntries: 1, maxStringLength: 128 });
+    } catch { return; }
+    if (!transportSignalAllowed(this, msg)) return;
     const remoteId = msg.from;
-    if (!remoteId || remoteId === this.peerId) return;
+    const callback = captureTransport(this, remoteId);
+    const current = entry => transportPeerCurrent(this, callback, remoteId, entry);
 
     const existing = this.peers.get(remoteId);
     if (existing && existing.dc && existing.dc.readyState === 'open') {
@@ -832,12 +1070,21 @@ export class WebRtcTransportNode {
   }
 
   close() {
-    this.closed = true;
-    this.generation++;
+    closeTransport(this);
+    this.relaySession = null;
+    for (const job of this.relayPending.values()) job.controller.abort();
+    this.warmPollBusy?.controller.abort();
+    this.warmPollBusy?.assembler.dispose();
+    this.signalAssembler?.dispose();
+    this.signalAssembler = null;
     this.stopHeartbeat();
     const peers = [...this.peers.values()];
     this.peers.clear();
-    for (const { dc, pc } of peers) {
+    for (const entry of peers) {
+      const { dc, pc } = entry;
+      if (entry.c1Deadline !== null) clearTimeout(entry.c1Deadline);
+      if (entry.statsDeadline !== null) clearTimeout(entry.statsDeadline);
+      entry.c1Logged = true;
       if (dc) dc.close();
       if (pc) pc.close();
     }

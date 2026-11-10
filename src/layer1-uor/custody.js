@@ -9,9 +9,9 @@
  *   UTF8("stitch/" + domain + "/v1\0") || uint64(payload.length) || payload
  * Fragment payload: raw32(encodingDigest) || uint32(index) || fragmentBytes.
  * Manifest payload: canonicalBytes(manifest without manifestDigest).
- * Canonical JSON is a closed safe-integer subset: sorted UTF-16 keys, compact
- * JSON strings, no lone surrogates, no negative zero, no implicit coercions.
- * This intentionally does not claim the whole RFC 8785 number profile.
+ * Canonical JSON follows RFC 8785: sorted UTF-16 keys, ECMAScript finite
+ * binary64 serialization, unchanged Unicode strings, and UTF-8 output.
+ * Application schemas and explicit resource budgets remain separate contracts.
  */
 
 export const CUSTODY_LIMITS = Object.freeze({
@@ -46,13 +46,19 @@ export function copyBytes(value, maxBytes = CUSTODY_LIMITS.maxObjectBytes) {
   return new Uint8Array(value);
 }
 
-function validString(value) {
-  if (value.length > CUSTODY_LIMITS.maxStringLength) fail('SizeLimit', 'String too long');
+function validString(value, maxLength = CUSTODY_LIMITS.maxStringLength) {
+  if (value.length > maxLength) fail('SizeLimit', 'String too long');
   for (let i = 0; i < value.length; i++) {
     const c = value.charCodeAt(i);
+    // RFC 7493 §2.1 (the JCS input domain) also excludes Unicode noncharacters.
+    if ((c >= 0xfdd0 && c <= 0xfdef) || c === 0xfffe || c === 0xffff) {
+      fail('InvalidCanonicalValue', 'Unicode noncharacter');
+    }
     if (c >= 0xd800 && c <= 0xdbff) {
       const next = value.charCodeAt(++i);
       if (!(next >= 0xdc00 && next <= 0xdfff)) fail('InvalidCanonicalValue', 'Lone surrogate');
+      const point = 0x10000 + ((c - 0xd800) << 10) + next - 0xdc00;
+      if ((point & 0xffff) >= 0xfffe) fail('InvalidCanonicalValue', 'Unicode noncharacter');
     } else if (c >= 0xdc00 && c <= 0xdfff) {
       fail('InvalidCanonicalValue', 'Lone surrogate');
     }
@@ -61,7 +67,10 @@ function validString(value) {
 
 /**
  * Canonical UTF-8 bytes. Rejects cycles, getters, symbols, sparse/extended arrays,
- * unsafe numbers, hidden properties, and non-JSON prototypes before coercion.
+ * nonfinite numbers, hidden properties, and non-JSON prototypes before coercion.
+ * Number serialization is the ECMAScript algorithm required by RFC 8785 §3.2.2.3.
+ * The caller must supply an already valid value; use parseCanonicalJson on wire JSON
+ * so duplicate properties are rejected before a normal JSON parser can erase them.
  */
 export function canonicalBytes(value) {
   const seen = new Set();
@@ -78,8 +87,8 @@ export function canonicalBytes(value) {
     if (v === null) return append('null');
     if (typeof v === 'boolean') return append(v ? 'true' : 'false');
     if (typeof v === 'number') {
-      if (!Number.isSafeInteger(v) || Object.is(v, -0)) fail('InvalidCanonicalValue', 'Expected safe integer');
-      return append(String(v));
+      if (!Number.isFinite(v)) fail('InvalidCanonicalValue', 'Expected finite IEEE 754 number');
+      return append(JSON.stringify(v));
     }
     if (typeof v === 'string') {
       validString(v);
@@ -113,7 +122,8 @@ export function canonicalBytes(value) {
         if (!Object.hasOwn(descriptors, String(i))) fail('InvalidCanonicalValue', 'Sparse array');
         items.push(encode(descriptors[String(i)].value, depth + 1));
       }
-      result = append('[') + items.join(append(',')) + append(']');
+      result = append('[') + items.join(',') + append(']');
+      append(','.repeat(Math.max(0, items.length - 1)));
     } else {
       const items = [];
       for (const key of keys.sort()) {
@@ -121,13 +131,108 @@ export function canonicalBytes(value) {
         const name = append(JSON.stringify(key));
         items.push(name + append(':') + encode(descriptors[key].value, depth + 1));
       }
-      result = append('{') + items.join(append(',')) + append('}');
+      result = append('{') + items.join(',') + append('}');
+      append(','.repeat(Math.max(0, items.length - 1)));
     }
     seen.delete(v);
     return result;
   }
   const result = utf8.encode(encode(value, 0));
   if (result.length > CUSTODY_LIMITS.maxCanonicalBytes) fail('SizeLimit', 'Canonical UTF-8 record too large');
+  return result;
+}
+
+/**
+ * Parse JSON without losing duplicate names, including escape-equivalent names.
+ * RFC 8785 §3.1 and §5 require validation before signature processing. This
+ * parser preserves strings without normalization, rejects nonfinite numbers and
+ * malformed UTF-8, and creates only data properties (including __proto__).
+ * Limits are deployment resource policies, not changes to the JCS data model.
+ */
+export function parseCanonicalJson(input, {
+  maxBytes = CUSTODY_LIMITS.maxCanonicalBytes,
+  maxDepth = CUSTODY_LIMITS.maxDepth,
+  maxEntries = CUSTODY_LIMITS.maxEntries,
+  maxStringLength = CUSTODY_LIMITS.maxStringLength,
+} = {}) {
+  for (const value of [maxBytes, maxDepth, maxEntries, maxStringLength]) {
+    if (!Number.isSafeInteger(value) || value < 0) fail('SizeLimit', 'Invalid JSON resource bound');
+  }
+  let text;
+  if (input instanceof Uint8Array) {
+    if (input.byteLength > maxBytes) fail('SizeLimit', 'JSON input too large');
+    try { text = new TextDecoder('utf-8', { fatal: true, ignoreBOM: true }).decode(input); }
+    catch { fail('InvalidCanonicalValue', 'Malformed JSON UTF-8'); }
+  } else if (typeof input === 'string') {
+    // Check code units before allocating UTF-8; its byte count is at least this.
+    if (input.length > maxBytes || utf8.encode(input).length > maxBytes) fail('SizeLimit', 'JSON input too large');
+    text = input;
+  } else fail('InvalidCanonicalValue', 'Expected JSON text or UTF-8 bytes');
+  let at = 0, entries = 0;
+  const invalid = () => fail('InvalidCanonicalValue', `Invalid JSON at offset ${at}`);
+  const ws = () => { while (at < text.length && /[\x20\t\r\n]/.test(text[at])) at++; };
+  function string() {
+    const start = at++;
+    while (at < text.length) {
+      const c = text.charCodeAt(at++);
+      if (c === 34) {
+        let value;
+        try { value = JSON.parse(text.slice(start, at)); } catch { invalid(); }
+        validString(value, maxStringLength);
+        return value;
+      }
+      if (c < 32) invalid();
+      if (c === 92) {
+        const escape = text[at++];
+        if (escape === 'u') {
+          if (!/^[0-9a-fA-F]{4}$/.test(text.slice(at, at + 4))) invalid();
+          at += 4;
+        } else if (!['"', '\\', '/', 'b', 'f', 'n', 'r', 't'].includes(escape)) invalid();
+      }
+    }
+    invalid();
+  }
+  const number = /-?(?:0|[1-9][0-9]*)(?:\.[0-9]+)?(?:[eE][+-]?[0-9]+)?/y;
+  function value(depth) {
+    if (depth > maxDepth || ++entries > maxEntries) fail('SizeLimit', 'JSON structure exceeds resource bound');
+    ws();
+    const token = text[at];
+    if (token === '"') return string();
+    if (token === '{' || token === '[') {
+      at++; ws();
+      const array = token === '[', close = array ? ']' : '}', result = array ? [] : Object.create(null);
+      const names = new Set();
+      if (text[at] === close) { at++; return result; }
+      for (;;) {
+        ws();
+        if (array) result.push(value(depth + 1));
+        else {
+          if (text[at] !== '"') invalid();
+          const key = string();
+          if (names.has(key)) fail('InvalidCanonicalValue', 'Duplicate JSON property');
+          names.add(key); ws();
+          if (text[at++] !== ':') invalid();
+          result[key] = value(depth + 1);
+        }
+        ws();
+        if (text[at] === close) { at++; return result; }
+        if (text[at++] !== ',') invalid();
+      }
+    }
+    for (const [literal, parsed] of [['true', true], ['false', false], ['null', null]]) {
+      if (text.startsWith(literal, at)) { at += literal.length; return parsed; }
+    }
+    number.lastIndex = at;
+    const match = number.exec(text);
+    if (!match) invalid();
+    at = number.lastIndex;
+    const parsed = Number(match[0]);
+    if (!Number.isFinite(parsed)) fail('InvalidCanonicalValue', 'Expected finite IEEE 754 number');
+    return parsed;
+  }
+  const result = value(0);
+  ws();
+  if (at !== text.length) invalid();
   return result;
 }
 

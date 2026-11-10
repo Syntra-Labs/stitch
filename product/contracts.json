@@ -56,9 +56,11 @@
       "id": "browser",
       "role": "Interactive five-layer Stitch product",
       "implementation": [
-        "index.html"
+        "index.html",
+        "src/product-experience.js"
       ],
       "models": [
+        "Product.Experience",
         "Product.Host",
         "Product.Model"
       ],
@@ -96,7 +98,8 @@
       "id": "discovery",
       "role": "DNS-over-HTTPS resolver and scoped DNS writer",
       "implementation": [
-        "src/layer5-transport/index.js"
+        "src/layer5-transport/index.js",
+        "src/layer5-transport/dns-wire.js"
       ],
       "models": [
         "Stitch.Pointer",
@@ -173,8 +176,11 @@
       "type": "Component",
       "id": "publicRelay",
       "role": "Optional public ntfy warm cache",
-      "implementation": [],
+      "implementation": [
+        "src/layer5-transport/relay-framing.js"
+      ],
       "models": [
+        "Stitch.Relay",
         "Stitch.Evidence"
       ],
       "trustBoundary": true
@@ -209,8 +215,12 @@
       "type": "Component",
       "id": "signaling",
       "role": "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin",
-      "implementation": [],
+      "implementation": [
+        "src/layer5-transport/relay-framing.js"
+      ],
       "models": [
+        "Stitch.Relay",
+        "Stitch.Effects",
         "Product.Host"
       ],
       "trustBoundary": true
@@ -816,7 +826,7 @@
       "consumer": "discovery",
       "kind": "external-service",
       "locator": "https://cloudflare-dns.com/dns-query",
-      "versionPolicy": "RFC 8484 provider behavior; no immutable service version",
+      "versionPolicy": "RFC8484 DNS-message client; optional provider JSON mode; no immutable service version",
       "trust": "Read results untrusted until domain admission",
       "required": false
     },
@@ -987,8 +997,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 45563,
-      "sha256": "7c5712dae5df3e167533c8b92c328ea1296ce58c93b7c6321aa320b9c1899cd3"
+      "bytes": 53284,
+      "sha256": "5a9bf29d9cc82b1c9c90fff221e2d84581bb451ae8e7d623b848e3fbe4712b3c"
     },
     {
       "declaration": "assetFile1",
@@ -1009,8 +1019,19 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 11929,
-      "sha256": "013317a0800b44cfa7cadbbe0247262f7289fccbc3d597bfe5cd05df58b34b50"
+      "bytes": 16574,
+      "sha256": "ea422b9fe6422ff95ea2759616bf048e9480a65396a7747b379b0951fee7e6ec"
+    },
+    {
+      "declaration": "assetLifecycleEffects",
+      "type": "Asset",
+      "path": "src/layer1-uor/effects.js",
+      "role": "Exact identity projections and model-derived transport, DNS and VM lifecycle admissions",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 9822,
+      "sha256": "b685f497bf80f1ad58a2176e83d32b106e3bb718cb542a75a2b9c1bf6a8b4fb0"
     },
     {
       "declaration": "assetFile3",
@@ -1020,8 +1041,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 699676,
-      "sha256": "0b8ed868402305d8d82e5716061c50f72acc243e6fcbe70843e809ee99d357b8"
+      "bytes": 948569,
+      "sha256": "c52eef6dde168f83baa93947735fd033079619dedab10fe4cad83bbf51d74f50"
     },
     {
       "declaration": "assetFile4",
@@ -1042,8 +1063,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 10638,
-      "sha256": "d6b9ef71ba5ec9e8bc64c0640002f9b294760b826e51a9e690f75e514fc009f6"
+      "bytes": 12053,
+      "sha256": "50addeed75536b23ee4fdf9305f33ab7dac5cd11a091a867b3656b037afba9a5"
     },
     {
       "declaration": "assetFile6",
@@ -1086,8 +1107,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 34843,
-      "sha256": "81f984641f412f1017cb7b93e8dd442084270fbfe302b4f55556fd6e98dbbdeb"
+      "bytes": 34735,
+      "sha256": "eb93c107e267112bbd631bd3d292f731a3f4e74790c2e4994cb509d0303fee03"
     },
     {
       "declaration": "assetFile10",
@@ -1097,8 +1118,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 23774,
-      "sha256": "df1cb88f5fe8bf805bc76bd86c40d484e22055df8f18e97ba6c5c86977e5e528"
+      "bytes": 24484,
+      "sha256": "d9408fd913fcadca1f20621501bb4e632c443977b933ad6062620e75ee7edecd"
     },
     {
       "declaration": "assetFile11",
@@ -1112,6 +1133,17 @@
       "sha256": "9abda982b5a9fa0ede365212c7398e7d98ad4c380c561ed22b93b5384bf5ed5a"
     },
     {
+      "declaration": "assetDnsWire",
+      "type": "Asset",
+      "path": "src/layer5-transport/dns-wire.js",
+      "role": "RFC8484 application DNS-message client",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 11588,
+      "sha256": "186267ac0296ed22d84665627400999d0ee1643e618088309c799f0299e87185"
+    },
+    {
       "declaration": "assetFile12",
       "type": "Asset",
       "path": "src/layer5-transport/index.js",
@@ -1119,8 +1151,19 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 31735,
-      "sha256": "7dc5feebcfc762e550caa686bf1406358170b4d3f9587f93d37accf356dcae42"
+      "bytes": 50780,
+      "sha256": "c8f50d69303a2734336c963cb15c671073c59921e9aa490ef2f300ff0db8257e"
+    },
+    {
+      "declaration": "assetRelayFraming",
+      "type": "Asset",
+      "path": "src/layer5-transport/relay-framing.js",
+      "role": "Bounded ntfy message framing and reassembly",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 15145,
+      "sha256": "35672c5720f5f1e5d009f1875a1c63de3a6badea2546d66baf73c77fb7c90ae0"
     },
     {
       "declaration": "assetRustConformance",
@@ -1132,6 +1175,17 @@
       "redistributionCleared": true,
       "bytes": 3236,
       "sha256": "159aeb7ff0afaf9dac4baa41c6ea5959ab55036cfa0d79af728da20c3f77f621"
+    },
+    {
+      "declaration": "assetProductExperience",
+      "type": "Asset",
+      "path": "src/product-experience.js",
+      "role": "Model-derived operator journeys, evidence and guarded DOM actions",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 7560,
+      "sha256": "97883e8fd45cbcbe5afb63e30e06cc3935bd5ef00c813a32e6535ecdb02cc73e"
     },
     {
       "declaration": "assetFile13",
@@ -1846,7 +1900,7 @@
     },
     {
       "path": "app/lexlean.toml",
-      "sha256": "45441a0e984d2c922623e88febe469e70abcf78eb595a7cdd5b78e849ea5a3a3"
+      "sha256": "9cbc88eb5837e79daa448eadfebada3d5c1cce90c184c4fa79d6825454e0d77d"
     },
     {
       "path": "app/prism.toml",
@@ -1873,12 +1927,16 @@
       "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
     },
     {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "86732ba491dac3cca8dc7b52db7cd11bcd0decd0d89b3b48a3cd280ac62edc2e"
+    },
+    {
       "path": "app/src/Product/Host.lex.tex",
       "sha256": "60e8927f3f2c1cd499549545481a3e2dc234febf9439b3d95bb80f5c48a741ac"
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "d2b3beb379082d364e006c67ca5e8c658de713ce97a5c6d65528ed464bad74f9"
+      "sha256": "6adf8c24a0ec7a678e4cece4009b0067aa60f5fb045ac367fe459a8d5ee45ad5"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -1891,6 +1949,10 @@
     {
       "path": "app/src/Stitch/Custody.lex.tex",
       "sha256": "30347fda486b2c4c643dbc6bb8030e9aec0586ded3bb81b5e7cd8ca9bb9745b7"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "c729a35720679808394d122fdcafe7e4a739941844bbc97a1708957bff996caa"
     },
     {
       "path": "app/src/Stitch/Encoding.lex.tex",
@@ -1917,6 +1979,10 @@
       "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
     },
     {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
+    },
+    {
       "path": "app/src/Stitch/System.lex.tex",
       "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
     },
@@ -1941,5 +2007,5 @@
       "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
     }
   ],
-  "sourceDigest": "sha256:3b067dfee40af1b6a537ee11543ffa8141acd7b742b4145783b6685563a225c0"
+  "sourceDigest": "sha256:ec960e4071f2be6645a64d1ac701cd88f2ef5df0fa965e8867f0f782636bcecf"
 }

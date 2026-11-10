@@ -24,8 +24,9 @@ import {
 import { createCheckpoint, verifyCheckpoint, demoProgram, identifyProgram, MAX_PROGRAM_STEPS } from './replay.js';
 import { ResourceAdmission, reserveNetwork } from '../layer2-schedulers/policy.js';
 import { snapshotRecord } from '../layer1-uor/custody.js';
-import { record, identifier, natural, refuse } from '../layer1-uor/contracts.js';
+import { record, identifier, natural, digest, refuse } from '../layer1-uor/contracts.js';
 import { computeSurvivalProbability } from '../layer2-schedulers/index.js';
+import { vmCanBoot, vmIsBooting, vmCanExecute, vmCallbackCurrent, vmFailAllowed, startVm, failVm, readyVm } from '../layer1-uor/effects.js';
 
 /**
  * Execute a full or partial sequence of UOR PrimitiveOp instructions on an initial Datum,
@@ -260,8 +261,7 @@ export class LinuxVmNode {
     this.screenContainer = screenContainer;
     this.onStatus = onStatus;
     this.v86 = null;
-    this.booted = false;
-    this.booting = false;
+    this.vmPhase = 'Idle';
     this.bootTimeoutMs = bootTimeoutMs;
     this.bootGeneration = 0;
     this.bootPoll = null;
@@ -269,6 +269,12 @@ export class LinuxVmNode {
     this.ethFramesSent = 0;
     this.ethFramesReceived = 0;
     this.ipAddress = `10.42.0.${(parseInt(this.transport.peerId.slice(-4), 36) % 250) + 2}`;
+  }
+
+  get booted() { return vmCanExecute(this); }
+  get booting() { return vmIsBooting(this); }
+  get lifecycle() {
+    return { phase: this.vmPhase.toLowerCase(), generation: this.bootGeneration, canBoot: vmCanBoot(this), canExecute: vmCanExecute(this) };
   }
 
   clearBootTimers() {
@@ -279,22 +285,20 @@ export class LinuxVmNode {
   }
 
   failBoot(generation, message) {
-    if (generation !== this.bootGeneration || !this.booting) return;
+    if (!vmFailAllowed(this, generation)) return;
     // Invalidate listeners before cleanup, which may dispatch synchronous events.
-    this.bootGeneration++;
+    failVm(this, generation);
     this.clearBootTimers();
     const failed = this.v86;
     this.v86 = null;
-    this.booted = false;
-    this.booting = false;
     try { Promise.resolve(failed?.destroy?.()).catch(() => {}); } catch {}
     this.onStatus({ state: 'error', message });
   }
 
   boot() {
-    if (this.v86 || this.booting) return;
-    const generation = ++this.bootGeneration;
-    this.booting = true;
+    if (!vmCanBoot(this)) return;
+    startVm(this);
+    const generation = this.bootGeneration;
     const V86Ctor = globalThis.V86 || globalThis.V86Starter;
     if (!V86Ctor) {
       this.failBoot(generation, 'libv86.js not loaded; retry Boot after the asset is available.');
@@ -317,7 +321,7 @@ export class LinuxVmNode {
         autostart: true
       });
       this.v86 = vm;
-      const current = () => generation === this.bootGeneration && this.v86 === vm;
+      const current = () => vmCallbackCurrent(this, generation, vm);
       vm.add_listener('download-error', () => {
         if (current()) this.failBoot(generation, 'VM asset download failed; retry Boot when assets are available.');
       });
@@ -338,8 +342,7 @@ export class LinuxVmNode {
             // Readiness is a host observation, not a proof of guest correctness.
             vm.keyboard_send_text(`ifconfig eth0 ${this.ipAddress} netmask 255.255.255.0 up 2>/dev/null\n`, 10);
             this.clearBootTimers();
-            this.booted = true;
-            this.booting = false;
+            readyVm(this, generation, vm, true);
             this.onStatus({ state: 'online', ip: this.ipAddress });
           }
         } catch (error) {
@@ -360,15 +363,19 @@ export class LinuxVmNode {
   async mountUorObject(addressHex, bytes, label = '') {
     const vm = this.v86, generation = this.bootGeneration;
     if (!vm) return false;
-    const current = () => this.v86 === vm && this.bootGeneration === generation;
-    const shortId = addressHex.replace('uor:ca:', '').slice(0, 12);
-    const filename = `uor_${shortId}.bin`;
+    const current = () => vmCallbackCurrent(this, generation, vm);
     try {
-      await vm.create_file(filename, new Uint8Array(bytes));
+      digest(addressHex);
+      if (!(bytes instanceof Uint8Array) || typeof label !== 'string') return false;
+      const snapshot = bytes.slice(), fullRoot = addressHex.slice('sha256:'.length);
+      const filename = `uor_sha256_${fullRoot}.bin`;
+      await vm.create_file(filename, snapshot);
       if (!current()) return false;
       if (label) {
-        const safeLabel = label.replace(/[^a-zA-Z0-9._-]/g, '_');
-        await vm.create_file(safeLabel, new Uint8Array(bytes));
+        const safeLabel = label.replace(/[^a-zA-Z0-9._-]/g, '_').slice(0, 80);
+        // Labels are convenience aliases in a disjoint namespace, never object
+        // identity. Every alias retains the complete content digest.
+        await vm.create_file(`uor_label_${safeLabel}_sha256_${fullRoot}.bin`, snapshot.slice());
       }
       return current();
     } catch {
@@ -516,7 +523,7 @@ export class LiveDistributedComputeCoordinator {
       // Explicit public-data opt-in. A relay is storage with an external retention policy.
       if (this.allowPublicRelay && (step % 3 === 0 || step === program.instructions.length)) {
         if (this.transport.admission !== this.admission) reserveNetwork(this.admission, 'checkpoint', { ...packet, from: this.transport.peerId, tsMs: Date.now() });
-        await this.transport.publishWarmEnvelope(packet);
+        await this.transport.publishWarmEnvelope(packet, { publicData: true, consentCurrent: () => this.allowPublicRelay });
       }
       if (step < program.instructions.length && stepDelayMs > 0) await new Promise(r => setTimeout(r, stepDelayMs));
     } while (step < program.instructions.length);
@@ -533,7 +540,7 @@ export class LiveDistributedComputeCoordinator {
   async syncAndTakeOverJobs(sinceWindow = '30m') {
     if (this.allowPublicRelay) {
       if (this.transport.admission !== this.admission) this.admission.reserve('retrieve', { requests: 1, transferBytes: 2 * 1024 * 1024 });
-      const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow);
+      const envelopes = await this.transport.fetchWarmEnvelopes(sinceWindow, { publicData: true, consentCurrent: () => this.allowPublicRelay });
       if (!Array.isArray(envelopes) || envelopes.length > this.maxJobs * 4) refuse('job-capacity');
       for (const env of envelopes) {
         if (env?.type !== 'compute_ckpt') continue;

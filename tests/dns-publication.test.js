@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { generateAuthority, signPointer, PointerPublisher, pointerDnsText } from '../src/layer1-uor/pointer.js';
+import { generateAuthority, signPointer, PointerPublisher, pointerDnsText, parsePointerDnsText } from '../src/layer1-uor/pointer.js';
 import { DohResolver } from '../src/layer5-transport/index.js';
 import { ResourceAdmission } from '../src/layer2-schedulers/policy.js';
 
@@ -154,4 +154,65 @@ test('publication-state capacity is reserved before provider I/O', async () => {
   await assert.rejects(f.publisher.publish(f.args(f.first)), code('budget-exhausted'));
   assert.equal(f.calls.length, 0);
   assert.equal(f.publisher.pending(f.args(f.first)), null);
+});
+
+test('definite local write refusal preserves spent reads but permits explicit repair and retry', async () => {
+  const f = await fixture();
+  const admission = new ResourceAdmission({ clock: () => 0,
+    limit: { requests: 1, transferBytes: 1000000, storageBytes: 10000, computeSteps: 0 } });
+  f.resolver.admission = admission;
+  await assert.rejects(f.publisher.publish(f.args(f.first)), code('budget-exhausted'));
+  assert.deepEqual(f.calls.map(c => c.method), ['GET']);
+  assert.equal(admission.state.spent.requests, 1);
+  assert.equal(f.publisher.status(f.args(f.first)).outcome, 'refused');
+  assert.equal(f.publisher.status(f.args(f.first)).canPublish, true);
+  assert.equal(f.publisher.pending(f.args(f.first)), null);
+  f.resolver.admission = new ResourceAdmission({ clock: () => 0 });
+  assert.equal((await f.publisher.publish(f.args(f.first))).outcome, 'published');
+  assert.equal(admission.state.spent.requests, 1, 'repair never refunds the previous read');
+  assert.deepEqual(f.calls.map(c => c.method), ['GET', 'GET', 'POST']);
+});
+
+test('an unclassified writer exception is unresolved and never implicitly retried', async () => {
+  const f = await fixture(); let mutations = 0;
+  f.resolver.writeCloudflareRecord = async () => { mutations++; throw Error('response lost after possible dispatch'); };
+  assert.equal((await f.publisher.publish(f.args(f.first))).outcome, 'unknown');
+  assert.equal(f.publisher.status(f.args(f.first)).canPublish, false);
+  assert.equal(f.publisher.status(f.args(f.first)).canReconcile, true);
+  assert.equal((await f.publisher.publish(f.args(f.first))).outcome, 'unknown');
+  assert.equal(mutations, 1);
+  assert.deepEqual(f.calls.map(c => c.method), ['GET', 'GET']);
+});
+
+test('success for a different provider record ID remains uncertain and cannot enable another PUT', async () => {
+  const f = await fixture(); await f.publisher.publish(f.args(f.first));
+  const next = await f.make(1, f.first.pointerDigest); let writes = 0;
+  f.resolver.writeCloudflareRecord = async () => { writes++; return { ok: true, outcome: 'published', id: 'different-record' }; };
+  assert.equal((await f.publisher.publish(f.args(next))).outcome, 'unknown');
+  assert.equal(f.publisher.status(f.args(next)).recordId, 'record-1');
+  assert.equal((await f.publisher.publish(f.args(next))).outcome, 'unknown');
+  assert.equal(writes, 1);
+});
+
+test('a dispatched provider 503 JSON failure stays unknown and cannot authorize another write', async () => {
+  const f = await fixture(); let writes = 0;
+  const original = f.resolver.fetchImpl;
+  f.resolver.fetchImpl = async (url, options) => {
+    if (options.method) { writes++; return Response.json({ success: false, errors: [{ code: 1000 }] }, { status: 503 }); }
+    return original(url, options);
+  };
+  assert.equal((await f.publisher.publish(f.args(f.first))).outcome, 'unknown');
+  assert.equal((await f.publisher.publish(f.args(f.first))).outcome, 'unknown');
+  assert.equal(writes, 1);
+});
+
+test('duplicate or escape-equivalent keys in an externally signed DNS pointer are rejected before verification/write', async () => {
+  const f = await fixture();
+  for (const key of ['objectRoot', 'object\\u0052oot']) {
+    const raw = `{"${key}":"sha256:${'0'.repeat(64)}",${JSON.stringify(f.first).slice(1)}`;
+    assert.throws(() => parsePointerDnsText(raw), /Duplicate|duplicate/);
+    f.setRows([{ id: 'record-1', name, type: 'TXT', content: raw }]);
+    await assert.rejects(f.publisher.publish(f.args(f.first)), /Duplicate|duplicate/);
+  }
+  assert.ok(f.calls.every(call => call.method === 'GET'));
 });

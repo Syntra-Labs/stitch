@@ -1,0 +1,634 @@
+\begin{lexlean}{Stitch.Effects}
+
+\useglossary{lexlean.std.bool@1.2.0}
+
+\useglossary{lexlean.std.nat@1.2.0}
+
+\useglossary{stitch.domain@1.0.0}
+
+\title{Stitch recoverable service model}
+
+\begin{semanticmodule}
+structure{
+  name: Transport,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: generation, type: Nat},
+    {name: closed, type: Bool},
+    {name: channelKey, type: Bytes},
+    {name: localPeer, type: Bytes}
+  ]
+}
+
+structure{
+  name: TransportCallback,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: generation, type: Nat},
+    {name: channelKey, type: Bytes},
+    {name: localPeer, type: Bytes},
+    {name: remotePeer, type: Bytes}
+  ]
+}
+
+definition{
+  name: transportCanSend,
+  parameters: [state : Transport],
+  result: Bool,
+  body: (not (project state closed))
+}
+
+definition{
+  name: transportClose,
+  parameters: [state : Transport],
+  result: Transport,
+  body: (record Transport {generation := ((project state generation) + 1), closed := true, channelKey := (project state channelKey), localPeer := (project state localPeer)})
+}
+
+definition{
+  name: transportOpen,
+  parameters: [state : Transport, channelKey : Bytes],
+  result: Transport,
+  body: (record Transport {generation := (project state generation), closed := false, channelKey := channelKey, localPeer := (project state localPeer)})
+}
+
+definition{
+  name: transportSessionMatches,
+  parameters: [state : Transport, callback : TransportCallback],
+  result: Bool,
+  body: ((transportCanSend state) && (((project state generation) =? (project callback generation)) && ((prim equal (project state channelKey) (project callback channelKey) : Bool) && (prim equal (project state localPeer) (project callback localPeer) : Bool))))
+}
+
+definition{
+  name: transportPeerCallbackAllowed,
+  parameters: [
+    state : Transport,
+    callback : TransportCallback,
+    remotePeer : Bytes,
+    entryCurrent : Bool
+  ],
+  result: Bool,
+  body: ((transportSessionMatches state callback) && ((prim equal (project callback remotePeer) remotePeer : Bool) && entryCurrent))
+}
+
+definition{
+  name: transportChannelCallbackAllowed,
+  parameters: [
+    state : Transport,
+    callback : TransportCallback,
+    remotePeer : Bytes,
+    entryCurrent : Bool,
+    channelCurrent : Bool
+  ],
+  result: Bool,
+  body: ((transportPeerCallbackAllowed state callback remotePeer entryCurrent) && channelCurrent)
+}
+
+definition{
+  name: transportSignalAllowed,
+  parameters: [
+    state : Transport,
+    channelKey : Bytes,
+    remotePeer : Bytes,
+    targetPeer : Bytes,
+    broadcast : Bool
+  ],
+  result: Bool,
+  body: ((transportCanSend state) && ((prim equal (project state channelKey) channelKey : Bool) && ((not (prim equal (project state localPeer) remotePeer : Bool)) && (broadcast || (prim equal (project state localPeer) targetPeer : Bool)))))
+}
+
+definition{
+  name: transportPeerAllocationAllowed,
+  parameters: [state : Transport, peerCount : Nat, maxPeers : Nat],
+  result: Bool,
+  body: ((transportCanSend state) && (peerCount <? maxPeers))
+}
+
+theorem{
+  name: closedTransportCannotSend,
+  parameters: [state : Transport],
+  statement: ((transportCanSend (transportClose state)) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: closingAdvancesGeneration,
+  parameters: [state : Transport],
+  statement: ((project (transportClose state) generation) = ((project state generation) + 1)),
+  proof: reflexivity{}
+}
+
+inductive{
+  name: DnsPhase,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Idle, fields: []},
+    {name: Published, fields: []},
+    {name: Refused, fields: []},
+    {name: Unknown, fields: []}
+  ]
+}
+
+inductive{
+  name: DnsDecision,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Refuse, fields: []},
+    {name: Reconciled, fields: []},
+    {name: Wait, fields: []},
+    {name: Create, fields: []},
+    {name: Update, fields: []}
+  ]
+}
+
+structure{
+  name: DnsScope,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: zoneId, type: Bytes},
+    {name: name, type: Bytes},
+    {name: authorityKey, type: Bytes}
+  ]
+}
+
+structure{
+  name: DnsPublication,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: scope, type: DnsScope},
+    {name: phase, type: DnsPhase},
+    {name: pointerDigest, type: Bytes},
+    {name: recordId, type: Bytes},
+    {name: hasRecordId, type: Bool}
+  ]
+}
+
+structure{
+  name: DnsCandidate,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: scope, type: DnsScope},
+    {name: pointerDigest, type: Bytes},
+    {name: previousDigest, type: Bytes},
+    {name: hasPrevious, type: Bool},
+    {name: revision, type: Nat},
+    {name: validFrom, type: Nat},
+    {name: validUntil, type: Nat}
+  ]
+}
+
+structure{
+  name: DnsRead,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: scope, type: DnsScope},
+    {name: candidateDigest, type: Bytes},
+    {name: complete, type: Bool},
+    {name: authenticated, type: Bool},
+    {name: recordPresent, type: Bool},
+    {name: recordId, type: Bytes},
+    {name: pointerDigest, type: Bytes},
+    {name: revision, type: Nat}
+  ]
+}
+
+structure{
+  name: DnsWriteResult,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: scope, type: DnsScope},
+    {name: candidateDigest, type: Bytes},
+    {name: recordId, type: Bytes},
+    {name: recordIdValid, type: Bool},
+    {name: acknowledged, type: Bool},
+    {name: refused, type: Bool}
+  ]
+}
+
+definition{
+  name: dnsScopeMatches,
+  parameters: [left : DnsScope, right : DnsScope],
+  result: Bool,
+  body: ((prim equal (project left zoneId) (project right zoneId) : Bool) && ((prim equal (project left name) (project right name) : Bool) && (prim equal (project left authorityKey) (project right authorityKey) : Bool)))
+}
+
+definition{
+  name: dnsMayWritePhase,
+  parameters: [phase : DnsPhase],
+  result: Bool,
+  body: (match phase
+    | DnsPhase.Idle => true
+    | DnsPhase.Published => true
+    | DnsPhase.Refused => true
+    | DnsPhase.Unknown => false)
+}
+
+definition{
+  name: dnsMayReconcile,
+  parameters: [phase : DnsPhase],
+  result: Bool,
+  body: (not (dnsMayWritePhase phase))
+}
+
+definition{
+  name: dnsRequestAllowed,
+  parameters: [state : DnsPublication, candidate : DnsCandidate, busy : Bool],
+  result: Bool,
+  body: ((not busy) && ((dnsScopeMatches (project state scope) (project candidate scope)) && ((dnsMayWritePhase (project state phase)) || (prim equal (project state pointerDigest) (project candidate pointerDigest) : Bool))))
+}
+
+definition{
+  name: dnsSelectRead,
+  parameters: [
+    phase : DnsPhase,
+    exactCandidate : Bool,
+    recordPresent : Bool,
+    predecessor : Bool,
+    bootstrap : Bool,
+    live : Bool
+  ],
+  result: DnsDecision,
+  body: (if exactCandidate then (ctor DnsDecision.Reconciled) else (if (dnsMayReconcile phase) then (ctor DnsDecision.Wait) else (if live then (if recordPresent then (if predecessor then (ctor DnsDecision.Update) else (ctor DnsDecision.Refuse)) else (if bootstrap then (ctor DnsDecision.Create) else (ctor DnsDecision.Refuse))) else (ctor DnsDecision.Refuse))))
+}
+
+definition{
+  name: dnsDecisionWrites,
+  parameters: [decision : DnsDecision],
+  result: Bool,
+  body: (match decision
+    | DnsDecision.Refuse => false
+    | DnsDecision.Reconciled => false
+    | DnsDecision.Wait => false
+    | DnsDecision.Create => true
+    | DnsDecision.Update => true)
+}
+
+theorem{
+  name: unknownReadNeverWrites,
+  parameters: [],
+  statement: (forall (exactCandidate : Bool), (forall (recordPresent : Bool), (forall (predecessor : Bool), (forall (bootstrap : Bool), (forall (live : Bool), ((dnsDecisionWrites (dnsSelectRead (ctor DnsPhase.Unknown) exactCandidate recordPresent predecessor bootstrap live)) = false)))))),
+  proof: decide{}
+}
+
+definition{
+  name: dnsSelectGatedRead,
+  parameters: [
+    admitted : Bool,
+    phase : DnsPhase,
+    exactCandidate : Bool,
+    recordPresent : Bool,
+    predecessor : Bool,
+    bootstrap : Bool,
+    live : Bool
+  ],
+  result: DnsDecision,
+  body: (if admitted then (dnsSelectRead phase exactCandidate recordPresent predecessor bootstrap live) else (ctor DnsDecision.Refuse))
+}
+
+theorem{
+  name: unknownGatedReadNeverWrites,
+  parameters: [],
+  statement: (forall (admitted : Bool), (forall (exactCandidate : Bool), (forall (recordPresent : Bool), (forall (predecessor : Bool), (forall (bootstrap : Bool), (forall (live : Bool), ((dnsDecisionWrites (dnsSelectGatedRead admitted (ctor DnsPhase.Unknown) exactCandidate recordPresent predecessor bootstrap live)) = false))))))),
+  proof: decide{}
+}
+
+definition{
+  name: dnsReadDecision,
+  parameters: [state : DnsPublication, candidate : DnsCandidate, observation : DnsRead, now : Nat],
+  result: DnsDecision,
+  body: (dnsSelectGatedRead ((dnsRequestAllowed state candidate false) && ((dnsScopeMatches (project candidate scope) (project observation scope)) && ((prim equal (project candidate pointerDigest) (project observation candidateDigest) : Bool) && ((project observation complete) && (((not (project observation recordPresent)) || (project observation authenticated)) && ((not (project state hasRecordId)) || ((project observation recordPresent) && (prim equal (project state recordId) (project observation recordId) : Bool)))))))) (project state phase) ((project observation recordPresent) && (prim equal (project observation pointerDigest) (project candidate pointerDigest) : Bool)) (project observation recordPresent) ((project candidate hasPrevious) && ((prim equal (project observation pointerDigest) (project candidate previousDigest) : Bool) && (((project observation revision) + 1) =? (project candidate revision)))) ((not (project state hasRecordId)) && ((not (project candidate hasPrevious)) && ((project candidate revision) =? 0))) (((project candidate validFrom) <=? now) && (now <? (project candidate validUntil))))
+}
+
+definition{
+  name: dnsReconciled,
+  parameters: [state : DnsPublication, candidate : DnsCandidate, observation : DnsRead, now : Nat],
+  result: DnsPublication,
+  body: (match (dnsReadDecision state candidate observation now)
+    | DnsDecision.Refuse => state
+    | DnsDecision.Reconciled => (record DnsPublication {scope := (project state scope), phase := (ctor DnsPhase.Published), pointerDigest := (project candidate pointerDigest), recordId := (project observation recordId), hasRecordId := true})
+    | DnsDecision.Wait => state
+    | DnsDecision.Create => state
+    | DnsDecision.Update => state)
+}
+
+definition{
+  name: dnsBeginWrite,
+  parameters: [state : DnsPublication, candidate : DnsCandidate, observation : DnsRead, now : Nat],
+  result: DnsPublication,
+  body: (match (dnsReadDecision state candidate observation now)
+    | DnsDecision.Refuse => state
+    | DnsDecision.Reconciled => state
+    | DnsDecision.Wait => state
+    | DnsDecision.Create => (record DnsPublication {scope := (project state scope), phase := (ctor DnsPhase.Unknown), pointerDigest := (project candidate pointerDigest), recordId := (project observation recordId), hasRecordId := (project observation recordPresent)})
+    | DnsDecision.Update => (record DnsPublication {scope := (project state scope), phase := (ctor DnsPhase.Unknown), pointerDigest := (project candidate pointerDigest), recordId := (project observation recordId), hasRecordId := (project observation recordPresent)}))
+}
+
+definition{
+  name: dnsFinishWrite,
+  parameters: [state : DnsPublication, result : DnsWriteResult],
+  result: DnsPublication,
+  body: (if ((dnsMayReconcile (project state phase)) && ((dnsScopeMatches (project state scope) (project result scope)) && (prim equal (project state pointerDigest) (project result candidateDigest) : Bool))) then (record DnsPublication {scope := (project state scope), phase := (if (project result refused) then (if (project result acknowledged) then (ctor DnsPhase.Unknown) else (ctor DnsPhase.Refused)) else (if ((project result acknowledged) && ((project result recordIdValid) && ((not (project state hasRecordId)) || (prim equal (project state recordId) (project result recordId) : Bool)))) then (ctor DnsPhase.Published) else (ctor DnsPhase.Unknown))), pointerDigest := (project state pointerDigest), recordId := (if ((not (project result refused)) && ((project result acknowledged) && ((project result recordIdValid) && ((not (project state hasRecordId)) || (prim equal (project state recordId) (project result recordId) : Bool))))) then (project result recordId) else (project state recordId)), hasRecordId := ((project state hasRecordId) || ((not (project result refused)) && ((project result acknowledged) && ((project result recordIdValid) && ((not (project state hasRecordId)) || (prim equal (project state recordId) (project result recordId) : Bool))))))}) else state)
+}
+
+theorem{
+  name: unknownCannotAuthorizeWrite,
+  parameters: [],
+  statement: ((dnsMayWritePhase (ctor DnsPhase.Unknown)) = false),
+  proof: decide{}
+}
+
+theorem{
+  name: unknownOffersReconciliation,
+  parameters: [],
+  statement: ((dnsMayReconcile (ctor DnsPhase.Unknown)) = true),
+  proof: decide{}
+}
+
+inductive{
+  name: VmPhase,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Idle, fields: []},
+    {name: Booting, fields: []},
+    {name: Ready, fields: []},
+    {name: Failed, fields: []}
+  ]
+}
+
+structure{
+  name: Vm,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: generation, type: Nat}, {name: phase, type: VmPhase}]
+}
+
+definition{
+  name: vmCanBoot,
+  parameters: [state : Vm],
+  result: Bool,
+  body: (match (project state phase)
+    | VmPhase.Idle => true
+    | VmPhase.Booting => false
+    | VmPhase.Ready => false
+    | VmPhase.Failed => true)
+}
+
+definition{
+  name: vmIsBooting,
+  parameters: [state : Vm],
+  result: Bool,
+  body: (match (project state phase)
+    | VmPhase.Idle => false
+    | VmPhase.Booting => true
+    | VmPhase.Ready => false
+    | VmPhase.Failed => false)
+}
+
+definition{
+  name: vmCanExecute,
+  parameters: [state : Vm],
+  result: Bool,
+  body: (match (project state phase)
+    | VmPhase.Idle => false
+    | VmPhase.Booting => false
+    | VmPhase.Ready => true
+    | VmPhase.Failed => false)
+}
+
+definition{
+  name: vmStart,
+  parameters: [state : Vm],
+  result: Vm,
+  body: (if (vmCanBoot state) then (record Vm {generation := ((project state generation) + 1), phase := (ctor VmPhase.Booting)}) else state)
+}
+
+definition{
+  name: vmCallbackAllowed,
+  parameters: [state : Vm, generation : Nat, instanceCurrent : Bool],
+  result: Bool,
+  body: (((project state generation) =? generation) && (instanceCurrent && ((vmIsBooting state) || (vmCanExecute state))))
+}
+
+definition{
+  name: vmFailAllowed,
+  parameters: [state : Vm, generation : Nat],
+  result: Bool,
+  body: (((project state generation) =? generation) && (vmIsBooting state))
+}
+
+definition{
+  name: vmFail,
+  parameters: [state : Vm, generation : Nat],
+  result: Vm,
+  body: (if (vmFailAllowed state generation) then (record Vm {generation := ((project state generation) + 1), phase := (ctor VmPhase.Failed)}) else state)
+}
+
+definition{
+  name: vmGenerationFilter,
+  parameters: [difference : Nat, whenEqual : Vm, whenDifferent : Vm],
+  result: Vm,
+  body: (match difference | Nat.zero => whenEqual | Nat.succ rest => whenDifferent)
+}
+
+theorem{
+  name: vmPositiveGenerationFilterFact,
+  parameters: [difference : Nat, whenEqual : Vm, whenDifferent : Vm],
+  statement: (((0 < difference) -> ((vmGenerationFilter difference whenEqual whenDifferent) = whenDifferent)) <-> (0 = 0)),
+  proof: cases{
+    branches: [
+      {
+        proof: constructor{
+          branches: [linear_arithmetic{}, linear_arithmetic{definitions: [vmGenerationFilter]}]
+        },
+        binders: [],
+        constructor: zero
+      },
+      {
+        proof: constructor{
+          branches: [linear_arithmetic{}, linear_arithmetic{definitions: [vmGenerationFilter]}]
+        },
+        binders: [rest],
+        constructor: succ
+      }
+    ],
+    scrutinee: difference
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: vmOldGenerationDifference,
+  parameters: [state : Vm, generation : Nat],
+  statement: ((generation < (project state generation)) <-> (0 < (prim subtract (project state generation) generation : Nat))),
+  proof: constructor{branches: [linear_arithmetic{}, linear_arithmetic{}]},
+  axioms: [Quot.sound, propext]
+}
+
+definition{
+  name: vmReadyCandidate,
+  parameters: [state : Vm, instanceCurrent : Bool, readinessObserved : Bool],
+  result: Vm,
+  body: (if ((vmIsBooting state) && (instanceCurrent && readinessObserved)) then (record Vm {generation := (project state generation), phase := (ctor VmPhase.Ready)}) else state)
+}
+
+definition{
+  name: vmObserveReady,
+  parameters: [state : Vm, generation : Nat, instanceCurrent : Bool, readinessObserved : Bool],
+  result: Vm,
+  body: (vmGenerationFilter (prim subtract (project state generation) generation : Nat) (vmGenerationFilter (prim subtract generation (project state generation) : Nat) (vmReadyCandidate state instanceCurrent readinessObserved) state) state)
+}
+
+theorem{
+  name: bootingCannotBootAgain,
+  parameters: [generation : Nat],
+  statement: ((vmCanBoot (record Vm {generation := generation, phase := (ctor VmPhase.Booting)})) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: failedVmCanRetry,
+  parameters: [generation : Nat],
+  statement: ((vmCanBoot (record Vm {generation := generation, phase := (ctor VmPhase.Failed)})) = true),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: bootingCannotExecute,
+  parameters: [generation : Nat],
+  statement: ((vmCanExecute (record Vm {generation := generation, phase := (ctor VmPhase.Booting)})) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: staleTransportGenerationCannotCallback,
+  parameters: [state : Transport, callback : TransportCallback],
+  statement: (((project callback generation) < (project state generation)) -> ((transportSessionMatches state callback) = false)),
+  proof: linear_arithmetic{definitions: [transportCanSend, transportSessionMatches]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: reconnectCannotReviveCapturedCallback,
+  parameters: [state : Transport, callback : TransportCallback, channelKey : Bytes],
+  statement: (((project callback generation) <= (project state generation)) -> ((transportSessionMatches (transportOpen (transportClose state) channelKey) callback) = false)),
+  proof: linear_arithmetic{
+    definitions: [transportCanSend, transportClose, transportOpen, transportSessionMatches]
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: staleVmGenerationCannotCallback,
+  parameters: [state : Vm, generation : Nat, instanceCurrent : Bool],
+  statement: ((generation < (project state generation)) -> ((vmCallbackAllowed state generation instanceCurrent) = false)),
+  proof: linear_arithmetic{definitions: [vmCallbackAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: staleVmCannotResurrectReadiness,
+  parameters: [state : Vm, generation : Nat, instanceCurrent : Bool, readinessObserved : Bool],
+  statement: ((generation < (project state generation)) -> ((vmObserveReady state generation instanceCurrent readinessObserved) = state)),
+  proof: simplify{
+    definitions: [vmObserveReady, vmOldGenerationDifference, vmPositiveGenerationFilterFact]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: unresolvedDnsReadCannotWrite,
+  parameters: [
+    scope : DnsScope,
+    pointerDigest : Bytes,
+    recordId : Bytes,
+    hasRecordId : Bool,
+    candidate : DnsCandidate,
+    observation : DnsRead,
+    now : Nat
+  ],
+  statement: ((dnsDecisionWrites (dnsReadDecision (record DnsPublication {scope := scope, phase := (ctor DnsPhase.Unknown), pointerDigest := pointerDigest, recordId := recordId, hasRecordId := hasRecordId}) candidate observation now)) = false),
+  proof: simplify{definitions: [dnsReadDecision, unknownGatedReadNeverWrites]},
+  axioms: [propext]
+}
+
+structure{
+  name: C1Progress,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: startedAt, type: Nat},
+    {name: lastSequence, type: Nat},
+    {name: hasSequence, type: Bool},
+    {name: consecutive, type: Nat}
+  ]
+}
+
+definition{
+  name: c1InWindow,
+  parameters: [progress : C1Progress, now : Nat],
+  result: Bool,
+  body: (((project progress startedAt) <=? now) && (now <=? ((project progress startedAt) + 10000000)))
+}
+
+definition{
+  name: c1ProbeAccepted,
+  parameters: [progress : C1Progress, sequence : Nat, now : Nat, correlated : Bool],
+  result: Bool,
+  body: (correlated && ((c1InWindow progress now) && ((not (project progress hasSequence)) || ((project progress lastSequence) <? sequence))))
+}
+
+definition{
+  name: c1ObserveProbe,
+  parameters: [progress : C1Progress, sequence : Nat, now : Nat, correlated : Bool],
+  result: C1Progress,
+  body: (if (c1ProbeAccepted progress sequence now correlated) then (record C1Progress {startedAt := (project progress startedAt), lastSequence := sequence, hasSequence := true, consecutive := (if ((project progress hasSequence) && (((project progress lastSequence) + 1) =? sequence)) then ((project progress consecutive) + 1) else 1)}) else progress)
+}
+
+definition{
+  name: c1ConnectionQualified,
+  parameters: [progress : C1Progress, now : Nat, orderedChannel : Bool],
+  result: Bool,
+  body: (orderedChannel && ((10 <=? (project progress consecutive)) && (c1InWindow progress now)))
+}
+
+definition{
+  name: c1DirectSuccess,
+  parameters: [
+    progress : C1Progress,
+    now : Nat,
+    orderedChannel : Bool,
+    selectedPathObserved : Bool,
+    usedRelay : Bool
+  ],
+  result: Bool,
+  body: ((c1ConnectionQualified progress now orderedChannel) && (selectedPathObserved && (not usedRelay)))
+}
+
+theorem{
+  name: fewerThanTenCannotQualify,
+  parameters: [progress : C1Progress, now : Nat, orderedChannel : Bool],
+  statement: (((project progress consecutive) < 10) -> ((c1ConnectionQualified progress now orderedChannel) = false)),
+  proof: linear_arithmetic{definitions: [c1ConnectionQualified]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: expiredConnectionCannotQualify,
+  parameters: [progress : C1Progress, now : Nat, orderedChannel : Bool],
+  statement: ((((project progress startedAt) + 10000000) < now) -> ((c1ConnectionQualified progress now orderedChannel) = false)),
+  proof: linear_arithmetic{definitions: [c1ConnectionQualified, c1InWindow]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+
+\end{lexlean}

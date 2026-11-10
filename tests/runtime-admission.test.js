@@ -1,6 +1,9 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { readFile } from 'node:fs/promises';
+import { createOperatorExperience, integrityLabel, executionLabel } from '../src/product-experience.js';
+import { placementStatus } from '../src/layer3-storage/custody.js';
+import { parseCanonicalJson } from '../src/layer1-uor/custody.js';
 import { ResourceAdmission, wireBytes, reserveNetwork } from '../src/layer2-schedulers/policy.js';
 import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from '../src/layer1-uor/pointer.js';
 import { LiveUorMeshDatabase } from '../src/layer3-storage/index.js';
@@ -105,8 +108,8 @@ test('response readers cancel oversized streaming bodies and relay failure keeps
     globalThis.fetch = async () => { fetches++; throw Error('uncertain'); };
     const policy = admission({ requests: 1 });
     const node = new WebRtcTransportNode({ peerId: 'p', admission: policy });
-    assert.equal(await node.publishWarmEnvelope({ type: 'test' }), false);
-    assert.equal(await node.publishWarmEnvelope({ type: 'test' }), false);
+    assert.equal(await node.publishWarmEnvelope({ type: 'test' }, { publicData: true }), false);
+    assert.equal(await node.publishWarmEnvelope({ type: 'test' }, { publicData: true }), false);
     assert.equal(fetches, 1); assert.equal(policy.state.spent.requests, 1);
   } finally { globalThis.fetch = savedFetch; }
 });
@@ -156,17 +159,21 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
   const script = html.match(/<script type="module">([\s\S]*?)<\/script>/)[1]
     .replace(/import\s+[\s\S]*?from\s+['"][^'"]+['"];?/g, '');
   const elements = new Map();
-  const element = () => ({ value: '', checked: false, textContent: '', style: {}, listeners: {},
-    addEventListener(type, callback) { this.listeners[type] = callback; }, replaceChildren() {}, append() {}, click() {} });
+  const element = () => ({ value: '', checked: false, textContent: '', style: {}, listeners: {}, attributes: {}, children: [],
+    addEventListener(type, callback) { this.listeners[type] = callback; },
+    setAttribute(key, value) { this.attributes[key] = String(value); },
+    replaceChildren(...nodes) { this.children = nodes; }, append() {}, click() {}, focus() { this.focused = true; }, scrollIntoView() {} });
   const document = { getElementById(id) { if (!elements.has(id)) elements.set(id, element()); return elements.get(id); }, createElement: element };
   document.getElementById('meshKeyInput').value = 'test';
   document.getElementById('dnsQueryInput').value = 'state.example.test';
   document.getElementById('dbPayloadInput').value = 'browser object';
   document.getElementById('dbLabelInput').value = 'state.txt';
-  let mesh, db, coordinator, tick, exportedBlob; const published = [], dnsCalls = [];
+  let mesh, db, coordinator, vm, tick, exportedBlob; const published = [], dnsCalls = [];
   class FakeTransport {
     constructor(options) { Object.assign(this, transport(), options); this.sendToPeer = FakeTransport.prototype.sendToPeer; this.broadcast = FakeTransport.prototype.broadcast; mesh = this; }
-    signalTopic() { return 'signal'; } warmCacheTopic() { return 'warm'; } connect() {}
+    signalTopic() { return 'signal'; } warmCacheTopic() { return 'warm'; }
+    get lifecycle() { return { generation: this.joined ? 1 : 0, closed: !this.joined }; }
+    connect() { this.joined = true; } close() { this.joined = false; }
     sendToPeer(_, packet) { reserveNetwork(this.admission, 'place', packet); this.sent.push(packet); return true; }
     broadcast(packet) { reserveNetwork(this.admission, 'retrieve', packet, this.openPeers().length); this.sent.push(packet); return this.openPeers().length; }
   }
@@ -190,16 +197,24 @@ async function browserHarness({ AdmissionClass = ResourceAdmission, publicationM
   const bindings = { document, window: { addEventListener() {} }, location: { hash: '' }, navigator: {},
     fetch: async () => new Response('colo=TEST\n'), setInterval: callback => { tick = callback; return 1; },
     URL: { createObjectURL(blob) { exportedBlob = blob; return 'blob:test'; }, revokeObjectURL() {} }, setTimeout: callback => callback(),
+    createOperatorExperience, integrityLabel, executionLabel, placementStatus, parseCanonicalJson,
     ResourceAdmission: AdmissionClass, generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText,
     readBoundedText, ExperimentTrialLogger: class { entries = []; logTrial() {} },
     BudgetPacedSurvivalScheduler, LiveUorMeshDatabase: FakeDb, LiveDistributedComputeCoordinator: FakeCoordinator,
     WebRtcTransportNode: FakeTransport, DohResolver: FakeDns,
-    LinuxVmNode: class { async mountUorObject() {} },
+    LinuxVmNode: class {
+      constructor(options) { vm = this; this.options = options; this.phase = 'idle'; this.boots = 0; this.commands = 0; }
+      get lifecycle() { return { phase: this.phase }; }
+      boot() { this.boots++; this.setPhase('booting'); }
+      setPhase(phase) { this.phase = phase; this.options.onStatus({ state: phase === 'ready' ? 'online' : phase, ip: 'test' }); }
+      async executeShellCommand() { this.commands++; return new TextEncoder().encode('observed guest stdout'); }
+      async mountUorObject() {}
+    },
     benchmarkUorHashers: () => [], benchmarkSchedulers: () => [], benchmarkStorageStrategies: () => [], benchmarkComputeStrategies: () => [] };
   new Function(...Object.keys(bindings), script)(...Object.values(bindings));
   await db.flush();
   await Promise.resolve();
-  return { document, elements, mesh, db, coordinator, published, dnsCalls,
+  return { document, elements, mesh, db, coordinator, vm, published, dnsCalls,
     click: id => elements.get(id).listeners.click(), tick: () => tick(),
     exported: async () => JSON.parse(await exportedBlob.text()) };
 }
@@ -212,7 +227,7 @@ test('actual browser script sends v1 channel sync and gates full pointer publish
   await click('dbPutBtn');
   await click('writeSignedDnsBtn');
   assert.equal(document.getElementById('pointerJsonInput').value, '');
-  assert.match(elements.get('wireLogBox').textContent, /Pin an independently trusted/);
+  assert.match(elements.get('wireLogBox').textContent, /MODEL-REFUSED/);
   await click('pinSessionAuthorityBtn');
   await click('writeSignedDnsBtn');
   const first = JSON.parse(document.getElementById('pointerJsonInput').value);
@@ -373,9 +388,15 @@ test('actual browser unknown publication reconciles without duplicate POST or co
   await Promise.all([h.click('writeSignedDnsBtn'), h.click('writeSignedDnsBtn')]);
   assert.deepEqual(h.dnsCalls, ['GET', 'POST']);
   assert.match(h.elements.get('wireLogBox').textContent, /POINTER-UNKNOWN/);
+  assert.equal(h.elements.get('writeSignedDnsBtn').hidden, true);
+  assert.equal(h.elements.get('reconcilePointerBtn').hidden, false);
+  assert.equal(h.elements.get('pointerPublicationSetup').open, true);
+  assert.equal(h.elements.get('pointersEvidence').attributes['data-experience-state'], 'pointerUnknown');
+  await h.click('writeSignedDnsBtn');
+  assert.deepEqual(h.dnsCalls, ['GET', 'POST'], 'forced write cannot bypass unknown-publication model guard');
   const candidate = JSON.parse(h.document.getElementById('pointerJsonInput').value);
   await h.click('dbWipeLocalBtn');
-  await h.click('writeSignedDnsBtn');
+  await h.click('reconcilePointerBtn');
   assert.deepEqual(h.dnsCalls, ['GET', 'POST', 'GET']);
   assert.equal(JSON.parse(h.document.getElementById('pointerJsonInput').value).pointerDigest, candidate.pointerDigest);
   assert.match(h.elements.get('wireLogBox').textContent, /Reconciled/);
@@ -386,8 +407,82 @@ test('actual browser retries only provider reads while an absent prior create re
   await h.click('dbPutBtn'); await h.click('pinSessionAuthorityBtn');
   h.document.getElementById('cfZoneInput').value = 'a'.repeat(32);
   h.document.getElementById('cfTokenInput').value = 'test-token';
-  await h.click('writeSignedDnsBtn'); await h.click('writeSignedDnsBtn');
+  await h.click('writeSignedDnsBtn'); await h.click('reconcilePointerBtn');
   assert.deepEqual(h.dnsCalls, ['GET', 'POST', 'GET']);
   assert.match(h.elements.get('wireLogBox').textContent, /POINTER-UNKNOWN/);
   assert.doesNotMatch(h.elements.get('wireLogBox').textContent, /CF-DNS/);
+});
+
+
+test('browser requires explicit signaling disclosure and join, and withdrawal closes the mesh', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  assert.equal(Boolean(h.mesh.joined), false);
+  assert.equal(field('reconnectBtn').disabled, true);
+  assert.equal(field('meshEvidence').attributes['data-experience-state'], 'meshDisclosure');
+  await h.click('reconnectBtn');
+  assert.equal(Boolean(h.mesh.joined), false, 'programmatic click must not bypass the model guard');
+  field('allowMeshSignalingInput').checked = true;
+  field('allowMeshSignalingInput').listeners.change();
+  assert.equal(Boolean(h.mesh.joined), false, 'disclosure alone does not initiate signaling');
+  assert.equal(field('meshEvidence').attributes['data-experience-state'], 'meshReady');
+  await h.click('reconnectBtn'); assert.equal(h.mesh.joined, true);
+  field('allowMeshSignalingInput').checked = false;
+  field('allowMeshSignalingInput').listeners.change();
+  assert.equal(h.mesh.joined, false); assert.equal(field('reconnectBtn').disabled, true);
+  assert.equal(field('allowPublicRelayInput').checked, false);
+});
+
+test('browser mixed jobs cannot mask an unfinished unverified checkpoint with completed replay evidence', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  h.coordinator.jobs.set('done', { status: 'completed', verification: 'replayed' });
+  h.coordinator.jobs.set('needs-replay', { status: 'running', verification: 'unverified' });
+  h.tick();
+  assert.equal(field('computeEvidence').attributes['data-experience-state'], 'computeUnverified');
+  assert.equal(field('takeoverJobsBtn').disabled, false, 'retained local unfinished jobs can resume before joining');
+  h.coordinator.jobs.get('needs-replay').verification = 'replayed'; h.tick();
+  assert.equal(field('computeEvidence').attributes['data-experience-state'], 'computeReplay');
+  h.coordinator.jobs.get('needs-replay').status = 'completed'; h.tick();
+  assert.equal(field('computeEvidence').attributes['data-experience-state'], 'computeDone');
+});
+
+test('browser zero network allowance and an oversized refusal do not deny cheaper local work', async () => {
+  class LocalOnlyAdmission extends ResourceAdmission {
+    constructor(options = {}) { super({ ...options, limit: limits({ requests: 0, transferBytes: 0, storageBytes: 20000 }) }); }
+  }
+  const h = await browserHarness({ AdmissionClass: LocalOnlyAdmission });
+  const field = id => h.document.getElementById(id);
+  assert.equal(field('dbPutBtn').disabled, false);
+  field('dbPayloadInput').value = 'x'.repeat(30000);
+  await assert.rejects(h.click('dbPutBtn'), code('budget-exhausted'));
+  assert.equal(h.db.objects.size, 0);
+  assert.equal(field('dbPutBtn').disabled, false, 'an operation-specific refusal is not a global stop');
+  assert.equal(field('resourcesEvidence').attributes['data-experience-state'], 'resourcesBlocked');
+  field('dbPayloadInput').value = 'cheap local object'; await h.click('dbPutBtn');
+  assert.equal(h.db.objects.size, 1); assert.equal(h.db.admission.state.spent.requests, 0);
+  assert.equal(field('startJobBtn').disabled, false);
+});
+
+test('browser VM controls follow observed lifecycle and forced repeated clicks cannot bypass readiness', async () => {
+  const h = await browserHarness(); const field = id => h.document.getElementById(id);
+  field('vmCmdInput').value = 'uname -a';
+  await h.click('runVmCmdBtn'); assert.equal(h.vm.commands, 0);
+  await h.click('bootVmBtn'); await h.click('bootVmBtn');
+  assert.equal(h.vm.boots, 1); assert.equal(field('bootVmBtn').disabled, true);
+  assert.equal(field('vmEvidence').attributes['data-experience-state'], 'vmBooting');
+  h.vm.setPhase('ready');
+  assert.equal(field('runVmCmdBtn').disabled, false);
+  await h.click('runVmCmdBtn'); assert.equal(h.vm.commands, 1);
+  assert.match(field('vmExplanation').textContent, /not evidence/);
+  h.vm.setPhase('failed');
+  assert.equal(field('runVmCmdBtn').disabled, true); assert.equal(field('bootVmBtn').disabled, false);
+  await h.click('runVmCmdBtn'); assert.equal(h.vm.commands, 1);
+});
+
+
+test('actual pasted-pointer journey refuses duplicate JSON names before trust admission', async () => {
+  const h = await browserHarness();
+  await h.click('pinSessionAuthorityBtn');
+  const input = h.document.getElementById('pointerJsonInput');
+  input.value = '{"version":1,"\\u0076ersion":1}';
+  await assert.rejects(h.click('admitPointerBtn'), code('InvalidCanonicalValue'));
 });

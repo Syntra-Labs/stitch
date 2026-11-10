@@ -1,0 +1,244 @@
+\begin{lexlean}{Stitch.Relay}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Limits,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: wireBytes, type: Nat},
+    {name: chunkBytes, type: Nat},
+    {name: messageBytes, type: Nat},
+    {name: frames, type: Nat},
+    {name: entries, type: Nat},
+    {name: retainedBytes, type: Nat},
+    {name: tombstones, type: Nat},
+    {name: assemblyAge, type: Nat},
+    {name: futureSkew, type: Nat},
+    {name: requestTimeout, type: Nat}
+  ]
+}
+
+definition{
+  name: limits,
+  parameters: [],
+  result: Limits,
+  body: (record Limits {wireBytes := 4096, chunkBytes := 2700, messageBytes := 524288, frames := 256, entries := 16, retainedBytes := 2097152, tombstones := 256, assemblyAge := 30000, futureSkew := 5000, requestTimeout := 30000})
+}
+
+definition{name: signalLifetime, parameters: [], result: Nat, body: 60000}
+
+definition{name: warmLifetime, parameters: [], result: Nat, body: 1800000}
+
+structure{
+  name: Capacity,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: entries, type: Nat},
+    {name: retainedBytes, type: Nat},
+    {name: tombstones, type: Nat}
+  ]
+}
+
+structure{
+  name: Identity,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: channel, type: Bytes},
+    {name: session, type: Bytes},
+    {name: digest, type: Bytes},
+    {name: purpose, type: Bytes},
+    {name: created, type: Nat},
+    {name: messageBytes, type: Nat},
+    {name: frames, type: Nat}
+  ]
+}
+
+structure{
+  name: Frame,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: identity, type: Identity},
+    {name: index, type: Nat},
+    {name: payloadBytes, type: Nat},
+    {name: wireBytes, type: Nat}
+  ]
+}
+
+structure{
+  name: Assembly,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: identity, type: Identity},
+    {name: receivedFrames, type: Nat},
+    {name: receivedBytes, type: Nat},
+    {name: started, type: Nat},
+    {name: last, type: Nat},
+    {name: verifying, type: Bool}
+  ]
+}
+
+definition{
+  name: sameIdentity,
+  parameters: [left : Identity, right : Identity],
+  result: Bool,
+  body: ((prim equal (project left channel) (project right channel) : Bool) && ((prim equal (project left session) (project right session) : Bool) && ((prim equal (project left digest) (project right digest) : Bool) && ((prim equal (project left purpose) (project right purpose) : Bool) && (((project left created) =? (project right created)) && (((project left messageBytes) =? (project right messageBytes)) && ((project left frames) =? (project right frames))))))))
+}
+
+definition{
+  name: frameAllowed,
+  parameters: [
+    bounds : Limits,
+    frame : Frame,
+    channel : Bytes,
+    purpose : Bytes,
+    wallNow : Nat,
+    lifetime : Nat
+  ],
+  result: Bool,
+  body: (let identity : Identity := (project frame identity); ((prim equal (project identity channel) channel : Bool) && ((prim equal (project identity purpose) purpose : Bool) && ((0 <? (project identity messageBytes)) && (((project identity messageBytes) <=? (project bounds messageBytes)) && ((0 <? (project identity frames)) && (((project identity frames) <=? (project bounds frames)) && (((project frame index) <? (project identity frames)) && (((project frame wireBytes) <=? (project bounds wireBytes)) && (((prim multiply (prim subtract (project identity frames) 1 : Nat) (project bounds chunkBytes) : Nat) <? (project identity messageBytes)) && (((project identity messageBytes) <=? (prim multiply (project identity frames) (project bounds chunkBytes) : Nat)) && (((project frame payloadBytes) =? (if (((project frame index) + 1) =? (project identity frames)) then (prim subtract (project identity messageBytes) (prim multiply (prim subtract (project identity frames) 1 : Nat) (project bounds chunkBytes) : Nat) : Nat) else (project bounds chunkBytes))) && (((project identity created) <=? (wallNow + (project bounds futureSkew))) && (wallNow <? ((project identity created) + lifetime)))))))))))))))
+}
+
+definition{
+  name: admissionAllowed,
+  parameters: [bounds : Limits, capacity : Capacity, bytes : Nat],
+  result: Bool,
+  body: ((0 <? bytes) && ((bytes <=? (project bounds messageBytes)) && (((project capacity entries) <? (project bounds entries)) && ((((project capacity retainedBytes) + bytes) <=? (project bounds retainedBytes)) && (((project capacity entries) + (project capacity tombstones)) <? (project bounds tombstones))))))
+}
+
+definition{
+  name: admitCapacity,
+  parameters: [bounds : Limits, capacity : Capacity, bytes : Nat],
+  result: Capacity,
+  body: (if (admissionAllowed bounds capacity bytes) then (record Capacity {entries := ((project capacity entries) + 1), retainedBytes := ((project capacity retainedBytes) + bytes), tombstones := (project capacity tombstones)}) else capacity)
+}
+
+definition{
+  name: release,
+  parameters: [capacity : Capacity, bytes : Nat],
+  result: Capacity,
+  body: (record Capacity {entries := (prim subtract (project capacity entries) 1 : Nat), retainedBytes := (prim subtract (project capacity retainedBytes) bytes : Nat), tombstones := ((project capacity tombstones) + 1)})
+}
+
+definition{
+  name: assemblyCurrent,
+  parameters: [bounds : Limits, state : Assembly, now : Nat],
+  result: Bool,
+  body: (((project state last) <=? now) && ((now <? ((project state started) + (project bounds assemblyAge))) && (not (project state verifying))))
+}
+
+definition{
+  name: appendAllowed,
+  parameters: [bounds : Limits, state : Assembly, frame : Frame, now : Nat, duplicate : Bool],
+  result: Bool,
+  body: ((not duplicate) && ((assemblyCurrent bounds state now) && ((sameIdentity (project state identity) (project frame identity)) && ((((project state receivedFrames) + 1) <=? (project (project state identity) frames)) && (((project state receivedBytes) + (project frame payloadBytes)) <=? (project (project state identity) messageBytes))))))
+}
+
+definition{
+  name: append,
+  parameters: [bounds : Limits, state : Assembly, frame : Frame, now : Nat, duplicate : Bool],
+  result: Assembly,
+  body: (if (appendAllowed bounds state frame now duplicate) then (record Assembly {identity := (project state identity), receivedFrames := ((project state receivedFrames) + 1), receivedBytes := ((project state receivedBytes) + (project frame payloadBytes)), started := (project state started), last := now, verifying := false}) else state)
+}
+
+definition{
+  name: ready,
+  parameters: [state : Assembly],
+  result: Bool,
+  body: (((project state receivedFrames) =? (project (project state identity) frames)) && ((project state receivedBytes) =? (project (project state identity) messageBytes)))
+}
+
+definition{
+  name: beginVerification,
+  parameters: [state : Assembly],
+  result: Assembly,
+  body: (record Assembly {identity := (project state identity), receivedFrames := (project state receivedFrames), receivedBytes := (project state receivedBytes), started := (project state started), last := (project state last), verifying := (ready state)})
+}
+
+definition{
+  name: deliveryAllowed,
+  parameters: [
+    state : Assembly,
+    digestVerified : Bool,
+    utf8Valid : Bool,
+    envelopeValid : Bool,
+    sessionCurrent : Bool,
+    consentCurrent : Bool
+  ],
+  result: Bool,
+  body: (digestVerified && (utf8Valid && (envelopeValid && (sessionCurrent && (consentCurrent && ((project state verifying) && (ready state)))))))
+}
+
+definition{
+  name: effectAllowed,
+  parameters: [
+    closed : Bool,
+    currentGeneration : Nat,
+    capturedGeneration : Nat,
+    sessionMatches : Bool,
+    consentCurrent : Bool
+  ],
+  result: Bool,
+  body: ((not closed) && ((currentGeneration =? capturedGeneration) && (sessionMatches && consentCurrent)))
+}
+
+theorem{
+  name: duplicateDoesNotAdvanceAssembly,
+  parameters: [bounds : Limits, state : Assembly, frame : Frame, now : Nat],
+  statement: ((append bounds state frame now true) = state),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: unverifiedMessageCannotDeliver,
+  parameters: [
+    state : Assembly,
+    utf8Valid : Bool,
+    envelopeValid : Bool,
+    sessionCurrent : Bool,
+    consentCurrent : Bool
+  ],
+  statement: ((deliveryAllowed state false utf8Valid envelopeValid sessionCurrent consentCurrent) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: closedSessionCannotPublish,
+  parameters: [
+    currentGeneration : Nat,
+    capturedGeneration : Nat,
+    sessionMatches : Bool,
+    consentCurrent : Bool
+  ],
+  statement: ((effectAllowed true currentGeneration capturedGeneration sessionMatches consentCurrent) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: effectFalseGuard,
+  parameters: [],
+  statement: (forall (open : Bool), (forall (matching : Bool), (forall (session : Bool), ((open && (matching && (session && false))) = false)))),
+  proof: decide{}
+}
+
+theorem{
+  name: withdrawnConsentCannotPublish,
+  parameters: [
+    closed : Bool,
+    currentGeneration : Nat,
+    capturedGeneration : Nat,
+    sessionMatches : Bool
+  ],
+  statement: ((effectAllowed closed currentGeneration capturedGeneration sessionMatches false) = false),
+  proof: simplify{definitions: [effectAllowed, effectFalseGuard]},
+  axioms: [propext]
+}
+\end{semanticmodule}
+\end{lexlean}

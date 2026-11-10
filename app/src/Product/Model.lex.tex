@@ -105,7 +105,7 @@ definition{
   name: componentBrowser,
   parameters: [],
   result: Component,
-  body: (record Component {id := "browser", role := "Interactive five-layer Stitch product", implementation := (cons "index.html" (nil String)), models := (cons "Product.Host" (cons "Product.Model" (nil String))), trustBoundary := true})
+  body: (record Component {id := "browser", role := "Interactive five-layer Stitch product", implementation := (cons "index.html" (cons "src/product-experience.js" (nil String))), models := (cons "Product.Experience" (cons "Product.Host" (cons "Product.Model" (nil String)))), trustBoundary := true})
 }
 
 definition{
@@ -126,7 +126,7 @@ definition{
   name: componentDiscovery,
   parameters: [],
   result: Component,
-  body: (record Component {id := "discovery", role := "DNS-over-HTTPS resolver and scoped DNS writer", implementation := (cons "src/layer5-transport/index.js" (nil String)), models := (cons "Stitch.Pointer" (cons "Stitch.Observation" (nil String))), trustBoundary := true})
+  body: (record Component {id := "discovery", role := "DNS-over-HTTPS resolver and scoped DNS writer", implementation := (cons "src/layer5-transport/index.js" (cons "src/layer5-transport/dns-wire.js" (nil String))), models := (cons "Stitch.Pointer" (cons "Stitch.Observation" (nil String))), trustBoundary := true})
 }
 
 definition{
@@ -168,7 +168,7 @@ definition{
   name: componentPublicRelay,
   parameters: [],
   result: Component,
-  body: (record Component {id := "publicRelay", role := "Optional public ntfy warm cache", implementation := (nil String), models := (cons "Stitch.Evidence" (nil String)), trustBoundary := true})
+  body: (record Component {id := "publicRelay", role := "Optional public ntfy warm cache", implementation := (cons "src/layer5-transport/relay-framing.js" (nil String)), models := (cons "Stitch.Relay" (cons "Stitch.Evidence" (nil String))), trustBoundary := true})
 }
 
 definition{
@@ -189,7 +189,7 @@ definition{
   name: componentSignaling,
   parameters: [],
   result: Component,
-  body: (record Component {id := "signaling", role := "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin", implementation := (nil String), models := (cons "Product.Host" (nil String)), trustBoundary := true})
+  body: (record Component {id := "signaling", role := "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin", implementation := (cons "src/layer5-transport/relay-framing.js" (nil String)), models := (cons "Stitch.Relay" (cons "Stitch.Effects" (cons "Product.Host" (nil String)))), trustBoundary := true})
 }
 
 definition{
@@ -406,7 +406,7 @@ definition{
   name: dependencyCloudflareDns,
   parameters: [],
   result: Dependency,
-  body: (record Dependency {id := "cloudflareDns", consumer := "discovery", kind := "external-service", locator := "https://cloudflare-dns.com/dns-query", versionPolicy := "RFC 8484 provider behavior; no immutable service version", trust := "Read results untrusted until domain admission", required := false})
+  body: (record Dependency {id := "cloudflareDns", consumer := "discovery", kind := "external-service", locator := "https://cloudflare-dns.com/dns-query", versionPolicy := "RFC8484 DNS-message client; optional provider JSON mode; no immutable service version", trust := "Read results untrusted until domain admission", required := false})
 }
 
 definition{
@@ -484,6 +484,20 @@ definition{
   parameters: [],
   result: Deployment,
   body: (record Deployment {id := "pureProbe", kind := "prism-text-application", entry := "app/src/StitchApp.lex.tex", files := (cons "SDK-generated holo and browser closure" (nil String)), requiredCapabilities := (nil String), secrets := (nil String), readiness := "Only actual pinned-SDK verify establishes probe acceptance.", rollback := "Retain previous immutable holo and exact source lock.", releaseGate := "lexlean check, Lean and leanchecker, exact axioms, PrismPM artifact and vector verification."})
+}
+
+definition{
+  name: assetLifecycleEffects,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/effects.js", role := "Exact identity projections and model-derived transport, DNS and VM lifecycle admissions", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetProductExperience,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/product-experience.js", role := "Model-derived operator journeys, evidence and guarded DOM actions", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
 }
 
 definition{
@@ -638,10 +652,24 @@ structure{
 }
 
 definition{
+  name: assetDnsWire,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/dns-wire.js", role := "RFC8484 application DNS-message client", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetRelayFraming,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/relay-framing.js", role := "Bounded ntfy message framing and reassembly", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
   name: product,
   parameters: [],
   result: Model,
-  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (nil CapabilityContract))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (nil Asset))))))))))))))))))))})
+  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (nil CapabilityContract))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (nil Asset))))))))))))))))))))))))})
 }
 
 definition{

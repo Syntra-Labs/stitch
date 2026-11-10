@@ -1,0 +1,30 @@
+# Standards and operational completion
+
+Stitch's model must describe the delivered product, not merely its pure probe or a collection of claims. Referenced standards are implemented for the actual selected role, including applicable error, lifecycle and interoperability requirements. A runtime test, a source theorem and an external-provider observation answer different questions.
+
+## Standards roles
+
+| Reference | Stitch's role and evidence boundary |
+|---|---|
+| RFC8831 / RFC8825 | Browser WebRTC application. The browser supplies ICE, DTLS and SCTP; Stitch owns signaling, channel lifecycle, message framing, flow control and qualified connection evidence. No independent peer identity or NAT success is inferred from a channel event. |
+| RFC8656 | TURN is an optional browser/provider dependency, not a Stitch TURN server. The frozen direct-connect experiment disallows TURN success; that experiment does not block ordinary connectivity. |
+| RFC8484 | Real application/dns-message stub client, with HTTP/DNS response/error handling and bounded DNS decoding. See dns-client.md. Authoritative/recursive server and local DNSSEC-validation roles are not claimed. |
+| RFC8032 | Ed25519 is delegated to WebCrypto, while Stitch owns signed bytes, exact field validation and trusted-authority/revision admission. No Ed448 or unused signature variant is claimed. |
+| RFC8785 | JCS encoding and strict I-JSON input validation. See canonical-json.md. Application integer schema constraints are distinct from the complete binary64 codec. |
+| RFC9162 | The original concept cited an optional Merkle-pattern inspiration. Stitch does not claim to operate a Certificate Transparency v2 log merely because that reference exists. |
+| ntfy and Cloudflare API v4 | Provider protocols with explicit quotas, disclosure and outcome uncertainty. They are not interchangeable with an IETF standard or a permanent retention guarantee. |
+| Prism/LexLean and the SDK standard lock | Exact selected compiler/profile/oracle obligations remain required. The44 locked authorities and18 SDK oracle entries are available toolchain metadata, not44 application compliance certificates or a request to add unrelated Kubernetes/OIDC features. |
+
+Primary sources: [RFC8831](https://www.rfc-editor.org/rfc/rfc8831.html), [RFC8825](https://www.rfc-editor.org/rfc/rfc8825.html), [RFC8656](https://www.rfc-editor.org/rfc/rfc8656.html), [RFC8484](https://www.rfc-editor.org/rfc/rfc8484.html), [RFC8032](https://www.rfc-editor.org/rfc/rfc8032.html), [RFC8785](https://www.rfc-editor.org/rfc/rfc8785.html), [RFC9162](https://www.rfc-editor.org/rfc/rfc9162.html), [ntfy publishing](https://docs.ntfy.sh/publish/), [Cloudflare DNS API](https://developers.cloudflare.com/api/resources/dns/subresources/records/).
+
+## Operational work still required
+
+These are actual unfinished implementation/qualification items, not ceremonial gates or a declaration that the product is complete:
+
+1. **Retain and restore the right information.** Provide validated object/job evidence export/import, operator-controlled trusted recent-anchor recovery, durable signing-authority lifecycle and restart-safe unknown-write journals. A zero-disk peer remains possible, but recoverability cannot survive loss of every required byte, key and anchor. Browser storage needs quota/eviction/backup handling rather than a durability promise.
+2. **Complete channel interoperability and flow control.** Honor negotiated DataChannel message size and backpressure, finish signaling identity/anti-replay scope, and qualify real supported browsers and physical network pairs. Ntfy framing fixes its provider payload limit; it does not certify all SCTP/browser behavior.
+3. **Complete guest administration.** Full-root filenames fix identity collisions, but guest file grants, Ethernet exposure, stop/destroy and unknown command reconciliation still need explicit operational controls. The browser cannot establish VM isolation from a Boolean model observation.
+4. **Resolve distribution provenance.** The five original VM assets are still not marked redistribution-cleared. Exact source/notices/build provenance, or reproducibly sourced replacements, are required before a cleared release. Do not substitute a successful boot for license/source evidence.
+5. **Qualify the integrated product.** The exact source proof, runtime/independent vectors, native Prism artifact gate, browser journeys and relevant provider/VM trials must name the revision they tested. Do not rerun identical work redundantly or convert simulations into physical measurements.
+
+Changes so far correct reproduced defects: DNS response association, C1 false success, truncated guest identity, excessive provider message size and partial canonical JSON. Their tests belong with the implementing code. This document does not defer the remaining product requirements; it keeps them visible until implemented and demonstrated.

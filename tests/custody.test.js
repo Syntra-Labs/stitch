@@ -34,7 +34,7 @@ async function place(s, bundle, index, holder = `peer-${index}`, requestId = `re
 test('canonical encoding is deterministic, closed, bounded and does not execute accessors', () => {
   assert.deepEqual(canonicalBytes({ z: [true, null, 123], a: '\u2603' }), canonicalBytes({ a: '\u2603', z: [true, null, 123] }));
   assert.equal(new TextDecoder().decode(canonicalBytes({ b: 2, a: 1 })), '{"a":1,"b":2}');
-  for (const value of [undefined, NaN, Infinity, -0, 1.5, Number.MAX_SAFE_INTEGER + 1, 1n, new Date(), new Uint8Array(), '\ud800', '\udfff']) {
+  for (const value of [undefined, NaN, Infinity, -Infinity, 1n, new Date(), new Uint8Array(), '\ud800', '\udfff']) {
     throws(() => canonicalBytes(value), 'InvalidCanonicalValue');
   }
   for (const value of [[, 1], Object.assign([1], { extra: true }), Object.assign({}, { [Symbol('x')]: 1 })]) {
@@ -321,7 +321,7 @@ test('public relay requires explicit opt-in for publishing and recovery; cold re
   const w = wire(), writer = w.node('writer');
   await rejects(() => writer.db.put('private', { persistWarm: true }), 'PublicDataRequired');
   assert.equal(writer.db.objects.size, 0); assert.equal(w.warm.length, 0);
-  await rejects(() => writer.db.put(new Uint8Array(2049), { persistWarm: true, publicData: true }), 'SizeLimit');
+  await rejects(() => writer.db.put(new Uint8Array(writer.db.maxWireObjectBytes + 1), { persistWarm: true, publicData: true }), 'SizeLimit');
   assert.equal(writer.db.objects.size, 0);
   const entry = await writer.db.put('explicit public demo', { persistWarm: true, publicData: true });
   assert.equal(w.warm.length, 2);

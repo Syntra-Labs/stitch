@@ -185,7 +185,7 @@ import {
   // Claim C2 & Objective O2: Cloudflare SRV/TXT writer + staleness measurement against TTL
   const cfCalls = [];
   let dohPolls = 0;
-  const mockDoh = new DohResolver({
+  const mockDoh = new DohResolver({ format: "json",
     fetchImpl: async (url, opts) => {
       if (url.includes('api.cloudflare.com')) {
         cfCalls.push({ url, method: opts.method, body: JSON.parse(opts.body) });
@@ -201,7 +201,7 @@ import {
         ok: true,
         json: async () => ({
           Status: 0,
-          Answer: [{ TTL: 30, data: `10 20 443 ${targetHost}` }]
+          Answer: [{ name: 'e1._stitch._udp.example.net.', type: 33, TTL: 30, data: `10 20 443 ${targetHost}` }]
         })
       };
     }
@@ -239,13 +239,14 @@ import {
       network_pair_class: 'home<->mobile',
       success: i < 24, // 24/30 = 80% >= 60%
       used_turn: false,
-      ice_setup_sec: 1.8
+      ice_setup_sec: 1.8, heartbeats_passed: i < 24 ? 10 : 2, qualification_elapsed_sec: 9,
+      ordered_channel: true, selected_path_observed: true
     });
   }
   const c1Summary = logger.summarizeC1('home<->mobile');
   assert.equal(c1Summary.trials, 30);
   assert.equal(c1Summary.direct_success_rate, 0.8);
-  assert.equal(c1Summary.c1_status, 'VERIFIED');
+  assert.equal(c1Summary.c1_status, 'THRESHOLDS_MET');
   assert.equal(logger.toJsonl().trim().split('\n').length, 30);
 }
 

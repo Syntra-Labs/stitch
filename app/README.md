@@ -36,6 +36,9 @@ policy optimality.
   strict step advancement and uninterrupted/continued execution equivalence.
   Unsupported CONCAT/POW opcodes are refused; DIV/MOD by zero retain Stitch's
   defined legacy zero result.
+- `Effects`: correlated mesh/VM generations, DNS unknown-write reconciliation and honest C1 measurement transitions, bound to actual host callbacks.
+- `Relay`: frame admission, assembly counters, deadlines, delivery and disclosure guards. Hash/UTF8 observations and the indexed-buffer representation remain explicit host adapter responsibilities.
+- `Product.Experience`: actual browser journeys, evidence views, action guards and context-sensitive disclosure/navigation policy.
 - `Evidence`: separate claim kinds and evidence levels, bounded reuse, explicit
   host effects and named external assumptions.
 - `System`: the product state, budgeted requests with custody/evidence frame
@@ -49,8 +52,11 @@ The browser runtime imports `src/layer1-uor/generated-model.js`, reproduced by
 subset is evaluated with BigInt. Program replay executes the source-model
 `Stitch.Compute.ringStep`, and budget, pointer, checkpoint and custody admission
 use the same source-derived predicates. Unsupported translator syntax fails.
-The generator also binds every source and language-extension file into
-`modelSourceDigest`, so a checkpoint cannot silently cross model revisions.
+The generator binds every source and language-extension file into
+`modelSourceDigest` for provenance. Checkpoints bind the separate
+`modelExecutionDigest`: reachable replay semantics and exact transitive adapter
+bytes. Unrelated model/proof/UI changes need not invalidate execution identity;
+changed replay adapters do. Old checkpoints are never silently relabeled.
 
 This subset translator is not LexLean, a semantic type checker, Lean, a Prism
 compiler, an axiom audit, or a certificate. Its freshness check, generated-code
@@ -66,8 +72,9 @@ the host, not a crypto implementation. The probe has no host capabilities.
 
 The source contains stated reconstruction, admission/refusal, reservation,
 settlement, migration/frame, pointer-order and continuation obligations with
-explicit proof terms. Until `lexlean verify` and the full PrismPM build pass for
-this exact source, call these **unverified theorem obligations**, not proofs.
+explicit proof terms. A theorem is kernel-verified only after `lexlean verify`
+succeeds for its exact source and axiom policy. Native artifact qualification
+separately requires the full PrismPM build. The [source-verification summary](../product/source-verification.json) records the checked20-module closure and exact hashes.
 A checked source theorem is still not evidence that separately handwritten
 network/crypto/browser adapters implement every assumption.
 
