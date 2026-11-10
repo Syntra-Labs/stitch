@@ -63,12 +63,20 @@ budget or journal. Focused interruption tests now exercise these refinements:
   retry, and generation identity fences old callbacks. Cleanup is best-effort,
   not proof that host downloads stopped. A command timeout means its completion
   is unknown, not that the command was cancelled.
+- `Stitch.Pointer.restoreAllowed` admits only a separately accepted exact vault
+  anchor in its independently pinned live scope, with current signature/validity
+  and an empty or identical retained head. `PointerObserver` shares restoration
+  and succession's serialized CAS; no different retained head can be overwritten.
+  `Product.Experience` separately exposes import, exact acceptance and explicit
+  restoration, with checked/accepted/live-head evidence and busy/scope guards.
+  The branded vault read, cryptographic result, clock and DOM facts remain host
+  observations; no imported evidence automatically establishes trust.
 - Serialized storage/compute ingress, immutable reservations, retained pointer
   heads and explicit resource-epoch renewal implement their corresponding local
   admission boundaries. Unknown effects do not refund previous charges.
 
 `tests/transport-generation.test.js`, `tests/dns-publication.test.js`,
-`tests/vm-lifecycle.test.js` and the browser-script harness in
+`tests/vm-lifecycle.test.js`, `tests/pointer-recovery.test.js`, recovery UI tests and the browser-script harness in
 `tests/runtime-admission.test.js` cover these concrete paths. They do not prove
 universal runtime refinement of `Product.Host`, physical browser/NAT behavior,
 or the host's cryptographic/grant attestations. The full contract's typed grant

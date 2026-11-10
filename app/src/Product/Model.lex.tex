@@ -266,7 +266,7 @@ definition{
   name: assumptionObserverAnchor,
   parameters: [],
   result: Assumption,
-  body: (record Assumption {id := "observerAnchor", statement := "The pointer writer key and recent retained head are obtained independently and protected from rollback.", evidence := "Pinned key and retained observer head; current UI stores them only for its session.", scope := "Single-writer authority and freshness."})
+  body: (record Assumption {id := "observerAnchor", statement := "The pointer writer key and recent retained head are obtained independently and protected from rollback.", evidence := "Independently pinned key and retained observer head, or separately accepted exact recent digest explicitly restored into that same live scope. Both heads and anchor trust remain session-only.", scope := "Single-writer authority and freshness."})
 }
 
 definition{
@@ -690,7 +690,7 @@ definition{
   name: assetRecovery,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "src/recovery.js", role := "Verified detached object and pure-job recovery bundle import/export; explicit local anchor acceptance", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+  body: (record Asset {path := "src/recovery.js", role := "Verified detached recovery bundle import/export; separate exact anchor acceptance and explicit scoped live-head restoration", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
 }
 
 definition{

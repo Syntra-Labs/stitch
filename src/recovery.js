@@ -141,6 +141,11 @@ export class RecoveryVault {
     if (!object) reject('missing-object');
     return recoverObject(object.manifest, object.fragments.map(f => ({ index: f.index, bytes: decodeHex(f.hex) })));
   }
+  acceptedAnchor({ name, authorityKey, expectedDigest }) {
+    const anchor = this.#accepted.get(name);
+    if (!anchor || anchor.authorityKey !== authorityKey || anchor.pointerDigest !== expectedDigest) reject('anchor-not-accepted');
+    return structuredClone(anchor);
+  }
   /** The expected digest/key MUST come from a source the operator trusts as
    * recent, separately from this bundle. No supplied timestamp proves recency.
    */
@@ -159,4 +164,12 @@ export class RecoveryVault {
     this.#state = { ...this.#state, generation: generation + 1 };
     return structuredClone(anchor);
   }
+}
+
+/** Read only a separately accepted exact scope, with a private-field brand check.
+ * The observer calls this intrinsic, not a caller-supplied vault-shaped method.
+ * Snapshots and imported bundle rows cannot manufacture accepted provenance.
+ */
+export function acceptedRecoveryAnchor(vault, { name, authorityKey, expectedDigest }) {
+  return RecoveryVault.prototype.acceptedAnchor.call(vault, { name, authorityKey, expectedDigest });
 }

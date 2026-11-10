@@ -1,7 +1,8 @@
 /** Single-writer pointer admission. The caller supplies an independently trusted authority key. */
 import { canonicalBytes, sha256Bytes, parseCanonicalJson } from './custody.js';
 import { record, natural, identifier, digest, refuse } from './contracts.js';
-import { pointerSuccessorAllowed } from './generated-model.js';
+import { model, pointerSuccessorAllowed } from './generated-model.js';
+import { acceptedRecoveryAnchor } from '../recovery.js';
 import { dnsRequestAllowed, dnsReadDecision, dnsWriteState, dnsWriteOutcome, dnsLifecycle } from './effects.js';
 const hex = bytes => Array.from(bytes, b => b.toString(16).padStart(2, '0')).join('');
 function unhex(value, length) {
@@ -66,10 +67,40 @@ export class PointerObserver {
   #pending = Promise.resolve();
   constructor({ name, trustedAuthorityKey, clock = Date.now, admission = null }) {
     identifier(name); unhex(trustedAuthorityKey, 32);
-    this.name = name; this.trustedAuthorityKey = trustedAuthorityKey;
+    // A recovery action can never repin or rename an existing observer.
+    Object.defineProperties(this, { name: { value: name, enumerable: true },
+      trustedAuthorityKey: { value: trustedAuthorityKey, enumerable: true } });
     this.clock = clock; this.admission = admission;
   }
   get head() { return this.#head === null ? null : structuredClone(this.#head); }
+  /** Explicit local trust-bootstrap, never ordinary imported evidence admission.
+   * Both restoration and ordinary succession share the same serialized CAS.
+   * Only an empty head (or the exact already-retained head) is eligible. Even a
+   * newer accepted anchor cannot replace a different live head.
+   */
+  restoreFromRecovery(vault, { expectedDigest, scopeStillCurrent = () => true }) {
+    const scope = { name: this.name, authorityKey: this.trustedAuthorityKey, expectedDigest };
+    const work = this.#pending.then(async () => {
+      const anchor = acceptedRecoveryAnchor(vault, scope);
+      await verifyPointer(anchor, this.trustedAuthorityKey);
+      // Recheck acceptance and the wall clock after asynchronous crypto. A newer
+      // acceptance, changed UI scope or expiry cannot commit a stale operation.
+      const accepted = acceptedRecoveryAnchor(vault, scope);
+      const nowMs = this.clock(); natural(nowMs);
+      if (!model['Stitch.Pointer.restoreAllowed'](accepted.pointerDigest === anchor.pointerDigest,
+        anchor.name === this.name && anchor.authorityKey === this.trustedAuthorityKey && scopeStillCurrent() === true,
+        anchor.pointerDigest === expectedDigest, true, anchor.validFromMs, anchor.validUntilMs, nowMs,
+        this.#head !== null, this.#head?.pointerDigest === anchor.pointerDigest)) refuse('pointer-restore-conflict-or-stale');
+      // Exact repetition is idempotent, including its storage reservation.
+      if (this.#head === null) {
+        this.admission?.reserve('refresh', { storageBytes: canonicalBytes(anchor).length });
+        this.#head = anchor;
+      }
+      return this.head;
+    });
+    this.#pending = work.catch(() => {});
+    return work;
+  }
   admit(candidate) {
     // Snapshot synchronously and serialize compare-and-swap plus head retention.
     try { candidate = snapshot(candidate); } catch (error) { return Promise.reject(error); }

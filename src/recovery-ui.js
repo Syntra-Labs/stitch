@@ -1,10 +1,10 @@
 /** Explicit local recovery journey. Never invokes a mesh, VM or DNS adapter. */
 import { RecoveryVault, RECOVERY_LIMITS, recoveryObject, exportRecoveryBundle } from './recovery.js';
 import { resumeProgram, programWork } from './layer4-compute/replay.js';
-export function installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, bindModelAction, onChange = () => {} }) {
+export function installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, pointerObserver, bindModelAction, onChange = () => {} }) {
   const get = id => document.getElementById(id);
   const vault = new RecoveryVault();
-  let busy = false;
+  let busy = false, restoreGeneration = 0;
   const status = message => { get('recoveryStatus').textContent = message; };
   const download = (bytes, name, type) => {
     const url = URL.createObjectURL(new Blob([bytes], { type }));
@@ -19,6 +19,12 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     }
     control.replaceChildren(...choices);
     if (choices.some(option => option.value === previous)) control.value = previous;
+  }
+  const liveScope = () => ({ name: get('dnsQueryInput').value.trim(), authorityKey: get('pointerAuthorityInput').value.trim() });
+  function selectedAcceptance(state = vault.snapshot()) {
+    const supplied = state.bundle.anchors.find(a => a.name === get('recoveryAnchors').value);
+    return state.acceptedAnchors.find(a => a.pointerDigest === supplied?.pointerDigest &&
+      a.authorityKey === get('recoveryAuthority').value.trim() && a.pointerDigest === get('recoveryDigest').value.trim());
   }
   function render() {
     const snapshot = vault.snapshot();
@@ -68,6 +74,8 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
   }
   get('recoveryControls').addEventListener('toggle', () => {
     if (get('recoveryControls').open && !busy) refreshExportSelection();
+    // Closing cancels an in-flight commit, never an already retained head.
+    if (!get('recoveryControls').open) restoreGeneration++;
   });
   bind('exportRecoveryBtn', async () => {
     const selected = new Set([...get('recoveryExportSelection').selectedOptions].map(o => o.value));
@@ -118,23 +126,45 @@ export function installRecoveryControls({ document, liveDb, computeCoord, pointe
     await vault.acceptRecentAnchor({ name: get('recoveryAnchors').value, authorityKey: get('recoveryAuthority').value.trim(),
       expectedDigest: get('recoveryDigest').value.trim(), nowMs: Date.now(), operatorAccepted: get('recoveryAnchorConsent').checked });
     get('recoveryAnchorConsent').checked = false;
-    status('Exact recent anchor accepted for this recovery vault only. Existing DNS observer heads are unchanged. This does not establish a globally latest pointer.');
+    status('Exact recent anchor accepted in this vault. To resume succession, separately restore it into the same independently pinned live name and writer scope. No live head changed yet.');
+  });
+  bind('restoreRecoveryAnchorBtn', async () => {
+    const anchor = selectedAcceptance();
+    const scope = liveScope(), generation = restoreGeneration;
+    if (!anchor || anchor.name !== scope.name || anchor.authorityKey !== scope.authorityKey) throw Error('Choose the accepted exact anchor and independently pin its same live name and writer first.');
+    // The factory uses the already pinned live fields. No key/name is copied from
+    // the imported bundle. Never clear or replace an existing observer.
+    const observer = pointerObserver();
+    const restored = await observer.restoreFromRecovery(vault, { expectedDigest: anchor.pointerDigest,
+      scopeStillCurrent: () => generation === restoreGeneration && liveScope().name === scope.name &&
+        liveScope().authorityKey === scope.authorityKey && selectedAcceptance()?.pointerDigest === anchor.pointerDigest });
+    status(`Live observer restored locally at revision ${restored.revision} for ${restored.name}. Admit only its exact next successor. No DNS write, mesh or VM effect ran; this is not proof of globally latest state.`);
   });
   render();
   const facts = () => {
-    const state = vault.snapshot();
+    const state = vault.snapshot(), accepted = selectedAcceptance(state), scope = liveScope();
+    const head = pointerObservers.get(`${scope.name}:${scope.authorityKey}`)?.head;
+    const matches = Boolean(accepted && accepted.name === scope.name && accepted.authorityKey === scope.authorityKey);
+    const valid = matches && accepted.validFromMs <= Date.now() && Date.now() < accepted.validUntilMs;
+    const scopeText = `Live scope: ${scope.name || '(no name)'} / writer ${scope.authorityKey || '(not pinned)'}. ${head ? `Retained revision ${head.revision}.` : 'No retained head.'}`;
+    if (get('recoveryLiveScope').textContent !== scopeText) get('recoveryLiveScope').textContent = scopeText;
     return { recoveryBusy: busy, recoveryFileSelected: Boolean(get('recoveryFile').files[0]),
       recoveryHasEvidence: state.entries > 0, recoveryHasObjects: state.bundle.objects.length > 0,
       recoveryHasJobs: state.bundle.jobs.length > 0, recoveryHasAnchors: state.bundle.anchors.length > 0,
-      recoveryAnchorConsent: get('recoveryAnchorConsent').checked, recoveryAcceptedAnchor: state.acceptedAnchors.length > 0 };
+      recoveryAnchorConsent: get('recoveryAnchorConsent').checked, recoveryAcceptedAnchor: Boolean(accepted),
+      recoveryCanRestoreAnchor: Boolean(valid && (!head || head.pointerDigest === accepted.pointerDigest)),
+      recoveryRestoredAnchor: Boolean(matches && head?.pointerDigest === accepted.pointerDigest) };
   };
   get('recoveryFile').addEventListener('change', onChange);
   get('recoveryAnchorConsent').addEventListener('change', onChange);
   for (const id of ['recoveryAnchors', 'recoveryAuthority', 'recoveryDigest']) {
     get(id).addEventListener(id === 'recoveryAnchors' ? 'change' : 'input', () => {
       // An acceptance belongs to the exact supplied anchor/key/digest, not later edits.
-      get('recoveryAnchorConsent').checked = false; onChange();
+      restoreGeneration++; get('recoveryAnchorConsent').checked = false; onChange();
     });
+  }
+  for (const id of ['dnsQueryInput', 'pointerAuthorityInput']) {
+    get(id).addEventListener('input', () => { restoreGeneration++; onChange(); });
   }
   return { facts };
 }

@@ -62,8 +62,8 @@ distribution; package or provide a compliant corresponding-source route for
 the exact SeaBIOS release, configuration and build scripts; review the
 source/component notices and actual distribution method. The upstream recipe
 and blob match make this concrete work, but are not themselves fulfillment of
-the distribution obligations. A rebuild would strengthen reproducibility
-evidence; none was performed here.
+the distribution obligations. The follow-up source package and rebuild evidence below address part of this
+work without asserting redistribution clearance.
 
 ## v86 JavaScript and WebAssembly: exact source build unresolved
 
@@ -118,3 +118,36 @@ but no asset has a complete documented redistribution package in this review.
 Keep all five blockers until the listed evidence and packaging work is complete.
 This conclusion concerns distribution readiness, not whether the typed product
 graph is closed or whether the pure Stitch core passes its proof checks.
+
+
+## SeaBIOS source-package follow-up
+
+The repository now carries `vendor/seabios/source.tar.gz`, a complete unmodified
+Git archive of official SeaBIOS release commit
+[`ea1b7a0733906b8425d948ae94fba63c32b1d425`](https://github.com/coreboot/seabios/tree/ea1b7a0733906b8425d948ae94fba63c32b1d425),
+which the official `rel-1.16.2` tag resolves to. The archive retains all source
+and per-file notices. Separate `COPYING` and `COPYING.LESSER` texts, v86's
+pinned `seabios.config`, original upstream build script, and SHA-256 inventory
+are supplied alongside it. This supplies actual materials rather than merely
+an external source link. Include the whole directory in distributions of the
+BIOS pair; confirm the deployment/package includes it.
+
+`vendor/seabios/build.sh` is an offline, non-destructive candidate recipe. It
+uses the unchanged source archive with SeaBIOS's supported release-version
+input and a distributor suffix. It writes only a fresh output directory and
+never silently replaces shipped binaries. Two clean builds in different
+absolute directories using GCC 14.2.0, GNU binutils 2.44, GNU make 4.4.1 and
+Python 3.12.14 produced matching candidate hashes (see vendor README). Neither
+candidate matches the current bundled ROM: the original build toolchain is
+not established. Runtime VM boot/display/console/network/restart validation
+is required before adopting these replacements and updating product hashes.
+
+This removes a concrete source/notice packaging gap, not all VM release gaps.
+The existing v86 JavaScript/Wasm pair still needs exact source/build identity
+and its full incorporated license set, or replacement by a pinned source
+build with notices and runtime tests. The Linux/Buildroot image still needs
+its complete image-level source/configuration and package notices, or a
+maintained guest replacement built from declared sources with Buildroot
+`legal-info` output and source archives distributed alongside it. Preserve
+all current VM capabilities during that replacement. A successful compiler
+build is not a guest boot test or a license-clearance decision.

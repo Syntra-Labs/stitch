@@ -614,3 +614,37 @@ test('browser bounds text output without hiding its full byte length and disting
   assert.equal(field('vmStdoutText').textContent, '(Empty output)');
   assert.match(field('vmStdoutSummary').textContent, /0 observed bytes/);
 });
+
+
+test('actual browser script restores an explicitly accepted recent anchor only into matching pin and resumes ordinary succession without effects', async () => {
+  const h = await browserHarness(), field = id => h.document.getElementById(id);
+  const authority = await generateAuthority(), now = Date.now();
+  const body = { version: 1, name: 'state.example.test', authorityKey: authority.publicKey, revision: 7,
+    previousDigest: 'sha256:' + 'a'.repeat(64), objectRoot: 'sha256:' + 'b'.repeat(64), validFromMs: now - 1000, validUntilMs: now + 100000 };
+  const anchor = await signPointer(body, authority.privateKey);
+  const bytes = new TextEncoder().encode(await exportRecoveryBundle({ version: 1, objects: [], jobs: [], anchors: [anchor] }));
+  field('recoveryFile').files = [{ size: bytes.length, arrayBuffer: async () => bytes.buffer }];
+  field('recoveryFile').listeners.change(); await h.click('importRecoveryBtn');
+  assert.equal(field('restoreRecoveryAnchorBtn').disabled, true);
+  field('recoveryAuthority').value = authority.publicKey; field('recoveryDigest').value = anchor.pointerDigest;
+  field('recoveryAnchorConsent').checked = true; field('recoveryAnchorConsent').listeners.change();
+  await h.click('acceptRecoveryAnchorBtn');
+  assert.equal(field('restoreRecoveryAnchorBtn').disabled, true, 'acceptance must not repin live authority');
+  field('pointerAuthorityInput').value = authority.publicKey; field('pointerAuthorityInput').listeners.input();
+  assert.equal(field('restoreRecoveryAnchorBtn').disabled, false);
+  assert.match(field('recoveryEvidence').textContent, /OPERATOR-ACCEPTED RECENT ANCHOR/);
+  field('pointerJsonInput').value = JSON.stringify(anchor);
+  await assert.rejects(h.click('admitPointerBtn'), code('pointer-bootstrap'));
+  const sent = h.mesh.sent.length, requests = h.db.admission.state.spent.requests;
+  await h.click('restoreRecoveryAnchorBtn');
+  assert.match(field('recoveryEvidence').textContent, /STRICT SUCCESSION AVAILABLE/);
+  const spent = h.db.admission.state.spent.storageBytes;
+  await h.click('restoreRecoveryAnchorBtn'); assert.equal(h.db.admission.state.spent.storageBytes, spent);
+  const next = await signPointer({ ...body, revision: 8, previousDigest: anchor.pointerDigest }, authority.privateKey);
+  field('pointerJsonInput').value = JSON.stringify(next); await h.click('admitPointerBtn');
+  assert.match(field('wireLogBox').textContent, /Retained revision 8/);
+  assert.equal(field('restoreRecoveryAnchorBtn').disabled, true, 'old accepted head cannot roll back the successor');
+  assert.equal(h.mesh.sent.length, sent); assert.equal(h.db.admission.state.spent.requests, requests);
+  assert.deepEqual(h.dnsCalls, []); assert.equal(h.vm.commands, 0); assert.equal(h.vm.boots, 0);
+  assert.equal(h.db.objects.size, 0); assert.equal(h.coordinator.jobs.size, 0);
+});

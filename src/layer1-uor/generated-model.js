@@ -27293,6 +27293,148 @@ const definitions = {
       ]
     }
   },
+  "Stitch.Pointer.restoreAllowed": {
+    "module": "Stitch.Pointer",
+    "name": "restoreAllowed",
+    "params": [
+      {
+        "name": "accepted",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "scopeMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "digestMatches",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "signatureValid",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "notBefore",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "expires",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "now",
+        "type": {
+          "kind": "Nat"
+        }
+      },
+      {
+        "name": "headPresent",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "sameHead",
+        "type": {
+          "kind": "Bool"
+        }
+      }
+    ],
+    "result": {
+      "kind": "Bool"
+    },
+    "body": {
+      "k": "binary",
+      "op": "&&",
+      "left": {
+        "k": "var",
+        "name": "accepted"
+      },
+      "right": {
+        "k": "binary",
+        "op": "&&",
+        "left": {
+          "k": "var",
+          "name": "scopeMatches"
+        },
+        "right": {
+          "k": "binary",
+          "op": "&&",
+          "left": {
+            "k": "var",
+            "name": "digestMatches"
+          },
+          "right": {
+            "k": "binary",
+            "op": "&&",
+            "left": {
+              "k": "var",
+              "name": "signatureValid"
+            },
+            "right": {
+              "k": "binary",
+              "op": "&&",
+              "left": {
+                "k": "binary",
+                "op": "<=?",
+                "left": {
+                  "k": "var",
+                  "name": "notBefore"
+                },
+                "right": {
+                  "k": "var",
+                  "name": "now"
+                }
+              },
+              "right": {
+                "k": "binary",
+                "op": "&&",
+                "left": {
+                  "k": "binary",
+                  "op": "<?",
+                  "left": {
+                    "k": "var",
+                    "name": "now"
+                  },
+                  "right": {
+                    "k": "var",
+                    "name": "expires"
+                  }
+                },
+                "right": {
+                  "k": "binary",
+                  "op": "||",
+                  "left": {
+                    "k": "not",
+                    "value": {
+                      "k": "var",
+                      "name": "headPresent"
+                    }
+                  },
+                  "right": {
+                    "k": "var",
+                    "name": "sameHead"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
   "Stitch.Recovery.admitted": {
     "module": "Stitch.Recovery",
     "name": "admitted",
@@ -32279,6 +32421,14 @@ const definitions = {
           "k": "bool",
           "value": false
         },
+        "recoveryCanRestoreAnchor": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryRestoredAnchor": {
+          "k": "bool",
+          "value": false
+        },
         "vmCanBoot": {
           "k": "bool",
           "value": false
@@ -34557,6 +34707,44 @@ const definitions = {
       }
     }
   },
+  "Product.Experience.actionRecoveryRestore": {
+    "module": "Product.Experience",
+    "name": "actionRecoveryRestore",
+    "params": [],
+    "result": {
+      "kind": "Action"
+    },
+    "body": {
+      "k": "record",
+      "name": "Action",
+      "values": {
+        "code": {
+          "k": "nat",
+          "value": "29"
+        },
+        "id": {
+          "k": "string",
+          "value": "RecoveryRestore"
+        },
+        "control": {
+          "k": "string",
+          "value": "restoreRecoveryAnchorBtn"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "label": {
+          "k": "string",
+          "value": "Restore Accepted Live Head"
+        },
+        "help": {
+          "k": "string",
+          "value": "Explicitly restore only the separately accepted exact anchor into the same pinned live name and key, with no different retained head. No DNS, mesh or VM effect."
+        }
+      }
+    }
+  },
   "Product.Experience.actions": {
     "module": "Product.Experience",
     "name": "actions",
@@ -34771,9 +34959,17 @@ const definitions = {
                                                                 "args": []
                                                               },
                                                               "tail": {
-                                                                "k": "nil",
-                                                                "type": {
-                                                                  "kind": "Action"
+                                                                "k": "cons",
+                                                                "head": {
+                                                                  "k": "call",
+                                                                  "name": "actionRecoveryRestore",
+                                                                  "args": []
+                                                                },
+                                                                "tail": {
+                                                                  "k": "nil",
+                                                                  "type": {
+                                                                    "kind": "Action"
+                                                                  }
                                                                 }
                                                               }
                                                             }
@@ -34937,7 +35133,41 @@ const definitions = {
         },
         "detail": {
           "k": "string",
-          "value": "The operator accepted an independently obtained exact digest and writer. This is not global latest-state evidence or durable authority recovery."
+          "value": "The operator accepted an independently obtained exact digest and writer. Restore it separately into the same independently pinned live scope to resume strict succession. A different retained head is never overwritten. This is not global latest-state evidence or durable authority recovery."
+        }
+      }
+    }
+  },
+  "Product.Experience.recoveryRestored": {
+    "module": "Product.Experience",
+    "name": "recoveryRestored",
+    "params": [],
+    "result": {
+      "kind": "View"
+    },
+    "body": {
+      "k": "record",
+      "name": "View",
+      "values": {
+        "id": {
+          "k": "string",
+          "value": "recoveryRestored"
+        },
+        "journey": {
+          "k": "string",
+          "value": "objects"
+        },
+        "title": {
+          "k": "string",
+          "value": "Accepted anchor is the live local head"
+        },
+        "evidence": {
+          "k": "string",
+          "value": "STRICT SUCCESSION AVAILABLE"
+        },
+        "detail": {
+          "k": "string",
+          "value": "Only the exact next revision can advance this pinned observer. Restoration made no DNS write, mesh or VM effect, and proves neither global freshness nor durable retention."
         }
       }
     }
@@ -35013,11 +35243,11 @@ const definitions = {
             "k": "var",
             "name": "facts"
           },
-          "field": "recoveryAcceptedAnchor"
+          "field": "recoveryRestoredAnchor"
         },
         "yes": {
           "k": "call",
-          "name": "recoveryTrusted",
+          "name": "recoveryRestored",
           "args": []
         },
         "no": {
@@ -35028,17 +35258,33 @@ const definitions = {
               "k": "var",
               "name": "facts"
             },
-            "field": "recoveryHasEvidence"
+            "field": "recoveryAcceptedAnchor"
           },
           "yes": {
             "k": "call",
-            "name": "recoveryChecked",
+            "name": "recoveryTrusted",
             "args": []
           },
           "no": {
-            "k": "call",
-            "name": "recoveryEmpty",
-            "args": []
+            "k": "if",
+            "cond": {
+              "k": "project",
+              "value": {
+                "k": "var",
+                "name": "facts"
+              },
+              "field": "recoveryHasEvidence"
+            },
+            "yes": {
+              "k": "call",
+              "name": "recoveryChecked",
+              "args": []
+            },
+            "no": {
+              "k": "call",
+              "name": "recoveryEmpty",
+              "args": []
+            }
           }
         }
       }
@@ -36697,9 +36943,8 @@ const definitions = {
                                                             "field": "vmCanForgetCommand"
                                                           },
                                                           "no": {
-                                                            "k": "binary",
-                                                            "op": "||",
-                                                            "left": {
+                                                            "k": "if",
+                                                            "cond": {
                                                               "k": "binary",
                                                               "op": "=?",
                                                               "left": {
@@ -36708,19 +36953,70 @@ const definitions = {
                                                               },
                                                               "right": {
                                                                 "k": "nat",
-                                                                "value": "27"
+                                                                "value": "29"
                                                               }
                                                             },
-                                                            "right": {
+                                                            "yes": {
                                                               "k": "binary",
-                                                              "op": "=?",
+                                                              "op": "&&",
                                                               "left": {
-                                                                "k": "var",
-                                                                "name": "action"
+                                                                "k": "not",
+                                                                "value": {
+                                                                  "k": "project",
+                                                                  "value": {
+                                                                    "k": "var",
+                                                                    "name": "facts"
+                                                                  },
+                                                                  "field": "recoveryBusy"
+                                                                }
                                                               },
                                                               "right": {
-                                                                "k": "nat",
-                                                                "value": "28"
+                                                                "k": "binary",
+                                                                "op": "&&",
+                                                                "left": {
+                                                                  "k": "project",
+                                                                  "value": {
+                                                                    "k": "var",
+                                                                    "name": "facts"
+                                                                  },
+                                                                  "field": "recoveryAcceptedAnchor"
+                                                                },
+                                                                "right": {
+                                                                  "k": "project",
+                                                                  "value": {
+                                                                    "k": "var",
+                                                                    "name": "facts"
+                                                                  },
+                                                                  "field": "recoveryCanRestoreAnchor"
+                                                                }
+                                                              }
+                                                            },
+                                                            "no": {
+                                                              "k": "binary",
+                                                              "op": "||",
+                                                              "left": {
+                                                                "k": "binary",
+                                                                "op": "=?",
+                                                                "left": {
+                                                                  "k": "var",
+                                                                  "name": "action"
+                                                                },
+                                                                "right": {
+                                                                  "k": "nat",
+                                                                  "value": "27"
+                                                                }
+                                                              },
+                                                              "right": {
+                                                                "k": "binary",
+                                                                "op": "=?",
+                                                                "left": {
+                                                                  "k": "var",
+                                                                  "name": "action"
+                                                                },
+                                                                "right": {
+                                                                  "k": "nat",
+                                                                  "value": "28"
+                                                                }
                                                               }
                                                             }
                                                           }
@@ -36900,6 +37196,14 @@ const definitions = {
           "value": false
         },
         "recoveryAcceptedAnchor": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryCanRestoreAnchor": {
+          "k": "bool",
+          "value": false
+        },
+        "recoveryRestoredAnchor": {
           "k": "bool",
           "value": false
         },
@@ -40473,6 +40777,18 @@ const types = {
         }
       },
       {
+        "name": "recoveryCanRestoreAnchor",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
+        "name": "recoveryRestoredAnchor",
+        "type": {
+          "kind": "Bool"
+        }
+      },
+      {
         "name": "vmCanBoot",
         "type": {
           "kind": "Bool"
@@ -40765,12 +41081,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:18b774cca5601850418d07425a413e1898762183dd33c3981206115d14407092";
+export const modelSourceDigest = "sha256:c75cae645cabb8faab6b539e9d165fa878959db53d673fe5eb4f639de159cd8a";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:18b774cca5601850418d07425a413e1898762183dd33c3981206115d14407092",
+  "sourceDigest": "sha256:c75cae645cabb8faab6b539e9d165fa878959db53d673fe5eb4f639de159cd8a",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -44384,7 +44700,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
+      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -44392,7 +44708,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "4e134f136369c04a65cdf9ea3f7af13efecb63ddb572f8cba653472e01d64624"
+      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -44436,7 +44752,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
     },
     {
       "path": "app/src/Stitch/Recovery.lex.tex",
@@ -44630,7 +44946,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
     },
     {
       "path": "app/src/Stitch/Recovery.lex.tex",
@@ -44650,7 +44966,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
+      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
     }
   ],
   "theorems": [
@@ -45807,6 +46123,30 @@ export const MODEL_SOURCE = Object.freeze({
       "status": "source-obligation-not-kernel-checked"
     },
     {
+      "id": "Stitch.Pointer.unacceptedRestoreRefused",
+      "proof": "reflexivity",
+      "source": "app/src/Stitch/Pointer.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Pointer.restoreDifferentHeadGuard",
+      "proof": "decide",
+      "source": "app/src/Stitch/Pointer.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Pointer.differentRetainedHeadRestoreRefused",
+      "proof": "simplify",
+      "source": "app/src/Stitch/Pointer.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
+      "id": "Stitch.Pointer.expiredRestoreRefused",
+      "proof": "linear_arithmetic",
+      "source": "app/src/Stitch/Pointer.lex.tex",
+      "status": "source-obligation-not-kernel-checked"
+    },
+    {
       "id": "Stitch.Pointer.successorStrictlyAdvances",
       "proof": "linear_arithmetic",
       "source": "app/src/Stitch/Pointer.lex.tex",
@@ -46118,6 +46458,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.actionRecoveryExport",
     "Product.Experience.actionRecoveryFinish",
     "Product.Experience.actionRecoveryImport",
+    "Product.Experience.actionRecoveryRestore",
     "Product.Experience.actionRecoverySave",
     "Product.Experience.actionRecoveryTrust",
     "Product.Experience.actionRenew",
@@ -46187,6 +46528,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Product.Experience.recoveryEmpty",
     "Product.Experience.recoveryPolicyLabel",
     "Product.Experience.recoveryPolicyVisible",
+    "Product.Experience.recoveryRestored",
     "Product.Experience.recoveryTrusted",
     "Product.Experience.recoveryView",
     "Product.Experience.relayLabel",
@@ -46429,6 +46771,7 @@ export const MODEL_SOURCE = Object.freeze({
     "Stitch.Observation.reachableObservation",
     "Stitch.Observation.updateObservation",
     "Stitch.Pointer.acceptPointer",
+    "Stitch.Pointer.restoreAllowed",
     "Stitch.Pointer.successorAllowed",
     "Stitch.Recovery.admitted",
     "Stitch.Recovery.anchorAllowed",

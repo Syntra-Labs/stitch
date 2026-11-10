@@ -348,7 +348,7 @@
       "type": "Assumption",
       "id": "observerAnchor",
       "statement": "The pointer writer key and recent retained head are obtained independently and protected from rollback.",
-      "evidence": "Pinned key and retained observer head; current UI stores them only for its session.",
+      "evidence": "Independently pinned key and retained observer head, or separately accepted exact recent digest explicitly restored into that same live scope. Both heads and anchor trust remain session-only.",
       "scope": "Single-writer authority and freshness."
     },
     {
@@ -1070,8 +1070,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 73635,
-      "sha256": "db4c80ebad030f0617383a3b57d2e82066aade78e429e17c94eaf365534ac592"
+      "bytes": 74391,
+      "sha256": "cf52fc0b2c5f8f1330706bda016ef4f101bd467e29156cf93bbbb96d30d8cd5e"
     },
     {
       "declaration": "assetBrowserAuthority",
@@ -1125,8 +1125,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 1165904,
-      "sha256": "c92aebebc177ed3fa5975e9e85bb852ad03b0fd2854185b47a326868199c261e"
+      "bytes": 1177318,
+      "sha256": "aab1f6b6b7d9afb0ea6faee20246b17054915c8283e6517ac42bf68a2db41883"
     },
     {
       "declaration": "assetFile4",
@@ -1147,8 +1147,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 15611,
-      "sha256": "756463e4b79d697182ea6bf350533aecbf0e87a2cee50de675dde31c32acd2bc"
+      "bytes": 17550,
+      "sha256": "fea31ceaa1929cd3179f99be747dbdb216f25bf90397939826463187b9f090ec"
     },
     {
       "declaration": "assetFile6",
@@ -1301,19 +1301,19 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 9465,
-      "sha256": "0ed9e4182a4174f253f7c9a2b099a2503e7be11ae0dc5f8a5cac713e2e8c1c1b"
+      "bytes": 12293,
+      "sha256": "ba2672ac912b1d6e1ef4ff8780f460d1643ee751d3507729eb6cd90c97c0ba60"
     },
     {
       "declaration": "assetRecovery",
       "type": "Asset",
       "path": "src/recovery.js",
-      "role": "Verified detached object and pure-job recovery bundle import/export; explicit local anchor acceptance",
+      "role": "Verified detached recovery bundle import/export; separate exact anchor acceptance and explicit scoped live-head restoration",
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 10336,
-      "sha256": "66c4c5ef7254df78a3f9179b434a1d7657e99b9451d74277b0cb7cda0386c31a"
+      "bytes": 11049,
+      "sha256": "89c7b3abcd713ee1c2131d6a841a94526f59c0a6118ac09834a2e6cf43c3a2c0"
     },
     {
       "declaration": "assetFile13",
@@ -2058,7 +2058,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
+      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -2066,7 +2066,7 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "4e134f136369c04a65cdf9ea3f7af13efecb63ddb572f8cba653472e01d64624"
+      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -2110,7 +2110,7 @@
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
     },
     {
       "path": "app/src/Stitch/Recovery.lex.tex",
@@ -2149,5 +2149,5 @@
       "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
     }
   ],
-  "sourceDigest": "sha256:c177daaf2049cc9a15f2b768877eb087bb846cf25f9cf54b8cbc1e348bea2202"
+  "sourceDigest": "sha256:7e26cd3f4cd066746326930f22aa9b5fbf93db778492d11f9b9ccdbffda1f13d"
 }

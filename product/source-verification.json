@@ -2,14 +2,14 @@
   "format": "Stitch exact-source verification summary",
   "version": 1,
   "assurance": "Summary of actual pinned LexLean/Lean/leanchecker/axiom verification; not a native Prism artifact certificate or whole-host guarantee",
-  "attestation_id": "c90d738b3bff24bb5c05111e3e6a9f6e542b004708eeac42f3fcaab0ddd70706",
-  "attestation_sha256": "cea4cf8af6bc077ee85d7fbca5e82147d5cadb2137c652aa615d4ab160c10569",
-  "source_id": "3fb3df1a8ac8576c18c39c41f9479491612e761d0e760e258c4331f2f731c96f",
-  "semantic_id": "759fb40df03a9ac51bdd9201f13bde0f0d5be988f84899fdd78d2d1f30155ade",
-  "build_id": "edb3bbc658f466faa24e49b8e33b51ed9f0cf5b16a35fe4ad1096320e54d1c6e",
+  "attestation_id": "aa1f171c520b521c836f5d9f7cac9dc474a9aee61dad06e3a8a4edc0c35521f4",
+  "attestation_sha256": "f3a80f673dce0ef5c47655bdc05719c98e25d2fe420251f021ce7bf5832b9b25",
+  "source_id": "e7f0637e7b95b087938452a17ca6799deba0c30713a584d41931ef6cdd03dc7c",
+  "semantic_id": "965758c689167cdeb1d8acb19a4937f03959eb6c3f1f78971762ed4a1b45b7f6",
+  "build_id": "58a9c439783e65dd97ff4bcf13f3659da8ca13af26e874f4d524092d3e7d1754",
   "status": "verified",
   "module_count": 23,
-  "declaration_audits": 1266,
+  "declaration_audits": 1273,
   "successful_processes": 79,
   "processes_by_tool": {
     "lean": 53,
@@ -190,7 +190,7 @@
     },
     {
       "path": "app/src/Product/Experience.lex.tex",
-      "sha256": "563d434e2549f396e273d2dedfb86f180f2e80b8b4d4c7e1e5e4132e7f44a798"
+      "sha256": "c730e9e12ff44d1d944d9112346db84ee02c4235a6a23ca76adcd07777723162"
     },
     {
       "path": "app/src/Product/Host.lex.tex",
@@ -198,7 +198,7 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "4e134f136369c04a65cdf9ea3f7af13efecb63ddb572f8cba653472e01d64624"
+      "sha256": "fd0825df97bbc1aa173284e203b358da0d2f911c707e58f4c74dfc93b23455bb"
     },
     {
       "path": "app/src/Stitch/Budget.lex.tex",
@@ -242,7 +242,7 @@
     },
     {
       "path": "app/src/Stitch/Pointer.lex.tex",
-      "sha256": "b08992464687d91c0a9e3ff5725384cd33fb45968f3218be17554bd544a89fa5"
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
     },
     {
       "path": "app/src/Stitch/Recovery.lex.tex",

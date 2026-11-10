@@ -30,7 +30,9 @@ policy optimality.
   retain their entire reservation. No heuristic can change the bound.
 - `Pointer`: a pinned single writer, full successor/predecessor bindings, exactly
   one revision increment and half-open validity intervals. A signature-valid
-  observation does not establish the authority of an arbitrary key.
+  observation does not establish the authority of an arbitrary key. Explicit
+  local recovery requires the separately accepted exact recent vault anchor and
+  matching independent live pin; no different retained head is overwritten.
 - `Compute`: a concrete deterministic ring-instruction evaluator, all supported
   opcodes and widths, checkpoint program/input/model/predecessor/replay bindings,
   strict step advancement and uninterrupted/continued execution equivalence.

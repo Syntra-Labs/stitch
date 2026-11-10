@@ -57,6 +57,80 @@ definition{
   body: (successorAllowed (project current revision) (project candidate revision) (Stitch.Identity::sameDigest (project candidate predecessor) (project current pointerRoot)) ((Stitch.Identity::sameDigest (project current authorityRoot) (project candidate authorityRoot)) && (Stitch.Identity::sameDigest (project current nameRoot) (project candidate nameRoot))) signatureValid (project candidate notBefore) (project candidate expires) now)
 }
 
+definition{
+  name: restoreAllowed,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  result: Bool,
+  body: (accepted && (scopeMatches && (digestMatches && (signatureValid && ((notBefore <=? now) && ((now <? expires) && ((not headPresent) || sameHead)))))))
+}
+
+theorem{
+  name: unacceptedRestoreRefused,
+  parameters: [
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  statement: ((restoreAllowed false scopeMatches digestMatches signatureValid notBefore expires now headPresent sameHead) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: restoreDifferentHeadGuard,
+  parameters: [],
+  statement: (forall (accepted : Bool), (forall (scopeMatches : Bool), (forall (digestMatches : Bool), (forall (signatureValid : Bool), (forall (begun : Bool), (forall (unexpired : Bool), ((accepted && (scopeMatches && (digestMatches && (signatureValid && (begun && (unexpired && ((not true) || false))))))) = false))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: differentRetainedHeadRestoreRefused,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  statement: ((restoreAllowed accepted scopeMatches digestMatches signatureValid notBefore expires now true false) = false),
+  proof: simplify{definitions: [restoreAllowed, restoreDifferentHeadGuard]},
+  axioms: [propext]
+}
+
+theorem{
+  name: expiredRestoreRefused,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  statement: ((expires <= now) -> ((restoreAllowed accepted scopeMatches digestMatches signatureValid notBefore expires now headPresent sameHead) = false)),
+  proof: linear_arithmetic{definitions: [restoreAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
 theorem{
   name: successorStrictlyAdvances,
   parameters: [

@@ -194,3 +194,15 @@ test('action explanations preserve authored descriptions and local refusal feedb
   experience.report('dbPutBtn', 'Exact local storage refusal');
   assert.equal(get('objectsActionStatus').textContent, 'Exact local storage refusal');
 });
+
+
+test('restore action requires the selected accepted anchor and matching eligible live scope, not import or a generic pin', () => {
+  const base = experienceFacts();
+  for (let mask = 0; mask < 8; mask++) {
+    const facts = { ...base, recoveryBusy: Boolean(mask & 1), recoveryAcceptedAnchor: Boolean(mask & 2), recoveryCanRestoreAnchor: Boolean(mask & 4) };
+    assert.equal(experienceActionAllowed('restoreRecoveryAnchorBtn', facts), !facts.recoveryBusy && facts.recoveryAcceptedAnchor && facts.recoveryCanRestoreAnchor);
+  }
+  assert.equal(experienceActionAllowed('restoreRecoveryAnchorBtn', { ...base, recoveryHasAnchors: true, authorityPinned: true }), false);
+  assert.equal(experienceView('recovery', { ...base, recoveryRestoredAnchor: true }).id, 'recoveryRestored');
+  assert.equal(experienceView('recovery', { ...base, recoveryRestoredAnchor: true, recoveryBusy: true }).id, 'recoveryChecking');
+});

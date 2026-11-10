@@ -298,12 +298,15 @@
           <button id="resumeRecoveredJobBtn" class="secondary">Finish Pure Job Locally</button>
         </div>
         <details><summary>Review supplied pointer anchors</summary>
-          <p>Signatures inside a file do not establish trust or freshness. Independently obtain the exact recent pointer digest and writer key. Accepting here records a local decision only; it does not change the running DNS observer.</p>
+          <p>Signatures inside a file do not establish trust or freshness. Independently obtain the exact recent pointer digest and writer key. First accept the exact recent anchor here. Then, in “Pin, discover and publish pointers”, independently pin the same query name and writer key. Return here to restore the accepted anchor into that live observer. Import and acceptance alone never change a live head.</p>
           <label for="recoveryAnchors">Supplied anchor <select id="recoveryAnchors"></select></label>
           <label for="recoveryAuthority">Independently trusted writer key <input id="recoveryAuthority" type="text" autocomplete="off" /></label>
           <label for="recoveryDigest">Independently trusted recent digest <input id="recoveryDigest" type="text" autocomplete="off" /></label>
           <label for="recoveryAnchorConsent">Accept this exact anchor <input id="recoveryAnchorConsent" type="checkbox" />I independently verified this exact anchor is recent and trust its writer.</label>
           <button id="acceptRecoveryAnchorBtn" class="secondary">Accept Exact Recent Anchor</button>
+          <p id="recoveryLiveScope" role="status" aria-live="polite" style="overflow-wrap: anywhere"></p>
+          <p id="recoveryRestoreHelp">Restore only an empty observer or the exact already-retained head. A different live head is never overwritten, even by a newer accepted anchor. This session-only action enables ordinary next-revision admission, not publication, key rotation or proof of global freshness.</p>
+          <button id="restoreRecoveryAnchorBtn" class="secondary" aria-describedby="recoveryRestoreHelp">Restore Accepted Live Head</button>
         </details>
         <p id="recoveryEvidence" role="status" aria-live="polite"></p>
         <p id="recoveryStatus" role="status" aria-live="polite">No recovery file imported.</p>
@@ -1124,7 +1127,7 @@ Object sharing and Ethernet bridging start off. Grants expose data to the guest 
     bindModelAction('writeSignedDnsBtn', publishOrReconcilePointer);
     bindModelAction('reconcilePointerBtn', publishOrReconcilePointer);
 
-    const recoveryControls = installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, bindModelAction, onChange: renderExperience });
+    const recoveryControls = installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, pointerObserver, bindModelAction, onChange: renderExperience });
 
     document.getElementById('exportJsonlBtn').addEventListener('click', () => {
       const jsonl = trialLogger.toJsonl();
