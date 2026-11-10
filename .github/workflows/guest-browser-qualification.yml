@@ -1,12 +1,14 @@
-name: Qualify existing guest in Chromium
+name: Qualify integrated Stitch host
 on:
   push:
     branches: ['diagnostic/stitch-candidate-browser']
 permissions:
   contents: read
-  actions: read
+concurrency:
+  group: stitch-integration-${{ github.ref }}
+  cancel-in-progress: true
 jobs:
-  browser:
+  runtime:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -17,39 +19,31 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-      - name: Download the already-built image, never rebuild
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: |
-          set -euo pipefail
-          gh api repos/afflom/stitch/actions/artifacts/13810002248/zip > "$RUNNER_TEMP/guest.zip"
-          mkdir "$RUNNER_TEMP/guest"
-          unzip -q "$RUNNER_TEMP/guest.zip" -d "$RUNNER_TEMP/guest"
-          image=$(find "$RUNNER_TEMP/guest" -name stitch-guest-candidate.bin -type f)
-          test -n "$image"
-          printf '313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07  %s\n' "$image" | sha256sum -c -
-          cp "$image" images/buildroot-bzimage.bin
-          python3 - <<'PY'
-          from pathlib import Path
-          p = Path('src/layer4-compute/index.js')
-          s = p.read_text()
-          assert s.count("cmdline: '',") == 1
-          p.write_text(s.replace("cmdline: '',", "cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/init nomodeset',"))
-          PY
-          mkdir -p verification-output/browser
-          git diff -- src/layer4-compute/index.js > verification-output/browser/temporary-candidate.patch
-          sha256sum images/buildroot-bzimage.bin > verification-output/browser/candidate.sha256
       - run: npm ci --ignore-scripts
-      - run: npx playwright install --with-deps chromium --only-shell
-      - name: Qualify production UI and runtime with the candidate
-        env:
-          STITCH_CANDIDATE_QUALIFICATION: '1'
-        run: npm run test:browser -- vm.spec.mjs --global-timeout=600000
-      - name: Retain exact candidate browser evidence
+      - run: npm test
+      - run: python3 scripts/verify-custody.py
+      - run: cargo test --locked
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Install pinned Chromium and its system dependencies
+        run: npx playwright install --with-deps chromium --only-shell
+      - name: Qualify actual Chromium host adapters and bundled guest
+        run: npm run test:browser
+      - name: Retain browser diagnostics
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
         with:
-          name: stitch-candidate-browser-${{ github.sha }}
-          path: verification-output/browser/
-          if-no-files-found: error
-          retention-days: 14
+          name: stitch-browser-${{ github.sha }}
+          path: |
+            verification-output/browser/
+          if-no-files-found: warn

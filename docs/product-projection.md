@@ -147,9 +147,10 @@ The four resolved assets require their accompanying `vendor/v86` or
 `vendor/seabios` materials in distributions. `vendor/distribution.json` binds the
 reviewed asset and companion bytes; the existing product-register check refuses
 changed assets or missing/substituted required materials.
-The Linux/Buildroot guest still lacks its complete original build inputs and
-package source/license inventory, so it alone remains uncleared.
-`vendorRedistributionRemainsBlocked` states that remaining concrete condition.
+The adopted Linux 6.18.7 guest has a verified immutable source-distribution tree,
+linked by `vendor/guest/SOURCE-NOTICE.md`. `vendorDistributionMaterialsRecorded`
+states the model register now records accompanying materials for every asset;
+it is not a legal conclusion, remote-availability proof or native SDK acceptance.
 Independent byte-identical compiler reconstruction is useful evidence, not a
 new licensing condition for every asset.
 An asset digest proves identity of the inventoried local bytes, not ownership,

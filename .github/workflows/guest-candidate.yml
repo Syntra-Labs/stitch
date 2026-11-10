@@ -4,8 +4,14 @@ on:
   push:
     branches: ['feat/**']
     paths:
-      - 'vendor/guest/**'
-      - '.github/workflows/guest-candidate.yml'
+      # Only image-producing inputs trigger a costly rebuild. Probe/docs and
+      # workflow-only edits can inspect/requalify existing images or dispatch explicitly.
+      - 'vendor/guest/board/**'
+      - 'vendor/guest/configs/**'
+      - 'vendor/guest/Config.in'
+      - 'vendor/guest/external.desc'
+      - 'vendor/guest/external.mk'
+      - 'vendor/guest/build-candidate.sh'
 permissions:
   contents: read
 concurrency:

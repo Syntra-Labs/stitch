@@ -54,6 +54,7 @@ test('shipped guest proves bidirectional 9p initialization before Ready and capt
   let emulator, resolveOnline, rejectOnline;
   const input = [], statuses = [];
   globalThis.V86 = function (options) {
+    assert.equal(options.cmdline, 'console=tty0 console=ttyS0,115200 rdinit=/init nomodeset');
     emulator = new module.exports.V86({ ...options, screen_container: undefined, disable_speaker: true,
       wasm_fn: async imports => (await WebAssembly.instantiate(buffer('v86/v86.wasm'), imports)).instance.exports,
       bios: { buffer: buffer('v86/seabios.bin') }, vga_bios: { buffer: buffer('v86/vgabios.bin') },

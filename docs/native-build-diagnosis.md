@@ -90,11 +90,11 @@ build after unrelated host changes:
    [source summary](../product/source-verification.json) binds every declared
    source/vocabulary/configuration input to the retained actual
    [attestation](../product/source-attestation.json) and
-   [build manifest](../product/source-build-manifest.json): 25 modules, 1,316
+   [build manifest](../product/source-build-manifest.json): 25 modules, 1,324
    declaration audits and 85 successful Lean/leanchecker processes. This is
    source evidence only, not native acceptance.
 2. **LexLean source → repaired compiler.** LexLean owns PR #466's complete
-   acceptance. The exact compiler candidate and unchanged current-source native
+   acceptance. The exact compiler candidate and placement-checkpoint native
    rehearsal are already retained above. A successful diagnostic does not
    authorize a Stitch SDK lock update.
 3. **Compiler → qualified SDK.** PrismPM owns reconciliation of the accepted

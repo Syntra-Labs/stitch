@@ -12,7 +12,11 @@ test('complete product register is bound to current source and exact local asset
   assert.deepEqual(JSON.parse(readFileSync(resolve(root,'product/contracts.json'),'utf8')),expected);
   assert.equal(expected.components.length,18);
   assert.equal(expected.capabilities.length,expected.hostCapabilities.length);
-  assert.deepEqual(expected.releaseBlockers.map(a=>a.path),['images/buildroot-bzimage.bin']);
+  assert.deepEqual(expected.releaseBlockers, []);
+  const guest=expected.assets.find(a=>a.path==='images/buildroot-bzimage.bin');
+  assert.equal(guest.sha256,'313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07');
+  assert.equal(guest.bytes,8053248);
+  assert.match(guest.licenseStatus,/fd59fae669e9a40271fb584ca071270d8ed0b8f8/);
   for(const a of expected.assets){assert.match(a.sha256,/^[0-9a-f]{64}$/);assert.ok(a.bytes>0);}
   assert.equal(expected.assurance.includes('not a Prism receipt'),true);
 });

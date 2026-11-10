@@ -150,6 +150,21 @@
           "sha256": "057856a817ae3dc85b18dc00f19274f6e877e6f28a36dce1afc5be751739e24a"
         }
       ]
+    },
+    "images/buildroot-bzimage.bin": {
+      "sha256": "313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07",
+      "sourceUrl": "https://github.com/afflom/stitch/tree/fd59fae669e9a40271fb584ca071270d8ed0b8f8",
+      "sourceArchiveSha256": "fbc04b0c55f8421ca9bcf9e9dbac1952c07a1a2d82fd644ac67e66415b0106bc",
+      "materials": [
+        {
+          "path": "vendor/guest/SOURCE-NOTICE.md",
+          "sha256": "58685d5670b7d1deb3ef64c3f55de9da75b6986e7f83f2ad75b02bafcd1f9c58"
+        },
+        {
+          "path": "vendor/guest/source-parts.json",
+          "sha256": "489abc6ea5aba6774827eb61806a2103b98b4c139d143acb84307a11049fc0c6"
+        }
+      ]
     }
   }
 }

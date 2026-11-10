@@ -250,7 +250,7 @@ export function benchmarkComputeStrategies({
 }
 
 /**
- * In-Browser x86 Linux 5.6 VM Node (`v86` WebAssembly emulator) with:
+ * In-Browser x86 Linux 6.18.7 VM Node (`v86` WebAssembly emulator) with:
  *   1. 9p filesystem bridge (`/mnt`) synced with the Layer-3 UOR Database
  *   2. Virtual Ethernet NIC (`eth0`) bridged over Layer-5 WebRTC DataChannels
  *   3. Shell task execution producing UOR-addressed output artifacts
@@ -427,7 +427,7 @@ export class LinuxVmNode {
         bios: { url: './v86/seabios.bin' },
         vga_bios: { url: './v86/vgabios.bin' },
         bzimage: { url: './images/buildroot-bzimage.bin' },
-        cmdline: '',
+        cmdline: 'console=tty0 console=ttyS0,115200 rdinit=/init nomodeset',
         filesystem: {},
         net_device: { type: 'ne2k' },
         autostart: false
@@ -532,7 +532,7 @@ export class LinuxVmNode {
   }
 
   /**
-   * Execute a shell command inside the booted Linux 5.6 VM, capture stdout via `/mnt/`,
+   * Execute a shell command inside the booted Linux 6.18.7 VM, capture stdout via `/mnt/`,
    * and return the resulting bytes so they can be stored and replicated as a UOR object.
    */
   setObjectSharing(granted) {

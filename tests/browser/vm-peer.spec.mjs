@@ -1,7 +1,6 @@
 import { test, expect, harness } from './fixtures.mjs';
 
-test('candidate production VMs exchange real Ethernet over native RTC only with bilateral grants', async ({ page, context }, testInfo) => {
-  test.skip(process.env.STITCH_CANDIDATE_QUALIFICATION !== '1', 'Runs only with the SHA-verified candidate substitution');
+test('production VMs exchange real Ethernet over native RTC only with bilateral grants', async ({ page, context }, testInfo) => {
   test.setTimeout(200_000);
   const other = await context.newPage();
   const pages = [page, other], channelKey = `guest-${crypto.randomUUID()}`;
@@ -22,7 +21,7 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
         try { offline.setEthernetSharing(true); } catch (error) { refused = error.code === 'vm-network-required'; }
         if (!refused || offline.ethernetSharing) throw Error('Absent network must refuse Ethernet sharing');
         const state = window.guest = { statuses: [], serial: '', frames: 0, packets: [], commands: [], events: [] };
-        const transport = state.transport = new WebRtcTransportNode({ peerId: `candidate-${index}`, channelKey,
+        const transport = state.transport = new WebRtcTransportNode({ peerId: `vm-peer-${index}`, channelKey,
           iceServers: [], publicSignaling: false, publicRelayConsent: () => false,
           onEvent: event => {
             if (['policy_refused', 'channel_open', 'channel_send_result'].includes(event.type)) state.events.push(event);
@@ -44,7 +43,21 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
       await expect.poll(() => target.evaluate(() => window.guest.transport.openPeers().length), { timeout: 20_000 }).toBe(1);
     }));
     const addresses = await Promise.all(pages.map(p => p.evaluate(() => window.guest.vm.ipAddress)));
-    expect(addresses[0]).not.toBe(addresses[1]);
+    expect(addresses).toEqual(['10.42.0.2', '10.42.0.3']);
+    const identities = await Promise.all(pages.map(target => target.evaluate(() => {
+      const transport = window.guest.transport, peer = transport.openPeers()[0];
+      return { own: transport.routingPeerId, remote: peer.remoteId,
+        authenticated: transport.signaling.peers.has(peer.remoteId),
+        iceServers: peer.pc.getConfiguration().iceServers, protocol: peer.dc.protocol };
+    })));
+    expect(identities[0].own).toBe(identities[1].remote);
+    expect(identities[1].own).toBe(identities[0].remote);
+    for (const identity of identities) {
+      expect(identity.own).toMatch(/^key-/);
+      expect(identity.authenticated).toBe(true);
+      expect(identity.iceServers).toEqual([]);
+      expect(identity.protocol).toBe('stitch.channel/1');
+    }
     const command = async (target, text) => target.evaluate(async text => {
       const output = new TextDecoder().decode(await window.guest.vm.executeShellCommand(text, 20_000));
       window.guest.commands.push({ text, output }); return output;
@@ -71,6 +84,9 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
     for (const target of pages) {
       const counters = await target.evaluate(() => ({ sent: window.guest.vm.ethFramesSent, received: window.guest.vm.ethFramesReceived }));
       expect(counters.sent).toBeGreaterThan(0); expect(counters.received).toBeGreaterThan(0);
+      const receivedLengths = await target.evaluate(() => window.guest.packets.filter(p => p.direction === 'received').map(p => p.length));
+      expect(receivedLengths.length).toBeGreaterThan(0);
+      for (const length of receivedLengths) { expect(length).toBeGreaterThanOrEqual(14); expect(length).toBeLessThanOrEqual(1518); }
     }
     await other.evaluate(() => window.guest.vm.setEthernetSharing(false));
     const before = await other.evaluate(() => window.guest.vm.ethFramesReceived);
@@ -86,7 +102,7 @@ test('candidate production VMs exchange real Ethernet over native RTC only with 
   } finally {
     for (const [index, target] of pages.entries()) {
       if (!target.isClosed()) {
-        await testInfo.attach(`candidate-${index}-state`, { body: Buffer.from(JSON.stringify(await target.evaluate(() => {
+        await testInfo.attach(`vm-peer-${index}-state`, { body: Buffer.from(JSON.stringify(await target.evaluate(() => {
           const g = window.guest;
           return g ? { statuses: g.statuses, serial: g.serial, frames: g.frames, lifecycle: g.vm.lifecycle,
             sent: g.vm.ethFramesSent, received: g.vm.ethFramesReceived, packets: g.packets, commands: g.commands, events: g.events,

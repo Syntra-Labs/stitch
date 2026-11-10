@@ -13,7 +13,7 @@ not a legal warranty or a whole-runtime correctness claim.
 | `v86/v86.wasm` | Clear the former missing-origin/notices blocker | `vendor/v86/` notice package |
 | `v86/seabios.bin` | Clear the former missing-source/notices blocker | Complete `vendor/seabios/` source, config, build instructions and notices |
 | `v86/vgabios.bin` | Clear the former missing-source/notices blocker | Complete `vendor/seabios/` source, config, build instructions and notices |
-| `images/buildroot-bzimage.bin` | Remains unresolved | Actual guest source/configuration, included-package inventory and applicable license materials |
+| `images/buildroot-bzimage.bin` | Replaced with qualified source-complete Linux 6.18.7 image | `vendor/guest/SOURCE-NOTICE.md` and its immutable complete source package |
 
 These recommendations assume the accompanying directories are actually
 included with the repository/download/static deployment that conveys the
@@ -25,9 +25,9 @@ to clear the four resolved material-packaging gaps.
 
 ## Exact asset identities
 
-All five original files were introduced by upstream Stitch commit
+The original five files were introduced by upstream Stitch commit
 [`da38ff68f09a78f38ea8600b76ae6df36d46dd57`](https://github.com/Syntra-Labs/stitch/commit/da38ff68f09a78f38ea8600b76ae6df36d46dd57).
-No runtime asset has been changed by this packaging work.
+The four v86/BIOS files remain unchanged. The guest is now the exact qualified replacement below.
 
 | Path | Bytes | SHA-256 |
 | --- | ---: | --- |
@@ -35,7 +35,7 @@ No runtime asset has been changed by this packaging work.
 | `v86/v86.wasm` | 1418156 | `abd512988f39f5c81d4930f564bafa1a6e1e0d5210de9b20e2bdec13fbc318d9` |
 | `v86/seabios.bin` | 131072 | `73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98` |
 | `v86/vgabios.bin` | 36352 | `a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880` |
-| `images/buildroot-bzimage.bin` | 5166352 | `7befbaea31e249d9a518c4b95fa42b2a193d0e3de46250d617cbdeb866ee28b0` |
+| `images/buildroot-bzimage.bin` | 8053248 | `313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07` |
 
 ## v86 JavaScript and WebAssembly
 
@@ -99,30 +99,12 @@ reproduction limitation. No candidate adoption is required to resolve this
 source/notice packaging gap. If a replacement is chosen later, validate its
 actual VM behavior before changing the shipped hashes.
 
-## Genuine remaining guest-image source gap
+## Source-complete replacement guest
 
-The Linux/Buildroot image exactly matches the official download
-https://i.copy.sh/buildroot-bzimage.bin. It identifies Linux 5.6.15, built by
-`fabian@nyu` on 2020-07-20. This establishes download origin, not the complete
-corresponding source of the kernel and bundled userspace.
+The original Linux 5.6.15 image (`7befbaea31e249d9a518c4b95fa42b2a193d0e3de46250d617cbdeb866ee28b0`) matched i.copy.sh, but its complete original build inputs were not recovered. It is no longer the shipped image; this does not retroactively resolve historical distributions.
 
-The decompressed kernel has no `IKCFG_ST` embedded-configuration marker.
-The obsolete `copy/images` repository provides no matching image/configuration
-in its available history. We have not recovered the complete kernel build
-configuration, patches, Buildroot configuration or actual included-package
-inventory. A generic Linux source link or a license label on the image cannot
-supply those missing materials. This remains a substantive distribution issue.
+The replacement is the existing Linux 6.18.7 image built by [run 42906244489](https://github.com/afflom/stitch/actions/runs/42906244489), from exact Buildroot commit `7fdeadb3b9f12f78e5fccca914d7fef47090ab9a` and Stitch build commit `d17aa7f3ffc6944b799ac43f6a5bab04ab3b82ef`. No image/toolchain rebuild was performed for adoption.
 
-`vendor/guest/` provides a pinned official Buildroot candidate recipe preserving
-VGA/serial shells, NE2000 Ethernet, embedded initramfs and virtio 9p support.
-The Buildroot configuration step succeeded; the dependency preflight found
-missing host programs `cpio`, `rsync` and `bc`. No candidate image has been built
-or qualified, and kernel/BusyBox fragment resolution remains unverified. The
-recipe retains source downloads, resolved configs and `legal-info` materials;
-those actual outputs and warnings must be reviewed before claiming completion.
+The [durable corresponding-source tree](https://github.com/afflom/stitch/tree/fd59fae669e9a40271fb584ca071270d8ed0b8f8) supplies all reviewed source/license materials, patches, build scripts, resolved configs and image. Its reassembler validates each part and the 398,457,213-byte final archive SHA-256 `fbc04b0c55f8421ca9bcf9e9dbac1952c07a1a2d82fd644ac67e66415b0106bc`. Retain [the source notice](../vendor/guest/SOURCE-NOTICE.md) and equivalent source access with the image. The existing distribution checker binds the image, notice and exact parts manifest; it does not claim to check remote availability on every CI run.
 
-Two valid completion routes remain: recover the original guest's actual source
-materials, or build the candidate and qualify it with the current runtime,
-then distribute its complete source/license package. Neither requires disabling
-the VM feature, declaring an untested replacement complete, or adding unrelated
-costly checks to every CI run.
+Actual hosted production UI/lifecycle and two-peer Ethernet qualification passed on this exact image with the required host arguments; see [the qualification record](guest-browser-qualification.md). The runtime now uses `console=tty0 console=ttyS0,115200 rdinit=/init nomodeset`. Source availability, those observed scenarios, and native Prism SDK acceptance are distinct. The latter remains pending; no product release or whole-runtime certification is claimed.
