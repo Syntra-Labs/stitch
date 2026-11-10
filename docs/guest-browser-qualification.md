@@ -1,7 +1,7 @@
 # Qualified guest candidate and production host evidence
 
-The candidate is not adopted until its corresponding source materials have a
-verified durable distribution URL. Native Prism acceptance remains a separate
+The exact qualified image is now adopted with a durable corresponding-source
+route in [the source notice](../vendor/guest/SOURCE-NOTICE.md). Native Prism acceptance remains a separate
 SDK requirement. No product-release or whole-host certification is claimed here.
 
 ## Exact candidate
@@ -71,7 +71,8 @@ The complete feature-branch acceptance still runs after final integration.
 See [candidate source evidence](guest-candidate-evidence.md) for the verified
 398,457,213-byte corresponding-source package, configurations, licenses and
 hashes. Actions artifacts expire and are review outputs, not final source
-hosting. Publish the complete reviewed source package with equivalent access
-alongside the image before adoption. These checks do not establish cross-device
+hosting. The complete reviewed package is now preserved at the immutable
+repository commit linked by the source notice; retain equivalent source access
+alongside the image in every distribution. These checks do not establish cross-device
 network availability, guest isolation, exhaustive resource-exhaustion behavior,
 or native Prism artifact acceptance.

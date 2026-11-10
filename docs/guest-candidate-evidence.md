@@ -1,6 +1,8 @@
 # Guest candidate evidence, 2026-11-10
 
-This records a tested candidate, not adoption or distribution clearance.
+This records the build and source review of the subsequently adopted image.
+See [hosted qualification](guest-browser-qualification.md) and the durable
+[source notice](../vendor/guest/SOURCE-NOTICE.md). It is not native SDK acceptance.
 
 ## Immutable build and inspection
 
@@ -43,7 +45,7 @@ correct that default during a justified image rebuild.
 
 This does not establish browser VGA/user-interface behavior, peer Ethernet
 exchange/consent, administrator resource limits or reset/restart correctness.
-Qualify those paths before adopting the image. Do not rerun the full compiler
+Those paths were subsequently exercised in the linked hosted qualification. Do not rerun the full compiler
 build merely to change or re-execute the small qualification script.
 
 ## Actual corresponding-source inventory
@@ -80,9 +82,9 @@ hash inventory. Shared source archives retain hardlinks instead of repeated
 copies. The result is 398,457,213 bytes, SHA-256
 `fbc04b0c55f8421ca9bcf9e9dbac1952c07a1a2d82fd644ac67e66415b0106bc`.
 All 178 file-path checks and original release-material hashes pass. It fits a
-single supported artifact download and GitHub release asset without putting
-large toolchain archives in Git history. This record does not claim that the
-package has been durably published.
+single artifact download. It has now been durably published as verified parts
+on a separate source-only Git branch, keeping bulky sources out of the product
+feature diff. The immutable commit and reconstruction instructions are in the source notice.
 
 The necessary release set is the actual image's applicable target sources,
 modifications/patches, licenses, configuration and build/install scripts,
@@ -90,6 +92,6 @@ including Buildroot and the external tree. General-purpose host tools do not
 become a new universal source-disclosure obligation just because they were
 used to compile it. This convenient package retains the already-collected host
 source materials as well, rather than making further size optimization a
-release barrier. Publish the reviewed source package with equivalent access
-alongside the image and record verified URLs/hashes before adoption. No claim
+release barrier. Retain the published package with equivalent access
+alongside the image and preserve its verified URL/hash notice. No claim
 of independent bit-identical image reproduction is required or made.

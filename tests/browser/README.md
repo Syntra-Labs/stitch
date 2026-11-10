@@ -37,6 +37,14 @@ These are actual Chromium tests, not the Node synthetic fixtures:
 - The actual bundled v86 JavaScript, WASM, BIOS and kernel boot through the shipped
   page. A guest shell command produces observed marker and Linux output, which
   is retained and reconciled before explicit stop/destroy administration.
+- Two actual production VMs use explicit distinct static IPv4 addresses and
+  exchange real ARP/ICMP over authenticated host-only RTC. Absent network
+  configuration refuses grants; default-denied ping, bilateral consent,
+  natural ARP recovery within three bounded probes, reverse ping and receiver
+  revocation are checked. No neighbor cache is flushed. Serial shell output,
+  peer identities, bounded frame headers and command outputs are retained.
+  The ordinary browser job runs this regression against the shipped image;
+  no candidate substitution or environment opt-in is required.
 
 All external HTTP and WebSocket destinations are aborted before provider
 communication. The RTC test passes `iceServers: []` and `publicSignaling: false`;

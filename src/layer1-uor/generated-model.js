@@ -43159,12 +43159,12 @@ const types = {
     ]
   }
 };
-export const modelSourceDigest = "sha256:69bcf9d254f77116308f73b9c688fc38f160d16f4c28a6078adeb5bf7716d9ca";
+export const modelSourceDigest = "sha256:0ca6cc7b25876a3f2b1176c10225bb687ddd075c31ef199f0c7413cda32e4963";
 export const modelExecutionDigest = "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de";
 export const MODEL_SOURCE = Object.freeze({
   "schema": "stitch/source-bindings/1",
   "verification": "source-derived, not kernel-checked",
-  "sourceDigest": "sha256:69bcf9d254f77116308f73b9c688fc38f160d16f4c28a6078adeb5bf7716d9ca",
+  "sourceDigest": "sha256:0ca6cc7b25876a3f2b1176c10225bb687ddd075c31ef199f0c7413cda32e4963",
   "executionDigest": "sha256:d79f1371e5ea16d16d5b9f56fbcce57cb8044df145dae91a63b9a4cbcb5c50de",
   "executionIdentity": {
     "adapterSources": [
@@ -46786,7 +46786,7 @@ export const MODEL_SOURCE = Object.freeze({
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+      "sha256": "281fcf4954a28d3afa3fd86fda167541207ef572f16cb3a853aa1fb43216ebed"
     },
     {
       "path": "app/src/Stitch/Authority.lex.tex",

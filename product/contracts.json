@@ -14,12 +14,7 @@
     "foundationArch": "Type-only subset; source types preserved, title localized to available glossary, examples omitted",
     "sdk": "Existing prismpm.lock; no dependency or profile upgrade"
   },
-  "releaseBlockers": [
-    {
-      "path": "images/buildroot-bzimage.bin",
-      "reason": "Unresolved: release must establish redistribution provenance and license"
-    }
-  ],
+  "releaseBlockers": [],
   "components": [
     {
       "declaration": "componentAdmission",
@@ -968,7 +963,7 @@
       "kind": "vendored-binary",
       "locator": "v86/ and images/buildroot-bzimage.bin",
       "versionPolicy": "Exact bytes in generated product artifact register",
-      "trust": "Upstream revision, source and redistribution license evidence not established here",
+      "trust": "Exact upstream origins and accompanying source/license materials recorded in vendor/distribution.json; guest source pinned in vendor/guest/SOURCE-NOTICE.md",
       "required": false
     },
     {
@@ -1047,11 +1042,11 @@
       "type": "Asset",
       "path": "images/buildroot-bzimage.bin",
       "role": "vendored VM dependency",
-      "origin": "Exact official i.copy.sh/buildroot-bzimage.bin; Linux 5.6.15, original full image build inputs unresolved",
-      "licenseStatus": "Unresolved: release must establish redistribution provenance and license",
-      "redistributionCleared": false,
-      "bytes": 5166352,
-      "sha256": "7befbaea31e249d9a518c4b95fa42b2a193d0e3de46250d617cbdeb866ee28b0"
+      "origin": "Linux 6.18.7 from Buildroot 7fdeadb3b9f12f78e5fccca914d7fef47090ab9a; image 313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07",
+      "licenseStatus": "Corresponding source, configs, patches and licenses published at immutable commit fd59fae669e9a40271fb584ca071270d8ed0b8f8; preserve vendor/guest/SOURCE-NOTICE.md and equivalent source access with image",
+      "redistributionCleared": true,
+      "bytes": 8053248,
+      "sha256": "313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07"
     },
     {
       "declaration": "assetFile0",
@@ -1128,7 +1123,7 @@
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
       "bytes": 1229338,
-      "sha256": "2614eb73227c4b3c8a9fab33fd710fab6f10b3500cfd4e06292296ade5812492"
+      "sha256": "aa3756d0392e9284b9ffd6b23aa0786a6faa6b961e4451a8826657c4ac672d10"
     },
     {
       "declaration": "assetFile4",
@@ -1204,8 +1199,8 @@
       "origin": "Project-owned source checkout",
       "licenseStatus": "Project declares MIT; audit applies",
       "redistributionCleared": true,
-      "bytes": 43134,
-      "sha256": "5764553febb65aa2cb867322134ada5e5ca514f066122da9ea8c3234c1a47d73"
+      "bytes": 43196,
+      "sha256": "73bcc96f06f89f74ba555f8d24c550ae7e80d91caba2f3a1c2d4c48aadd1a2b4"
     },
     {
       "declaration": "assetFile11",
@@ -2079,7 +2074,7 @@
     },
     {
       "path": "app/src/Product/Model.lex.tex",
-      "sha256": "a811754e08b17292e45f049b9822d7d8d53625a1efdc516687bf8c14aeb44cdb"
+      "sha256": "281fcf4954a28d3afa3fd86fda167541207ef572f16cb3a853aa1fb43216ebed"
     },
     {
       "path": "app/src/Stitch/Authority.lex.tex",
@@ -2171,8 +2166,8 @@
     },
     {
       "path": "vendor/distribution.json",
-      "sha256": "c46831839f4b9aa9b54cc2b9756e78c030ba35715f5ee5b03ef5e77efe87276d"
+      "sha256": "02263c2d4bf1a1913a673466554c19593b5a6c39b22a2da32ce4375675868347"
     }
   ],
-  "sourceDigest": "sha256:1f98874129ebaee8ac7545c6861f16acee5fd72a213396253c89dd84d6bf5d8a"
+  "sourceDigest": "sha256:d41113060544b9443593c0f768653ef808eba28e611eaf159daefbe8c2a05bb2"
 }

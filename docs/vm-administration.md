@@ -122,10 +122,12 @@ New typed boundary failures are `vm-boundary-unavailable`, `vm-filesystem-limit`
 proof of rollback or a resolved command.
 
 The emulator kernel command line no longer explicitly disables mitigations or
-trusts CPU entropy; it is empty and leaves kernel defaults in force. This source
-configuration change does not alter host security settings or establish that the
-old guest kernel provides modern mitigations. Linux 5.6 and emulator assets still
-need maintenance and actual browser/security qualification.
+trusts CPU entropy. It selects `console=tty0 console=ttyS0,115200 rdinit=/init nomodeset`
+for the qualified Linux 6.18.7 guest: the init wrapper mounts console devices and
+nomodeset preserves the emulator text display. These are guest boot arguments,
+not host security settings or a modern-mitigation guarantee. Guest/emulator assets
+still need maintenance; observed hosted scenarios are recorded in
+[guest qualification](guest-browser-qualification.md).
 
 ## Verification boundary
 

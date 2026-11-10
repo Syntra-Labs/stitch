@@ -49,9 +49,11 @@ real v86 boot, serial shell, bidirectional 9p and Ethernet configuration in
 4.68seconds after those host-probe corrections. See the exact image identity,
 logs and source inventory in [the candidate evidence](../../docs/guest-candidate-evidence.md).
 
-This is not adoption: production browser/VM lifecycle and consented-network
-qualification, plus durable reviewed corresponding-source distribution, remain
-required. The current shipped guest is unchanged.
+The exact image is now adopted after hosted production UI/lifecycle and two-peer
+Ethernet qualification. The immutable complete source distribution and required
+boot arguments are in [SOURCE-NOTICE.md](SOURCE-NOTICE.md). Preserve that notice
+and equivalent source access with every image distribution. Native Prism SDK
+acceptance is a separate pending gate; no product-release claim follows here.
 
 ## Build and retain source materials
 

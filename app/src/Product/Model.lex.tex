@@ -469,7 +469,7 @@ definition{
   name: dependencyVmAssets,
   parameters: [],
   result: Dependency,
-  body: (record Dependency {id := "vmAssets", consumer := "vm", kind := "vendored-binary", locator := "v86/ and images/buildroot-bzimage.bin", versionPolicy := "Exact bytes in generated product artifact register", trust := "Upstream revision, source and redistribution license evidence not established here", required := false})
+  body: (record Dependency {id := "vmAssets", consumer := "vm", kind := "vendored-binary", locator := "v86/ and images/buildroot-bzimage.bin", versionPolicy := "Exact bytes in generated product artifact register", trust := "Exact upstream origins and accompanying source/license materials recorded in vendor/distribution.json; guest source pinned in vendor/guest/SOURCE-NOTICE.md", required := false})
 }
 
 definition{
@@ -637,7 +637,7 @@ definition{
   name: assetFile17,
   parameters: [],
   result: Asset,
-  body: (record Asset {path := "images/buildroot-bzimage.bin", role := "vendored VM dependency", origin := "Exact official i.copy.sh/buildroot-bzimage.bin; Linux 5.6.15, original full image build inputs unresolved", licenseStatus := "Unresolved: release must establish redistribution provenance and license", redistributionCleared := false})
+  body: (record Asset {path := "images/buildroot-bzimage.bin", role := "vendored VM dependency", origin := "Linux 6.18.7 from Buildroot 7fdeadb3b9f12f78e5fccca914d7fef47090ab9a; image 313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07", licenseStatus := "Corresponding source, configs, patches and licenses published at immutable commit fd59fae669e9a40271fb584ca071270d8ed0b8f8; preserve vendor/guest/SOURCE-NOTICE.md and equivalent source access with image", redistributionCleared := true})
 }
 
 definition{
@@ -901,9 +901,9 @@ theorem{
 }
 
 theorem{
-  name: vendorRedistributionRemainsBlocked,
+  name: vendorDistributionMaterialsRecorded,
   parameters: [],
-  statement: ((productAssetsRedistributable (product)) = false),
+  statement: ((productAssetsRedistributable (product)) = true),
   proof: decide{}
 }
 \end{semanticmodule}
