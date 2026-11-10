@@ -1,0 +1,16 @@
+{
+  "name": "@syntra-labs/stitch",
+  "version": "0.1.0",
+  "description": "Routing-Layer Persistence Fabric — WebRTC + DNS SRV/DoH + Survival Entropy Scheduler",
+  "type": "module",
+  "main": "src/survival.js",
+  "scripts": {
+    "test": "node tests/test_survival.js",
+    "serve": "python3 -m http.server 8080"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/Syntra-Labs/stitch.git"
+  },
+  "license": "MIT"
+}

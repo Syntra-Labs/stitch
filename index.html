@@ -1,0 +1,828 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>stitch — Routing-Layer Persistence Fabric | Syntra Labs</title>
+  <style>
+    :root {
+      --bg: #080808;
+      --panel: #101010;
+      --border: #262626;
+      --border-hi: #484848;
+      --fg: #f0f0f0;
+      --muted: #8a8a8a;
+      --accent: #ffffff;
+      --ok: #d4f7d4;
+      --warn: #f5e3b3;
+      --font: "JetBrains Mono", "Fira Code", "SFMono-Regular", Consolas, monospace;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      background: var(--bg);
+      color: var(--fg);
+      font-family: var(--font);
+      font-size: 12px;
+      line-height: 1.5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    header {
+      border-bottom: 1px solid var(--border);
+      padding: 12px 20px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      background: var(--panel);
+    }
+
+    .brand {
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+
+    .brand h1 {
+      font-size: 15px;
+      font-weight: 700;
+      letter-spacing: 0.04em;
+    }
+
+    .brand span {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .status-pill {
+      border: 1px solid var(--border-hi);
+      padding: 4px 10px;
+      font-size: 11px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: #000;
+    }
+
+    .dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--muted);
+      display: inline-block;
+    }
+
+    .dot.live {
+      background: #fff;
+      box-shadow: 0 0 8px #fff;
+    }
+
+    main {
+      flex: 1;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 1px;
+      background: var(--border);
+    }
+
+    @media (max-width: 960px) {
+      main {
+        grid-template-columns: 1fr;
+      }
+    }
+
+    .panel {
+      background: var(--bg);
+      padding: 18px 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+    }
+
+    .panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      border-bottom: 1px solid var(--border);
+      padding-bottom: 8px;
+    }
+
+    .panel-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--fg);
+    }
+
+    .panel-sub {
+      color: var(--muted);
+      font-size: 11px;
+    }
+
+    .metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    @media (max-width: 600px) {
+      .metrics-grid {
+        grid-template-columns: repeat(2, 1fr);
+      }
+    }
+
+    .metric-card {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 10px;
+    }
+
+    .metric-label {
+      color: var(--muted);
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .metric-value {
+      font-size: 16px;
+      font-weight: 700;
+      margin-top: 4px;
+      color: var(--fg);
+    }
+
+    .metric-sub {
+      font-size: 10px;
+      color: var(--muted);
+      margin-top: 2px;
+    }
+
+    .controls-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      align-items: center;
+    }
+
+    input[type="text"], input[type="number"] {
+      background: #000;
+      border: 1px solid var(--border-hi);
+      color: var(--fg);
+      font-family: var(--font);
+      font-size: 12px;
+      padding: 6px 10px;
+      outline: none;
+      flex: 1;
+      min-width: 140px;
+    }
+
+    input:focus {
+      border-color: var(--fg);
+    }
+
+    button {
+      background: var(--fg);
+      color: #000;
+      border: 1px solid var(--fg);
+      font-family: var(--font);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 6px 12px;
+      cursor: pointer;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    button.secondary {
+      background: transparent;
+      color: var(--fg);
+      border-color: var(--border-hi);
+    }
+
+    button:hover {
+      opacity: 0.88;
+    }
+
+    canvas {
+      width: 100%;
+      height: 170px;
+      border: 1px solid var(--border);
+      background: #050505;
+      display: block;
+    }
+
+    .log-box {
+      border: 1px solid var(--border);
+      background: #050505;
+      padding: 10px;
+      height: 185px;
+      overflow-y: auto;
+      font-size: 11px;
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .log-entry {
+      display: flex;
+      gap: 8px;
+      border-bottom: 1px dotted #191919;
+      padding-bottom: 2px;
+    }
+
+    .log-ts {
+      color: var(--muted);
+      flex-shrink: 0;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 11px;
+    }
+
+    th, td {
+      border: 1px solid var(--border);
+      padding: 6px 8px;
+      text-align: left;
+    }
+
+    th {
+      background: var(--panel);
+      color: var(--muted);
+      text-transform: uppercase;
+      font-size: 10px;
+    }
+
+    .formula-bar {
+      border: 1px solid var(--border);
+      background: var(--panel);
+      padding: 8px 12px;
+      font-size: 11px;
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 8px;
+    }
+
+    .formula-bar code {
+      color: var(--fg);
+    }
+
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 10px 20px;
+      color: var(--muted);
+      font-size: 11px;
+      display: flex;
+      justify-content: space-between;
+      background: var(--panel);
+    }
+
+    a {
+      color: var(--fg);
+      text-decoration: underline;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="brand">
+      <h1>STITCH // ROUTING-LAYER PERSISTENCE FABRIC</h1>
+      <span>“The Internet Is a Notebook” — WebRTC + DNS SRV/DoH + Survival Entropy Scheduler</span>
+    </div>
+    <div style="display: flex; gap: 10px; align-items: center;">
+      <div class="status-pill">
+        <span id="stitchDot" class="dot"></span>
+        <span id="stitchStateLabel">RENDEZVOUS LISTENING</span>
+      </div>
+      <div class="status-pill">
+        <span>LOCAL ID: <strong id="localPeerLabel">...</strong></span>
+      </div>
+    </div>
+  </header>
+
+  <main>
+    <!-- PANEL 1: L0 HOT LAYER — TWO-PEER WEBRTC STITCH -->
+    <section class="panel">
+      <div class="panel-header">
+        <span class="panel-title">L0 Hot Layer // Two-Peer WebRTC DataChannel Stitch</span>
+        <span class="panel-sub">Zero-Backend Rendezvous (WebSocket + BroadcastChannel)</span>
+      </div>
+
+      <div class="controls-row">
+        <input type="text" id="stitchKeyInput" placeholder="Stitch Handle / Key" value="syntra-notebook-01" />
+        <button id="connectBtn">Join / Re-Stitch</button>
+        <button id="copyLinkBtn" class="secondary">Copy Peer Share URL</button>
+        <button id="injectChurnBtn" class="secondary">Simulate Link Drop</button>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">ICE Transport</div>
+          <div class="metric-value" id="iceStateVal">WAIT</div>
+          <div class="metric-sub" id="candidateTypeVal">No candidate yet</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Remote Peer</div>
+          <div class="metric-value" id="remotePeerVal">NONE</div>
+          <div class="metric-sub">Open URL in 2nd tab/network</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Heartbeats (5s)</div>
+          <div class="metric-value" id="heartbeatCountVal">0</div>
+          <div class="metric-sub" id="rttVal">RTT: — ms</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Pointer Refreshes</div>
+          <div class="metric-value" id="refreshCountVal">1</div>
+          <div class="metric-sub" id="refreshReasonVal">Initial bind</div>
+        </div>
+      </div>
+
+      <div class="controls-row">
+        <input type="text" id="peerMessageInput" placeholder="Send packet across the stitch DataChannel..." />
+        <button id="sendMsgBtn" class="secondary">Transmit</button>
+      </div>
+
+      <div class="log-box" id="telemetryLog"></div>
+    </section>
+
+    <!-- PANEL 2: L1/L2 ENTROPY & SURVIVAL REFRESH CLOCK -->
+    <section class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Survival & Entropy Refresh Scheduler</span>
+        <span class="panel-sub">P(alive at t) = exp(-λt) | H(p) Binary Staleness Entropy</span>
+      </div>
+
+      <div class="formula-bar">
+        <span>Rate: <code>λ̂ = 1 / E[ΔT]</code></span>
+        <span>Refresh: <code>t_ref = min(TTL/2, -ln(1-ε)/λ̂)</code></span>
+        <span>Entropy: <code>H(p) = -p log₂ p - (1-p) log₂(1-p)</code></span>
+      </div>
+
+      <div class="metrics-grid">
+        <div class="metric-card">
+          <div class="metric-label">Est. Rate (λ̂)</div>
+          <div class="metric-value" id="lambdaVal">0.017 /s</div>
+          <div class="metric-sub">Poisson churn rate</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Survival P(t)</div>
+          <div class="metric-value" id="pAliveVal">1.000</div>
+          <div class="metric-sub" id="pointerAgeVal">Age: 0.0s</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Stale Entropy H(p)</div>
+          <div class="metric-value" id="entropyVal">0.000 bit</div>
+          <div class="metric-sub">Threshold: 0.40 bit</div>
+        </div>
+        <div class="metric-card">
+          <div class="metric-label">Next Refresh</div>
+          <div class="metric-value" id="nextRefreshVal">30.0s</div>
+          <div class="metric-sub" id="ttlLabelVal">TTL Cap: 60s</div>
+        </div>
+      </div>
+
+      <canvas id="survivalCanvas" width="640" height="170"></canvas>
+
+      <div class="controls-row">
+        <label style="color: var(--muted);">TTL (s):</label>
+        <input type="number" id="ttlInput" value="60" min="10" max="600" style="max-width: 80px;" />
+        <label style="color: var(--muted);">Staleness ε:</label>
+        <input type="number" id="epsInput" value="0.08" step="0.01" min="0.01" max="0.45" style="max-width: 80px;" />
+        <button id="manualRefreshBtn" class="secondary">Re-Knot Stitch Now</button>
+      </div>
+    </section>
+
+    <!-- PANEL 3: L1/L3 COLD & WARM POINTER LAYER (DNS SRV / TXT OVER DoH) -->
+    <section class="panel">
+      <div class="panel-header">
+        <span class="panel-title">L1/L3 Cold & Warm Pointer // DNS SRV & TXT Resolution (DoH)</span>
+        <span class="panel-sub">RFC 8484 Cloudflare DNS-over-HTTPS Telemetry</span>
+      </div>
+
+      <div class="controls-row">
+        <input type="text" id="dnsNameInput" value="_xmpp-client._tcp.jabber.org" placeholder="_stitch._udp.example.net" />
+        <button id="resolveSrvBtn">Resolve SRV</button>
+        <button id="resolveTxtBtn" class="secondary">Resolve TXT</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Query Name</th>
+            <th>Type</th>
+            <th>TTL (s)</th>
+            <th>RTT (ms)</th>
+            <th>Cache Inference</th>
+            <th>Target / Record Payload</th>
+          </tr>
+        </thead>
+        <tbody id="dnsTableBody">
+          <tr>
+            <td colspan="6" style="color: var(--muted);">Click "Resolve SRV" or "Resolve TXT" to query live authoritative/cached DNS records via DoH.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <div class="formula-bar">
+        <span>Synthesized Pointer TXT Record for this Peer:</span>
+        <code id="synthesizedTxtCode">v=stitch1;peer=...</code>
+      </div>
+    </section>
+
+    <!-- PANEL 4: A/B BENCHMARK (FIXED-TTL VS ENTROPY-DRIVEN REFRESH) -->
+    <section class="panel">
+      <div class="panel-header">
+        <span class="panel-title">Phase 3 A/B Benchmark // Fixed-TTL vs. Entropy-Driven Refresh</span>
+        <span class="panel-sub">600s Route/Pointer Churn Evaluation</span>
+      </div>
+
+      <div class="controls-row">
+        <span style="color: var(--muted);">Evaluate 600s window across variable network failure/withdrawal cadence:</span>
+        <button id="runAbBtn">Run A/B Comparison</button>
+      </div>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Scheduler Policy</th>
+            <th>Total Refreshes Issued</th>
+            <th>Stale Duration (s)</th>
+            <th>Staleness Ratio (%)</th>
+            <th>Control-Plane Verdict</th>
+          </tr>
+        </thead>
+        <tbody id="abTableBody"></tbody>
+      </table>
+
+      <table>
+        <thead>
+          <tr>
+            <th>Memory Tier</th>
+            <th>What Persists</th>
+            <th>Control Plane</th>
+            <th>Refresh Trigger</th>
+          </tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td><strong>L0 Hot</strong></td>
+            <td>Active peer streams</td>
+            <td>WebRTC DataChannel</td>
+            <td>5s heartbeats, ICE state</td>
+          </tr>
+          <tr>
+            <td><strong>L1 Warm</strong></td>
+            <td>Service endpoints, handles</td>
+            <td>DNS SRV / HTTPS / TXT</td>
+            <td>TTL decay, health probes</td>
+          </tr>
+          <tr>
+            <td><strong>L2 Route</strong></td>
+            <td>Prefix / anycast liveness</td>
+            <td>BGP (DN42 / BIRD / FRR)</td>
+            <td>Hold timer, update entropy</td>
+          </tr>
+          <tr>
+            <td><strong>L3 Cold</strong></td>
+            <td>Signed manifests, identities</td>
+            <td>Authoritative DNS + sigs</td>
+            <td>Key rotation / change events</td>
+          </tr>
+        </tbody>
+      </table>
+    </section>
+  </main>
+
+  <footer>
+    <span>Syntra Labs — <strong>stitch</strong> (Routing-Layer Persistence Fabric)</span>
+    <span>Open this page in two tabs or across two networks with the same Stitch Key to form a live WebRTC stitch.</span>
+  </footer>
+
+  <script type="module">
+    import {
+      SurvivalClock,
+      survivalProbability,
+      binaryEntropy,
+      compareFixedVsEntropy
+    } from './src/survival.js';
+    import { DnsPointerObserver, formatPointerTxt } from './src/pointer.js';
+    import { StitchPeer } from './src/peer.js';
+
+    const logEl = document.getElementById('telemetryLog');
+    function logEvent(tag, msg) {
+      const row = document.createElement('div');
+      row.className = 'log-entry';
+      const ts = new Date().toISOString().slice(11, 19);
+      row.innerHTML = `<span class="log-ts">[${ts}]</span><strong>[${tag}]</strong><span>${msg}</span>`;
+      logEl.prepend(row);
+      while (logEl.children.length > 60) {
+        logEl.removeChild(logEl.lastChild);
+      }
+    }
+
+    // 1. Initialize Survival Clock
+    const nowSec = () => Date.now() / 1000;
+    const clock = new SurvivalClock({
+      ttlSeconds: 60,
+      epsilon: 0.08,
+      entropyThreshold: 0.40,
+      hysteresis: 0.04,
+      minFloorSeconds: 5
+    });
+    clock.markRefreshed(nowSec());
+
+    // Seed initial baseline intervals so lambda starts realistic (~1/45s)
+    const t0 = nowSec();
+    clock.recordChurnEvent(t0 - 90);
+    clock.recordChurnEvent(t0 - 45);
+
+    // 2. Initialize StitchPeer (Zero-setup WebRTC DataChannel)
+    const hashKey = location.hash.replace(/^#/, '').trim();
+    const stitchKeyInput = document.getElementById('stitchKeyInput');
+    if (hashKey) {
+      stitchKeyInput.value = hashKey;
+    }
+
+    let peer = null;
+    function startPeer(stitchKey) {
+      if (peer) peer.close();
+      location.hash = stitchKey;
+
+      peer = new StitchPeer({
+        stitchKey,
+        heartbeatIntervalMs: 5000,
+        onTelemetry: ev => {
+          if (ev.type === 'signaling_ready') {
+            logEvent('SIGNAL', `Listening on ${ev.mode} [key=${ev.stitchKey}]`);
+          } else if (ev.type === 'ice_candidate') {
+            document.getElementById('candidateTypeVal').textContent = ev.candidateType;
+          } else if (ev.type === 'ice_state') {
+            document.getElementById('iceStateVal').textContent = ev.state.toUpperCase();
+            logEvent('ICE', `State -> ${ev.state}`);
+          } else if (ev.type === 'channel_open') {
+            document.getElementById('stitchDot').classList.add('live');
+            document.getElementById('stitchStateLabel').textContent = 'STITCH LIVE (DATACHANNEL OPEN)';
+            document.getElementById('remotePeerVal').textContent = peer.remotePeerId || 'CONNECTED';
+            logEvent('STITCH', `WebRTC DataChannel '${ev.label}' open with ${peer.remotePeerId}`);
+          } else if (ev.type === 'channel_close') {
+            document.getElementById('stitchDot').classList.remove('live');
+            document.getElementById('stitchStateLabel').textContent = 'STITCH BROKEN (RE-LISTENING)';
+            clock.recordChurnEvent(nowSec());
+            logEvent('CHURN', `DataChannel closed; recorded survival churn event.`);
+          } else if (ev.type === 'heartbeat') {
+            document.getElementById('heartbeatCountVal').textContent = String(ev.totalHeartbeats);
+            document.getElementById('remotePeerVal').textContent = peer.remotePeerId || 'CONNECTED';
+            if (ev.rttMs !== null) {
+              document.getElementById('rttVal').textContent = `RTT: ${ev.rttMs} ms`;
+            }
+          } else if (ev.type === 'peer_message') {
+            logEvent('MSG', `From ${ev.from}: ${ev.text}`);
+          }
+        }
+      });
+
+      document.getElementById('localPeerLabel').textContent = peer.peerId;
+      document.getElementById('synthesizedTxtCode').textContent = formatPointerTxt({
+        peer: peer.peerId,
+        ep: `wss://ntfy.sh/${peer.getRendezvousTopic()}`
+      });
+
+      peer.startAutoStitch(stitchKey);
+    }
+
+    startPeer(stitchKeyInput.value.trim());
+
+    document.getElementById('connectBtn').addEventListener('click', () => {
+      startPeer(stitchKeyInput.value.trim() || 'syntra-notebook-01');
+    });
+
+    document.getElementById('copyLinkBtn').addEventListener('click', async () => {
+      const url = `${location.origin}${location.pathname}#${encodeURIComponent(stitchKeyInput.value.trim())}`;
+      try {
+        await navigator.clipboard.writeText(url);
+        logEvent('SHARE', `Copied share URL to clipboard: ${url}`);
+      } catch {
+        logEvent('SHARE', `Share URL: ${url}`);
+      }
+    });
+
+    document.getElementById('injectChurnBtn').addEventListener('click', () => {
+      clock.recordChurnEvent(nowSec());
+      logEvent('CHURN', 'Injected synthetic route/pointer drop into survival estimator.');
+    });
+
+    document.getElementById('manualRefreshBtn').addEventListener('click', () => {
+      clock.markRefreshed(nowSec());
+      if (peer) peer.sendSignal({ kind: 'announce' });
+      document.getElementById('refreshCountVal').textContent = String(clock.refreshCount);
+      document.getElementById('refreshReasonVal').textContent = 'manual_re_knot';
+      logEvent('REFRESH', 'Manual pointer & route re-announcement triggered.');
+    });
+
+    document.getElementById('sendMsgBtn').addEventListener('click', () => {
+      const input = document.getElementById('peerMessageInput');
+      const text = input.value.trim();
+      if (!text) return;
+      if (peer && peer.sendMessage(text)) {
+        logEvent('TX', `Sent to ${peer.remotePeerId}: ${text}`);
+        input.value = '';
+      } else {
+        logEvent('WARN', 'DataChannel not open yet — open this page in a second tab or network first.');
+      }
+    });
+
+    // 3. Real-Time Survival Canvas & Scheduler Loop
+    const canvas = document.getElementById('survivalCanvas');
+    const ctx = canvas.getContext('2d');
+
+    function renderSurvivalCurve(status) {
+      const w = canvas.width;
+      const h = canvas.height;
+      ctx.clearRect(0, 0, w, h);
+
+      const ttl = clock.ttlSeconds;
+      const padL = 36;
+      const padR = 16;
+      const padT = 16;
+      const padB = 24;
+      const plotW = w - padL - padR;
+      const plotH = h - padT - padB;
+
+      // Grid lines
+      ctx.strokeStyle = '#1e1e1e';
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= 4; i++) {
+        const y = padT + (plotH * i) / 4;
+        ctx.beginPath();
+        ctx.moveTo(padL, y);
+        ctx.lineTo(w - padR, y);
+        ctx.stroke();
+      }
+
+      // Draw P(alive at t) = exp(-lambda * t) in solid white
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      for (let px = 0; px <= plotW; px++) {
+        const t = (px / plotW) * ttl;
+        const p = survivalProbability(status.lambda, t);
+        const x = padL + px;
+        const y = padT + (1 - p) * plotH;
+        if (px === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+
+      // Draw binary entropy H(p) in dashed gray
+      ctx.strokeStyle = '#7a7a7a';
+      ctx.setLineDash([4, 4]);
+      ctx.lineWidth = 1.4;
+      ctx.beginPath();
+      for (let px = 0; px <= plotW; px++) {
+        const t = (px / plotW) * ttl;
+        const p = survivalProbability(status.lambda, t);
+        const ent = binaryEntropy(p);
+        const x = padL + px;
+        const y = padT + (1 - ent) * plotH;
+        if (px === 0) ctx.moveTo(x, y);
+        else ctx.lineTo(x, y);
+      }
+      ctx.stroke();
+      ctx.setLineDash([]);
+
+      // Draw current age cursor
+      const curX = padL + Math.min(1, status.ageSeconds / ttl) * plotW;
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 1;
+      ctx.beginPath();
+      ctx.moveTo(curX, padT);
+      ctx.lineTo(curX, h - padB);
+      ctx.stroke();
+
+      // Labels
+      ctx.fillStyle = '#8a8a8a';
+      ctx.font = '10px monospace';
+      ctx.fillText('1.0', 6, padT + 4);
+      ctx.fillText('0.5', 6, padT + plotH / 2 + 4);
+      ctx.fillText('0.0', 6, h - padB);
+      ctx.fillText('t=0s', padL, h - 6);
+      ctx.fillText(`TTL=${ttl}s`, w - padR - 48, h - 6);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillText('— P(alive)', padL + 8, padT + 12);
+      ctx.fillStyle = '#8a8a8a';
+      ctx.fillText('-- H(p) entropy', padL + 86, padT + 12);
+    }
+
+    setInterval(() => {
+      clock.ttlSeconds = Math.max(10, Number(document.getElementById('ttlInput').value) || 60);
+      clock.epsilon = Math.max(0.01, Math.min(0.49, Number(document.getElementById('epsInput').value) || 0.08));
+
+      const status = clock.evaluate(nowSec());
+      if (status.shouldRefresh) {
+        clock.markRefreshed(nowSec());
+        if (peer) peer.sendSignal({ kind: 'announce' });
+        document.getElementById('refreshCountVal').textContent = String(clock.refreshCount);
+        document.getElementById('refreshReasonVal').textContent = status.reason;
+        logEvent('SCHED', `Entropy scheduler refreshed pointer [reason=${status.reason}, H=${status.entropyBits.toFixed(3)} bit]`);
+      }
+
+      document.getElementById('lambdaVal').textContent = `${status.lambda.toFixed(3)} /s`;
+      document.getElementById('pAliveVal').textContent = status.pAlive.toFixed(3);
+      document.getElementById('pointerAgeVal').textContent = `Age: ${status.ageSeconds.toFixed(1)}s`;
+      document.getElementById('entropyVal').textContent = `${status.entropyBits.toFixed(3)} bit`;
+      document.getElementById('nextRefreshVal').textContent = `${status.nextRefreshInSeconds.toFixed(1)}s`;
+      document.getElementById('ttlLabelVal').textContent = `TTL Cap: ${clock.ttlSeconds}s`;
+
+      renderSurvivalCurve(status);
+    }, 200);
+
+    // 4. DNS-over-HTTPS Pointer Observer
+    const dnsObserver = new DnsPointerObserver();
+    const dnsTableBody = document.getElementById('dnsTableBody');
+
+    async function runDnsQuery(type) {
+      const name = document.getElementById('dnsNameInput').value.trim();
+      if (!name) return;
+      try {
+        const res = await dnsObserver.resolve(name, type);
+        logEvent('DNS', `Resolved ${type} ${name} in ${res.latencyMs}ms (TTL=${res.ttlSeconds}s)`);
+        if (dnsObserver.history.length === 1) {
+          dnsTableBody.innerHTML = '';
+        }
+        const tr = document.createElement('tr');
+        const payloadStr = res.records.length > 0
+          ? JSON.stringify(res.records[0])
+          : `Status=${res.status} (No Answer records)`;
+        tr.innerHTML = `
+          <td>${res.name}</td>
+          <td>${res.type}</td>
+          <td>${res.ttlSeconds}s</td>
+          <td>${res.latencyMs} ms</td>
+          <td>${res.inferredCacheHit ? 'CACHED (Decaying TTL)' : 'FRESH / AUTHORITATIVE'}</td>
+          <td><code>${payloadStr}</code></td>
+        `;
+        dnsTableBody.prepend(tr);
+      } catch (err) {
+        logEvent('DNS-ERR', err.message);
+      }
+    }
+
+    document.getElementById('resolveSrvBtn').addEventListener('click', () => runDnsQuery('SRV'));
+    document.getElementById('resolveTxtBtn').addEventListener('click', () => runDnsQuery('TXT'));
+
+    // 5. Phase 3 A/B Benchmark Runner
+    function updateAbTable() {
+      const drops = [];
+      let t = 0;
+      while (t < 600) {
+        t += Math.floor(15 + Math.random() * 25);
+        if (t < 600) drops.push(t);
+      }
+      const res = compareFixedVsEntropy({
+        durationSeconds: 600,
+        ttlSeconds: 60,
+        dropTimestamps: drops
+      });
+
+      const tbody = document.getElementById('abTableBody');
+      tbody.innerHTML = `
+        <tr>
+          <td><strong>Fixed-TTL Refresh (TTL/2 = 30s)</strong></td>
+          <td>${res.fixed.refreshes}</td>
+          <td>${res.fixed.staleSeconds}s</td>
+          <td>${(res.fixed.stalenessRatio * 100).toFixed(1)}%</td>
+          <td>Blind periodic polling ignores bursty churn</td>
+        </tr>
+        <tr>
+          <td><strong>Entropy-Driven Survival Scheduler</strong></td>
+          <td>${res.entropy.refreshes}</td>
+          <td>${res.entropy.staleSeconds}s</td>
+          <td>${(res.entropy.stalenessRatio * 100).toFixed(1)}%</td>
+          <td>Proactively re-knots pointer before H(p) crosses bound</td>
+        </tr>
+      `;
+    }
+
+    document.getElementById('runAbBtn').addEventListener('click', () => {
+      updateAbTable();
+      logEvent('BENCH', 'Completed 600s A/B simulation: Fixed-TTL vs. Entropy-Driven scheduler.');
+    });
+
+    updateAbTable();
+  </script>
+</body>
+</html>
