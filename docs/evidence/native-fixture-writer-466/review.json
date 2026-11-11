@@ -1,0 +1,28 @@
+{
+  "source_commit": "cc5561203de8fa5594d573904147a306b2b8bbbf",
+  "source_tree": "c2bbc659b3cea7d58f2a2d0557579d8b2e92ff9e",
+  "diagnostic_head": "42127189e465c0056ae3416468f44289c48431f3",
+  "run": 42938289470,
+  "job": 130253666946,
+  "artifact": 13819487356,
+  "artifact_sha256": "5c585acedcddc986254f438b35a239b863cab610a3e2c8ebebe0824e6b7efa8a",
+  "changed_files": {
+    "certificate-resource-exhausted/command.json": {
+      "sha256": "9e1ee2607766df4009cf8f23918fc1ea61a17bd4975c7bfbd55d12843e6f8e1b",
+      "bytes": 630
+    },
+    "certificate-resource-exhausted/diagnostics.json": {
+      "sha256": "daf6c392ca007ccc5e0d2524491b9c47fa84c38f7b71412f42a1326491e8b0d1",
+      "bytes": 503
+    },
+    "preservation-drift/command.json": {
+      "sha256": "63f28680a9a084d5a6987e0a1af80e0dd91e1eee73a9dc84f9d212467dfa6650",
+      "bytes": 749
+    },
+    "preservation-drift/diagnostics.json": {
+      "sha256": "f09ac081407dd4c451b26c5db700fb2d03d9f7ca44087f59f5fb7e49b2a85123",
+      "bytes": 622
+    }
+  },
+  "finding": "Exactly the two observed diagnostic metadata shifts, each in command and diagnostics JSON. No other byte change, error code, exit status, success flag, artifact policy or test weakening."
+}
