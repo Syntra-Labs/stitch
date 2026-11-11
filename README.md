@@ -55,6 +55,17 @@ sh scripts/check-model-sdk.sh
 
 The second command requires the pinned SDK environment. It must run real LexLean/Lean and PrismPM gates; extraction or runtime tests alone do not establish that theorems compiled. No externally hosted verifier is required. Formal acceptance is reported only from an actual successful SDK run. See the [native build diagnosis and passing-project comparison](docs/native-build-diagnosis.md) for the reproduced compiler issue; no native gate was replaced or weakened.
 
+### Retain source evidence
+
+After the actual pinned verification succeeds, set `VERIFIED_DIR` to the exact current run's directory under `app/.lexlean/verified/`, then retain its original records:
+
+```sh
+node scripts/retain-source-evidence.mjs "$VERIFIED_DIR/attestation.json" "$VERIFIED_DIR/build-manifest.json"
+node scripts/check-source-evidence.mjs
+```
+
+The helper preserves both input files byte-for-byte and derives `product/source-verification.json` from their records and current inputs. It validates source and lexicon digests, workspace coverage, proof results and pinned tool identities before replacing retained files. The summary is replaced last, so an interrupted multi-file replacement fails the consistency check rather than claiming success. Use only the actual verifier's emitted records: this is retention, not a verifier or a way to authenticate arbitrary JSON. Native Prism acceptance and its artifacts remain separate; capturing the current `app/prism.toml` and `app/prismpm.toml` for later freshness checks does not certify them.
+
 ## Nonclaims
 
 SHA-256 and Ed25519 establish integrity and signature validity under their security assumptions, not retention or honest peer identity. DNS is discovery, not globally ordered state. The browser VM, STUN, WebRTC, DNS, signaling, relay availability and clocks remain modeled host boundaries.
