@@ -1,7 +1,7 @@
 name: Qualify integrated Stitch host
 on:
   push:
-    branches: ['diagnostic/stitch-candidate-browser']
+    branches: ['staging/stitch-upstream-reconciliation']
 permissions:
   contents: read
 concurrency:

@@ -13,6 +13,34 @@ SDK requirement. No product-release or whole-host certification is claimed here.
 - Original image build: [run 42906244489](https://github.com/afflom/stitch/actions/runs/42906244489).
   Every qualification below reused that image; none rebuilt the guest/toolchain.
 
+## Integrated product qualification
+
+The [combined hosted run](https://github.com/afflom/stitch/actions/runs/42927033321)
+at commit `0b0639d61f992bb851ee3e5b2e187d37328b5493` passed the ordinary production
+runtime and browser jobs after adoption. Its product files match work checkpoint
+`6f7e4d49990bb3a31abcb3328e526f769cc23b56`; only the existing diagnostic workflow
+selects these jobs without repeating the separately blocked native SDK gate.
+There is no temporary image replacement or host-source patch in this run.
+
+- 374 JavaScript tests, all five original strata, independent Python wire vectors
+  and the Rust test passed.
+- All 10 actual Chromium scenarios passed in 1.1 minutes, including the permanent
+  production-image peer Ethernet regression (28.8 seconds) and full VM operator
+  lifecycle (21.7 seconds).
+- The four final screenshots were inspected: ready, stopped, cancelled with
+  unknown prior effects, and destroyed with configuration unlocked.
+- Peer packet/command evidence records natural neighbor recovery on the second
+  bounded probe, reverse ICMP, denied pre-grant and post-revocation probes, and
+  unchanged receiver admission count after revocation.
+
+Browser artifact `13813788967` has ZIP SHA-256
+`7a6bb111def5352b31f9cd1861811f67763a7152b1fc6a9f93fddde8b86e1002`.
+The integrated model separately passed actual pinned LexLean/Lean/kernel replay:
+25 modules, 1,324 declaration audits and 85 successful processes, retained as
+attestation `f85d00e01268644324d3a86938d5270228a14dc7d1ca2a6eaaf0c8fd8011512c`.
+This does not turn source proof or host checks into native Prism acceptance;
+that remaining SDK gate is still required before declaring the branch ready.
+
 ## Observed production scenarios
 
 [Final Chromium operator run](https://github.com/afflom/stitch/actions/runs/42923694084/job/130204644360)
