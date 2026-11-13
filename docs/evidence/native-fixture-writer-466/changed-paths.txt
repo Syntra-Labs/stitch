@@ -1,0 +1,4 @@
+tests/negative/certificate-resource-exhausted/expected/command.json
+tests/negative/certificate-resource-exhausted/expected/diagnostics.json
+tests/negative/preservation-drift/expected/command.json
+tests/negative/preservation-drift/expected/diagnostics.json
