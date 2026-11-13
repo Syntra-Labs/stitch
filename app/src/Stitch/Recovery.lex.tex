@@ -1,0 +1,100 @@
+\begin{lexlean}{Stitch.Recovery}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Limits,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: wireBytes, type: Nat},
+    {name: entries, type: Nat},
+    {name: objectBytes, type: Nat},
+    {name: replaySteps, type: Nat}
+  ]
+}
+
+structure{
+  name: State,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: root, type: Bytes},
+    {name: generation, type: Nat},
+    {name: wireBytes, type: Nat},
+    {name: entries, type: Nat},
+    {name: replaySteps, type: Nat}
+  ]
+}
+
+definition{
+  name: admitted,
+  parameters: [bounds : Limits, current : State, candidate : State, verified : Bool],
+  result: Bool,
+  body: (verified && (((project current generation) =? (project candidate generation)) && (((project candidate wireBytes) <=? (project bounds wireBytes)) && (((project candidate entries) <=? (project bounds entries)) && ((project candidate replaySteps) <=? (project bounds replaySteps))))))
+}
+
+definition{
+  name: commit,
+  parameters: [bounds : Limits, current : State, candidate : State, verified : Bool],
+  result: State,
+  body: (if (admitted bounds current candidate verified) then (record State {root := (project candidate root), generation := ((project current generation) + 1), wireBytes := (project candidate wireBytes), entries := (project candidate entries), replaySteps := (project candidate replaySteps)}) else current)
+}
+
+definition{
+  name: anchorAllowed,
+  parameters: [
+    suppliedDigest : Bytes,
+    expectedDigest : Bytes,
+    validFrom : Nat,
+    validUntil : Nat,
+    now : Nat,
+    retainedRevision : Nat,
+    candidateRevision : Nat,
+    sameRetained : Bool
+  ],
+  result: Bool,
+  body: ((prim equal suppliedDigest expectedDigest : Bool) && ((validFrom <=? now) && ((now <? validUntil) && ((retainedRevision <=? candidateRevision) && sameRetained))))
+}
+
+definition{
+  name: progressAllowed,
+  parameters: [retained : Nat, candidate : Nat, sameIdentity : Bool, linked : Bool],
+  result: Bool,
+  body: (sameIdentity && (linked && (retained <? candidate)))
+}
+
+theorem{
+  name: rollbackProgressRefused,
+  parameters: [retained : Nat, candidate : Nat, sameIdentity : Bool, linked : Bool],
+  statement: ((candidate <= retained) -> ((progressAllowed retained candidate sameIdentity linked) = false)),
+  proof: linear_arithmetic{definitions: [progressAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unverifiedImportPreservesState,
+  parameters: [bounds : Limits, current : State, candidate : State],
+  statement: ((commit bounds current candidate false) = current),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: acceptedCandidateWithinBounds,
+  parameters: [bounds : Limits, current : State, candidate : State, verified : Bool],
+  statement: (((admitted bounds current candidate verified) = true) -> (((project candidate wireBytes) <= (project bounds wireBytes)) /\ (((project candidate entries) <= (project bounds entries)) /\ ((project candidate replaySteps) <= (project bounds replaySteps))))),
+  proof: linear_arithmetic{definitions: [admitted]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: staleGenerationRefused,
+  parameters: [bounds : Limits, current : State, candidate : State, verified : Bool],
+  statement: (((project candidate generation) < (project current generation)) -> ((admitted bounds current candidate verified) = false)),
+  proof: linear_arithmetic{definitions: [admitted]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

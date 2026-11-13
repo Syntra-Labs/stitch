@@ -1,0 +1,10 @@
+[application]
+name = "stitch-model"
+version = "0.3.0"
+description = "Source-modeled recovery, custody, resource admission and deterministic continuation contracts for Stitch."
+
+[model]
+source = "src"
+watch = ["src/**/*.lex.tex", "language/**/*.toml", "lexlean.toml"]
+
+[capabilities]

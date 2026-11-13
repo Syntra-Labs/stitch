@@ -1,0 +1,49 @@
+name: Qualify integrated Stitch host
+on:
+  push:
+    branches: ['diagnostic/stitch-candidate-browser']
+permissions:
+  contents: read
+concurrency:
+  group: stitch-integration-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  runtime:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: npm test
+      - run: python3 scripts/verify-custody.py
+      - run: cargo test --locked
+  browser:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020
+        with:
+          node-version: '24'
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - name: Install pinned Chromium and its system dependencies
+        run: npx playwright install --with-deps chromium --only-shell
+      - name: Qualify actual Chromium host adapters and bundled guest
+        run: npm run test:browser
+      - name: Retain browser diagnostics
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02
+        with:
+          name: stitch-browser-${{ github.sha }}
+          path: |
+            verification-output/browser/
+          if-no-files-found: warn

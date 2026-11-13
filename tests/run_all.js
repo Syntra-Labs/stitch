@@ -4,6 +4,7 @@
  */
 
 import assert from 'node:assert/strict';
+import { createCheckpoint, demoProgram } from '../src/layer4-compute/replay.js';
 
 import {
   Datum,
@@ -184,7 +185,7 @@ import {
   // Claim C2 & Objective O2: Cloudflare SRV/TXT writer + staleness measurement against TTL
   const cfCalls = [];
   let dohPolls = 0;
-  const mockDoh = new DohResolver({
+  const mockDoh = new DohResolver({ format: "json",
     fetchImpl: async (url, opts) => {
       if (url.includes('api.cloudflare.com')) {
         cfCalls.push({ url, method: opts.method, body: JSON.parse(opts.body) });
@@ -200,7 +201,7 @@ import {
         ok: true,
         json: async () => ({
           Status: 0,
-          Answer: [{ TTL: 30, data: `10 20 443 ${targetHost}` }]
+          Answer: [{ name: 'e1._stitch._udp.example.net.', type: 33, TTL: 30, data: `10 20 443 ${targetHost}` }]
         })
       };
     }
@@ -238,13 +239,14 @@ import {
       network_pair_class: 'home<->mobile',
       success: i < 24, // 24/30 = 80% >= 60%
       used_turn: false,
-      ice_setup_sec: 1.8
+      ice_setup_sec: 1.8, heartbeats_passed: i < 24 ? 10 : 2, qualification_elapsed_sec: 9,
+      ordered_channel: true, selected_path_observed: true
     });
   }
   const c1Summary = logger.summarizeC1('home<->mobile');
   assert.equal(c1Summary.trials, 30);
   assert.equal(c1Summary.direct_success_rate, 0.8);
-  assert.equal(c1Summary.c1_status, 'VERIFIED');
+  assert.equal(c1Summary.c1_status, 'THRESHOLDS_MET');
   assert.equal(logger.toJsonl().trim().split('\n').length, 30);
 }
 
@@ -309,48 +311,32 @@ import {
   netA.handlers.push((from, msg) => dbA.handleMeshMessage(from, msg));
   netB.handlers.push((from, msg) => dbB.handleMeshMessage(from, msg));
 
-  const written = await dbA.put('state-across-zero-peer-gap', { label: 'kernel_state.txt', persistWarm: true });
-  assert.equal(dbB.get(written.addressHex).ok, true);
-  assert.equal(dbB.get(written.addressHex).text, 'state-across-zero-peer-gap');
-  assert.equal(mountedInVmB.length, 1);
+  const written = await dbA.put('state-across-zero-peer-gap', { label: 'kernel_state.txt', persistWarm: true, publicData: true });
+  await new Promise(r => setTimeout(r, 20));
+  assert.equal(dbB.get(written.addressHex).ok, false); // Only one assigned fragment, never fake full replication.
+  assert.equal(mountedInVmB.length, 0);
 
   // Destroy BOTH Peer A and Peer B (0 live peers online), then spawn Peer C and recover from warm buffer
   dbA.objects.clear();
   dbB.objects.clear();
   const netC = createWiredNode('node-C');
   const dbC = new LiveUorMeshDatabase({ transport: netC });
-  const recoveredCount = await dbC.syncFromNetwork();
+  const recoveredCount = await dbC.syncFromNetwork('30m', { publicData: true });
   assert.equal(recoveredCount, 1);
   assert.equal(dbC.get(written.addressHex).text, 'state-across-zero-peer-gap');
 
   // 2. Peer A starts a 9-step compute job, crashes at step 3 (after checkpointing to warm bus),
   //    and Peer C takes over from step 3, finishes steps 3..9, and verifies the 9-step UOR Trace!
-  const coordC = new LiveDistributedComputeCoordinator({ transport: netC, liveDb: dbC });
-  // Simulate Peer A publishing checkpoint at step 3 before dying
-  const seed = Datum.w64(104729n);
-  const partial = executeProgramSlice({
-    initialDatum: seed,
-    program: [
-      { op: PrimitiveOp.ADD, arg: Datum.w64(257n) },
-      { op: PrimitiveOp.XOR, arg: Datum.w64(0x9e3779b97f4a7c15n) },
-      { op: PrimitiveOp.SUCC }
-    ]
-  });
-  await netA.publishWarmEnvelope({
-    type: 'compute_ckpt',
-    jobId: 'job-crash-test',
-    totalSteps: 9,
-    stepIndex: 3,
-    currentValueHex: '0x' + partial.datum.value.toString(16),
-    events: partial.events.map(e => ({ stepIndex: e.stepIndex, op: e.op, targetHex: e.target.toHex() })),
-    ownerPeerId: 'node-A-dead',
-    status: 'running'
-  });
+  const coordC = new LiveDistributedComputeCoordinator({ transport: netC, liveDb: dbC, allowPublicRelay: true });
+  // A canonical checkpoint identifies the complete program and input; replay checks its state.
+  const program = demoProgram(9);
+  await netA.publishWarmEnvelope({ type: 'compute_ckpt', jobId: 'job-crash-test', program,
+    checkpoint: await createCheckpoint(program, 3), ownerPeerId: 'node-A-dead' });
 
   const resumedIds = await coordC.syncAndTakeOverJobs();
   assert.deepEqual(resumedIds, ['job-crash-test']);
   // Wait for zero-delay takeover completion
-  await new Promise(r => setTimeout(r, 3000));
+  await coordC.running.get('job-crash-test');
   const completedJob = coordC.jobs.get('job-crash-test');
   assert.equal(completedJob.status, 'completed');
   assert.equal(completedJob.stepIndex, 9);

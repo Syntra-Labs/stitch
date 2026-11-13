@@ -1,0 +1,2173 @@
+{
+  "format": "Stitch project-owned product contract register",
+  "version": 1,
+  "assurance": "Source contracts and local byte inventory, not a Prism receipt or whole-browser proof",
+  "reference": {
+    "repository": "https://github.com/UOR-Foundation/PrismPM",
+    "revision": "fe5b8b73a94134c316329a8d1b09ebc97b555c5f",
+    "specSections": [
+      "2",
+      "11"
+    ],
+    "foundationArchUpstreamBytes": 8959,
+    "foundationArchUpstreamSha256": "9a79e4912d33b1736d7451ab726ed0a83d958b8d9c70091a749fbc70acd48cdc",
+    "foundationArch": "Type-only subset; source types preserved, title localized to available glossary, examples omitted",
+    "sdk": "Existing prismpm.lock; no dependency or profile upgrade"
+  },
+  "releaseBlockers": [],
+  "components": [
+    {
+      "declaration": "componentAdmission",
+      "type": "Component",
+      "id": "admission",
+      "role": "Four-dimensional reservation ledger",
+      "implementation": [
+        "src/layer2-schedulers/policy.js"
+      ],
+      "models": [
+        "Stitch.Budget"
+      ],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentBrowser",
+      "type": "Component",
+      "id": "browser",
+      "role": "Interactive five-layer Stitch product",
+      "implementation": [
+        "index.html",
+        "src/product-experience.js",
+        "src/recovery-ui.js",
+        "src/authority-ui.js"
+      ],
+      "models": [
+        "Product.Experience",
+        "Stitch.Recovery",
+        "Product.Host",
+        "Product.Model"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentCompute",
+      "type": "Component",
+      "id": "compute",
+      "role": "Deterministic program and checkpoint replay",
+      "implementation": [
+        "src/layer4-compute/index.js",
+        "src/layer4-compute/replay.js"
+      ],
+      "models": [
+        "Stitch.Compute"
+      ],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentCryptography",
+      "type": "Component",
+      "id": "cryptography",
+      "role": "Browser WebCrypto SHA-256 and Ed25519",
+      "implementation": [],
+      "models": [
+        "Stitch.Identity",
+        "Stitch.Pointer"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentDiscovery",
+      "type": "Component",
+      "id": "discovery",
+      "role": "DNS-over-HTTPS resolver and scoped DNS writer",
+      "implementation": [
+        "src/layer5-transport/index.js",
+        "src/layer5-transport/dns-wire.js"
+      ],
+      "models": [
+        "Stitch.Pointer",
+        "Stitch.Observation"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentIdentity",
+      "type": "Component",
+      "id": "identity",
+      "role": "Canonical bytes, full commitments, raw encoding and fragments",
+      "implementation": [
+        "src/layer1-uor/contracts.js",
+        "src/layer1-uor/custody.js",
+        "src/layer1-uor/generated-model.js"
+      ],
+      "models": [
+        "Stitch.Identity",
+        "Stitch.Encoding",
+        "Stitch.Fragments"
+      ],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentLegacy",
+      "type": "Component",
+      "id": "legacy",
+      "role": "Historical UOR and simulation conformance",
+      "implementation": [
+        "src/layer1-uor/index.js",
+        "src/layer3-storage/index.js",
+        "src/lib.rs"
+      ],
+      "models": [],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentNativeRouting",
+      "type": "Component",
+      "id": "nativeRouting",
+      "role": "External Linux routing daemon; absent from browser",
+      "implementation": [],
+      "models": [],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentPeers",
+      "type": "Component",
+      "id": "peers",
+      "role": "Untrusted remote holders and compute peers",
+      "implementation": [],
+      "models": [
+        "Stitch.Custody",
+        "Stitch.Observation"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentPointerAuthority",
+      "type": "Component",
+      "id": "pointerAuthority",
+      "role": "Independently pinned single-writer key",
+      "implementation": [
+        "src/layer1-uor/pointer.js",
+        "src/layer1-uor/browser-authority.js"
+      ],
+      "models": [
+        "Stitch.Authority",
+        "Stitch.Pointer",
+        "Stitch.Effects",
+        "Product.Host",
+        "Product.Experience"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentPublicRelay",
+      "type": "Component",
+      "id": "publicRelay",
+      "role": "Optional public ntfy warm cache",
+      "implementation": [
+        "src/layer5-transport/relay-framing.js"
+      ],
+      "models": [
+        "Stitch.Relay",
+        "Stitch.Evidence"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentRuntimeHost",
+      "type": "Component",
+      "id": "runtimeHost",
+      "role": "Browser, OS, clocks, RAM, networking and permissions",
+      "implementation": [],
+      "models": [
+        "Product.Host"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentScheduler",
+      "type": "Component",
+      "id": "scheduler",
+      "role": "Experimental proposals under enforced admission",
+      "implementation": [
+        "src/layer2-schedulers/index.js"
+      ],
+      "models": [
+        "Stitch.Budget",
+        "Stitch.Observation"
+      ],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentSignaling",
+      "type": "Component",
+      "id": "signaling",
+      "role": "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin",
+      "implementation": [
+        "src/layer5-transport/signaling.js",
+        "src/layer5-transport/relay-framing.js"
+      ],
+      "models": [
+        "Stitch.Signaling",
+        "Stitch.Relay",
+        "Stitch.Effects",
+        "Product.Host"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentStaticHost",
+      "type": "Component",
+      "id": "staticHost",
+      "role": "Same-origin publication of application and VM assets",
+      "implementation": [],
+      "models": [],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentStorage",
+      "type": "Component",
+      "id": "storage",
+      "role": "Ephemeral local cache and conditional peer custody",
+      "implementation": [
+        "src/layer3-storage/custody.js",
+        "src/layer3-storage/index.js",
+        "src/recovery.js"
+      ],
+      "models": [
+        "Stitch.Custody",
+        "Stitch.System",
+        "Stitch.Recovery"
+      ],
+      "trustBoundary": false
+    },
+    {
+      "declaration": "componentTransport",
+      "type": "Component",
+      "id": "transport",
+      "role": "WebRTC channels, bounded messages and VM Ethernet bridge",
+      "implementation": [
+        "src/layer5-transport/index.js",
+        "src/layer5-transport/channel-flow.js"
+      ],
+      "models": [
+        "Stitch.Observation",
+        "Stitch.ChannelFlow",
+        "Product.Host"
+      ],
+      "trustBoundary": true
+    },
+    {
+      "declaration": "componentVm",
+      "type": "Component",
+      "id": "vm",
+      "role": "v86 x86 Linux guest and 9p filesystem bridge",
+      "implementation": [
+        "src/layer4-compute/index.js",
+        "src/layer4-compute/vm-administration.js",
+        "v86/libv86.js",
+        "v86/v86.wasm",
+        "v86/seabios.bin",
+        "v86/vgabios.bin",
+        "images/buildroot-bzimage.bin"
+      ],
+      "models": [
+        "Product.Host",
+        "Stitch.VmAdministration"
+      ],
+      "trustBoundary": true
+    }
+  ],
+  "assumptions": [
+    {
+      "declaration": "assumptionArtifactConformance",
+      "type": "Assumption",
+      "id": "artifactConformance",
+      "statement": "Released runtime and model match their exact reviewed source and dependency bytes.",
+      "evidence": "Exact local artifact hashes plus pinned-SDK source and build acceptance.",
+      "scope": "Full product; runtime source hashing alone does not prove behavior."
+    },
+    {
+      "declaration": "assumptionBrowserSemantics",
+      "type": "Assumption",
+      "id": "browserSemantics",
+      "statement": "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch; optional saved authority and DNS publication additionally require correct IndexedDB CryptoKey structured cloning, transaction commit and Web Locks context-lifetime exclusion.",
+      "evidence": "Browser vendor assurance and independent integration testing, not a Stitch kernel theorem.",
+      "scope": "Host API behavior."
+    },
+    {
+      "declaration": "assumptionCryptographicSecurity",
+      "type": "Assumption",
+      "id": "cryptographicSecurity",
+      "statement": "SHA-256 collision resistance and Ed25519 unforgeability hold for the selected implementations.",
+      "evidence": "Cryptographic assumptions and implementation review.",
+      "scope": "Commitments and pointer signatures only."
+    },
+    {
+      "declaration": "assumptionDisclosureConsent",
+      "type": "Assumption",
+      "id": "disclosureConsent",
+      "statement": "External publication is authorized for the exact destination and content. Public relay and signaling are not private.",
+      "evidence": "Explicit user choice and configured destination.",
+      "scope": "Signaling, DNS writes and optional public payload relay."
+    },
+    {
+      "declaration": "assumptionFailureDomains",
+      "type": "Assumption",
+      "id": "failureDomains",
+      "statement": "Different holder identifiers are independently failing machines only if separate evidence establishes that fact.",
+      "evidence": "Physical deployment and correlated-failure measurement.",
+      "scope": "Availability and durability claims."
+    },
+    {
+      "declaration": "assumptionNetworkAvailability",
+      "type": "Assumption",
+      "id": "networkAvailability",
+      "statement": "DoH, DNS provider, STUN, signaling and optional relay are reachable and honor their APIs and policies.",
+      "evidence": "Live provider checks and physical multi-network trials.",
+      "scope": "No finite field observation establishes indefinite service."
+    },
+    {
+      "declaration": "assumptionObserverAnchor",
+      "type": "Assumption",
+      "id": "observerAnchor",
+      "statement": "The pointer writer key and recent retained head are obtained independently and protected from rollback.",
+      "evidence": "Independently pinned key and retained observer head, or separately accepted exact recent digest explicitly restored into that same live scope. Both heads and anchor trust remain session-only.",
+      "scope": "Single-writer authority and freshness."
+    },
+    {
+      "declaration": "assumptionPeerAssertion",
+      "type": "Assumption",
+      "id": "peerAssertion",
+      "statement": "A local checked acknowledgment is an assertion by the named holder, not authenticated durable custody.",
+      "evidence": "Receipt authentication, retained bytes and reachability require external evidence.",
+      "scope": "Conditional placement and lease observations."
+    },
+    {
+      "declaration": "assumptionSerializedJournal",
+      "type": "Assumption",
+      "id": "serializedJournal",
+      "statement": "Host transitions are serialized and their budgets, action IDs, trusted head and journal are retained for the required lifetime.",
+      "evidence": "Application adapter review and crash/concurrency tests.",
+      "scope": "Pure state transitions do not provide durable atomic storage."
+    },
+    {
+      "declaration": "assumptionTimeSources",
+      "type": "Assumption",
+      "id": "timeSources",
+      "statement": "Monotonic elapsed time does not regress; pointer wall-clock error is within a separately accepted bound.",
+      "evidence": "Clock integration tests and independent clock policy.",
+      "scope": "Freshness, budgets and leases; no global time oracle."
+    },
+    {
+      "declaration": "assumptionVmIsolation",
+      "type": "Assumption",
+      "id": "vmIsolation",
+      "statement": "v86, BIOS, guest image and 9p/Ethernet bridge obey their reviewed isolation and resource contracts.",
+      "evidence": "Exact binary inventory, upstream provenance, security review and VM integration tests.",
+      "scope": "Arbitrary guest effects are not ring-program semantics."
+    }
+  ],
+  "capabilities": [
+    {
+      "declaration": "capabilityDom",
+      "type": "CapabilityContract",
+      "id": "dom",
+      "owner": "browser",
+      "capability": "Dom",
+      "operation": "Render and collect explicit UI actions",
+      "source": "index.html",
+      "inputs": [
+        "local UI state"
+      ],
+      "outputs": [
+        "rendered DOM",
+        "user action"
+      ],
+      "preconditions": [
+        "browser API available"
+      ],
+      "failures": [
+        "unsupported browser",
+        "handler failure"
+      ],
+      "assumptions": [
+        "browserSemantics"
+      ],
+      "proofScope": "Presentation only; no storage or network evidence.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilityCrypto",
+      "type": "CapabilityContract",
+      "id": "crypto",
+      "owner": "cryptography",
+      "capability": "Cryptography",
+      "operation": "Hash commitments and verify pointer signatures",
+      "source": "src/layer1-uor/custody.js",
+      "inputs": [
+        "canonical bytes",
+        "domain",
+        "pinned writer key"
+      ],
+      "outputs": [
+        "full digest",
+        "signature-valid observation"
+      ],
+      "preconditions": [
+        "exact canonicalization",
+        "supported algorithm"
+      ],
+      "failures": [
+        "digest mismatch",
+        "invalid signature",
+        "crypto unavailable"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "cryptographicSecurity",
+        "observerAnchor"
+      ],
+      "proofScope": "Integrity/signature observations; no authority bootstrap or retention.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilityMonotonicClock",
+      "type": "CapabilityContract",
+      "id": "monotonicClock",
+      "owner": "runtimeHost",
+      "capability": "MonotonicClock",
+      "operation": "Observe elapsed time for admission",
+      "source": "src/layer2-schedulers/policy.js",
+      "inputs": [
+        "epoch and retained last time"
+      ],
+      "outputs": [
+        "nondecreasing elapsed observation"
+      ],
+      "preconditions": [
+        "same clock origin and epoch"
+      ],
+      "failures": [
+        "clock regression",
+        "epoch expired"
+      ],
+      "assumptions": [
+        "timeSources",
+        "serializedJournal"
+      ],
+      "proofScope": "Elapsed admission only; not UTC, liveness or global order.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilityWallClock",
+      "type": "CapabilityContract",
+      "id": "wallClock",
+      "owner": "runtimeHost",
+      "capability": "WallClock",
+      "operation": "Check pointer and lease validity intervals",
+      "source": "src/layer1-uor/pointer.js",
+      "inputs": [
+        "not-before and expiry"
+      ],
+      "outputs": [
+        "observer-local wall time"
+      ],
+      "preconditions": [
+        "declared clock uncertainty accepted"
+      ],
+      "failures": [
+        "outside validity interval",
+        "clock unavailable"
+      ],
+      "assumptions": [
+        "timeSources"
+      ],
+      "proofScope": "No proof of clock accuracy or network propagation.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilitySessionStorage",
+      "type": "CapabilityContract",
+      "id": "sessionStorage",
+      "owner": "storage",
+      "capability": "SessionStorage",
+      "operation": "Retain checked bytes and local state in RAM",
+      "source": "src/layer3-storage/index.js",
+      "inputs": [
+        "verified manifest and fragment bytes"
+      ],
+      "outputs": [
+        "session-local cached bytes"
+      ],
+      "preconditions": [
+        "storage reservation",
+        "bounded input",
+        "integrity checks"
+      ],
+      "failures": [
+        "capacity exhausted",
+        "tab lost",
+        "browser eviction"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "serializedJournal"
+      ],
+      "proofScope": "RAM is ephemeral; no disk persistence or total-loss recovery.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilityPeerChannel",
+      "type": "CapabilityContract",
+      "id": "peerChannel",
+      "owner": "transport",
+      "capability": "PeerChannel",
+      "operation": "Open channel and exchange bounded messages",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "peer observation",
+        "SDP and ICE",
+        "bounded payload"
+      ],
+      "outputs": [
+        "DataChannel event",
+        "untrusted peer response"
+      ],
+      "preconditions": [
+        "network reservation",
+        "payload limits",
+        "domain validation before acceptance"
+      ],
+      "failures": [
+        "ICE failure",
+        "timeout",
+        "disconnect",
+        "malformed payload"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "networkAvailability",
+        "peerAssertion"
+      ],
+      "proofScope": "Opened channel is not authenticated holder identity or durable placement.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityLocalBroadcast",
+      "type": "CapabilityContract",
+      "id": "localBroadcast",
+      "owner": "signaling",
+      "capability": "LocalBroadcast",
+      "operation": "Exchange same-origin tab signals",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "channel topic",
+        "signal envelope"
+      ],
+      "outputs": [
+        "same-origin tab message"
+      ],
+      "preconditions": [
+        "explicit mesh join"
+      ],
+      "failures": [
+        "API unavailable",
+        "tab closes"
+      ],
+      "assumptions": [
+        "browserSemantics"
+      ],
+      "proofScope": "Same-origin only; not remote peer discovery.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityPublicSignaling",
+      "type": "CapabilityContract",
+      "id": "publicSignaling",
+      "owner": "signaling",
+      "capability": "PublicSignaling",
+      "operation": "Publish and receive SDP/ICE through ntfy",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "channel topic",
+        "SDP and ICE candidates"
+      ],
+      "outputs": [
+        "public signaling response"
+      ],
+      "preconditions": [
+        "explicit mesh join",
+        "disclosure accepted",
+        "network reservation"
+      ],
+      "failures": [
+        "provider unavailable",
+        "untrusted signal",
+        "topic collision"
+      ],
+      "assumptions": [
+        "disclosureConsent",
+        "networkAvailability"
+      ],
+      "proofScope": "Ed25519 key-owned session signaling with replay rejection; public metadata disclosure. Keys are not trusted human identity or holder authorization; topics are not privacy.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityDnsRead",
+      "type": "CapabilityContract",
+      "id": "dnsRead",
+      "owner": "discovery",
+      "capability": "DnsRead",
+      "operation": "Read full pointers and SRV records through DoH",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "query name",
+        "record type"
+      ],
+      "outputs": [
+        "bounded untrusted DNS answer"
+      ],
+      "preconditions": [
+        "response-byte ceiling",
+        "network reservation",
+        "pointer authority and successor admission"
+      ],
+      "failures": [
+        "HTTP error",
+        "invalid answer",
+        "stale or conflicting pointer"
+      ],
+      "assumptions": [
+        "networkAvailability",
+        "observerAnchor",
+        "timeSources"
+      ],
+      "proofScope": "DoH observation cannot inspect all recursive caches or establish consensus.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityDnsWrite",
+      "type": "CapabilityContract",
+      "id": "dnsWrite",
+      "owner": "discovery",
+      "capability": "DnsWrite",
+      "operation": "Write full signed pointer as multipart Cloudflare TXT",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "zone and record reference",
+        "signed full pointer",
+        "scoped token reference"
+      ],
+      "outputs": [
+        "provider response and record identifier"
+      ],
+      "preconditions": [
+        "explicit publish action",
+        "exact destination authorized",
+        "authority key pinned",
+        "network reservation"
+      ],
+      "failures": [
+        "provider rejected",
+        "unknown outcome",
+        "token missing",
+        "DuckDNS full-pointer serialization refused"
+      ],
+      "assumptions": [
+        "disclosureConsent",
+        "networkAvailability",
+        "observerAnchor"
+      ],
+      "proofScope": "Provider acknowledgment is not global DNS propagation; secrets are not source data.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityPublicRelay",
+      "type": "CapabilityContract",
+      "id": "publicRelay",
+      "owner": "publicRelay",
+      "capability": "PublicRelay",
+      "operation": "Publish or retrieve explicitly public warm-cache payloads",
+      "source": "src/layer5-transport/index.js",
+      "inputs": [
+        "bounded object fragments or checkpoint",
+        "topic"
+      ],
+      "outputs": [
+        "public relay response"
+      ],
+      "preconditions": [
+        "relay separately enabled",
+        "public disclosure accepted",
+        "network reservation",
+        "received domain admission"
+      ],
+      "failures": [
+        "disabled",
+        "provider unavailable",
+        "expired payload",
+        "tampered payload"
+      ],
+      "assumptions": [
+        "disclosureConsent",
+        "networkAvailability"
+      ],
+      "proofScope": "Sufficient fragments disclose the object; no encryption, confidentiality or indefinite retention.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityVm",
+      "type": "CapabilityContract",
+      "id": "vm",
+      "owner": "vm",
+      "capability": "VirtualMachine",
+      "operation": "Boot guest, mirror object files, run shell and bridge Ethernet",
+      "source": "src/layer4-compute/index.js",
+      "inputs": [
+        "five local v86/BIOS/kernel assets",
+        "guest command or object bytes"
+      ],
+      "outputs": [
+        "guest output bytes",
+        "Ethernet frames"
+      ],
+      "preconditions": [
+        "explicit VM action",
+        "all assets available",
+        "runtime deadline configured before boot",
+        "guarded local 9p allocation installed before run"
+      ],
+      "failures": [
+        "missing asset",
+        "boot failure",
+        "guest timeout or runtime expiry",
+        "filesystem or bounded-result limit",
+        "stop outcome unknown",
+        "bridge failure"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "vmIsolation"
+      ],
+      "proofScope": "Source predicates govern local 9p allocation and bounded result reads. Runtime expiry and dispatched-command cancellation request whole-VM stop; prior effects remain unknown. Browser scheduling and host VM behavior are assumptions, not guest isolation or ring-work metering.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityArtifactFetch",
+      "type": "CapabilityContract",
+      "id": "artifactFetch",
+      "owner": "staticHost",
+      "capability": "ArtifactFetch",
+      "operation": "Serve and load exact local application assets",
+      "source": "index.html",
+      "inputs": [
+        "relative same-origin path"
+      ],
+      "outputs": [
+        "asset bytes"
+      ],
+      "preconditions": [
+        "published asset inventory",
+        "trusted static origin"
+      ],
+      "failures": [
+        "missing file",
+        "substituted bytes",
+        "HTTP failure"
+      ],
+      "assumptions": [
+        "artifactConformance",
+        "browserSemantics"
+      ],
+      "proofScope": "Inventory hashes identify checked local files; current UI does not verify every fetched asset at load time.",
+      "enabledByDefault": true
+    },
+    {
+      "declaration": "capabilityNativeRouting",
+      "type": "CapabilityContract",
+      "id": "nativeRouting",
+      "owner": "nativeRouting",
+      "capability": "NativeRouting",
+      "operation": "External BIRD/FRR or DN42 routing daemon",
+      "source": "CONTRACT.json",
+      "inputs": [],
+      "outputs": [],
+      "preconditions": [
+        "separate Linux daemon and network authority"
+      ],
+      "failures": [
+        "unsupported in browser"
+      ],
+      "assumptions": [
+        "networkAvailability"
+      ],
+      "proofScope": "Unsupported boundary; browser has no BGP or WireGuard implementation.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityOriginStorage",
+      "type": "CapabilityContract",
+      "id": "originStorage",
+      "owner": "pointerAuthority",
+      "capability": "OriginStorage",
+      "operation": "Explicitly retain nonextractable signing authority and exact DNS write-ahead intent",
+      "source": "src/layer1-uor/browser-authority.js",
+      "inputs": [
+        "explicit authority setup",
+        "signed scoped publication candidate"
+      ],
+      "outputs": [
+        "restored CryptoKey",
+        "committed origin-local journal"
+      ],
+      "preconditions": [
+        "IndexedDB and CryptoKey structured cloning available",
+        "successful transaction commit before provider mutation"
+      ],
+      "failures": [
+        "quota or transaction abort",
+        "private browsing loss or eviction",
+        "invalid retained authority"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "serializedJournal"
+      ],
+      "proofScope": "Origin-local retention only; no backup, cross-device durability, automatic key rotation or provider exactly-once guarantee.",
+      "enabledByDefault": false
+    },
+    {
+      "declaration": "capabilityWebLock",
+      "type": "CapabilityContract",
+      "id": "webLock",
+      "owner": "pointerAuthority",
+      "capability": "WebLock",
+      "operation": "Exclude same-origin concurrent DNS writers while reading, committing and settling",
+      "source": "src/layer1-uor/browser-authority.js",
+      "inputs": [
+        "exact database zone name and authority scope"
+      ],
+      "outputs": [
+        "exclusive context-lifetime operation"
+      ],
+      "preconditions": [
+        "Web Locks available",
+        "same-origin lock scope"
+      ],
+      "failures": [
+        "API unavailable",
+        "owner context termination leaves journal unknown"
+      ],
+      "assumptions": [
+        "browserSemantics",
+        "serializedJournal"
+      ],
+      "proofScope": "No timeout takeover, cross-device exclusion, provider CAS or ordering outside this application origin.",
+      "enabledByDefault": false
+    }
+  ],
+  "dependencies": [
+    {
+      "declaration": "dependencyBrowserApis",
+      "type": "Dependency",
+      "id": "browserApis",
+      "consumer": "runtimeHost",
+      "kind": "host",
+      "locator": "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC; optional authority publication requires IndexedDB/Web Locks",
+      "versionPolicy": "Host-selected implementation; not byte-pinned",
+      "trust": "External API and OS trust boundary",
+      "required": true
+    },
+    {
+      "declaration": "dependencyCloudflareDns",
+      "type": "Dependency",
+      "id": "cloudflareDns",
+      "consumer": "discovery",
+      "kind": "external-service",
+      "locator": "https://cloudflare-dns.com/dns-query",
+      "versionPolicy": "RFC8484 DNS-message client; optional provider JSON mode; no immutable service version",
+      "trust": "Read results untrusted until domain admission",
+      "required": false
+    },
+    {
+      "declaration": "dependencyCloudflareWriter",
+      "type": "Dependency",
+      "id": "cloudflareWriter",
+      "consumer": "discovery",
+      "kind": "external-service",
+      "locator": "https://api.cloudflare.com/client/v4",
+      "versionPolicy": "Cloudflare API v4; scoped secret reference only",
+      "trust": "Writes need explicit destination and content approval",
+      "required": false
+    },
+    {
+      "declaration": "dependencyGoogleStun",
+      "type": "Dependency",
+      "id": "googleStun",
+      "consumer": "transport",
+      "kind": "external-service",
+      "locator": "stun:stun.l.google.com:19302",
+      "versionPolicy": "Host ICE provider; no immutable service version",
+      "trust": "Endpoint discovery only",
+      "required": false
+    },
+    {
+      "declaration": "dependencyCloudflareStun",
+      "type": "Dependency",
+      "id": "cloudflareStun",
+      "consumer": "transport",
+      "kind": "external-service",
+      "locator": "stun:stun.cloudflare.com:3478",
+      "versionPolicy": "Host ICE provider; no immutable service version",
+      "trust": "Endpoint discovery only",
+      "required": false
+    },
+    {
+      "declaration": "dependencyNtfySignaling",
+      "type": "Dependency",
+      "id": "ntfySignaling",
+      "consumer": "signaling",
+      "kind": "external-service",
+      "locator": "https://ntfy.sh",
+      "versionPolicy": "Public HTTP/WebSocket API; no immutable service version",
+      "trust": "Signaling disclosure and service availability",
+      "required": false
+    },
+    {
+      "declaration": "dependencyNtfyRelay",
+      "type": "Dependency",
+      "id": "ntfyRelay",
+      "consumer": "publicRelay",
+      "kind": "external-service",
+      "locator": "https://ntfy.sh",
+      "versionPolicy": "Optional public cache; no persistence promise",
+      "trust": "Payload disclosure requires opt-in",
+      "required": false
+    },
+    {
+      "declaration": "dependencyStaticOrigin",
+      "type": "Dependency",
+      "id": "staticOrigin",
+      "consumer": "staticHost",
+      "kind": "hosting",
+      "locator": "same-origin relative application paths",
+      "versionPolicy": "Publication-selected HTTPS origin",
+      "trust": "No release/deployment authority inferred",
+      "required": true
+    },
+    {
+      "declaration": "dependencyVmAssets",
+      "type": "Dependency",
+      "id": "vmAssets",
+      "consumer": "vm",
+      "kind": "vendored-binary",
+      "locator": "v86/ and images/buildroot-bzimage.bin",
+      "versionPolicy": "Exact bytes in generated product artifact register",
+      "trust": "Exact upstream origins and accompanying source/license materials recorded in vendor/distribution.json; guest source pinned in vendor/guest/SOURCE-NOTICE.md",
+      "required": false
+    },
+    {
+      "declaration": "dependencyPrismSdk",
+      "type": "Dependency",
+      "id": "prismSdk",
+      "consumer": "identity",
+      "kind": "build-tool",
+      "locator": "prismpm.lock and standards.lock",
+      "versionPolicy": "Exact SDK OCI digest and standards lock",
+      "trust": "Only real SDK verify may report source/kernel/artifact acceptance",
+      "required": true
+    },
+    {
+      "declaration": "dependencyPrismCode",
+      "type": "Dependency",
+      "id": "prismCode",
+      "consumer": "identity",
+      "kind": "build-tool",
+      "locator": "package-lock.json",
+      "versionPolicy": "prism-code 0.7.2 exact npm lock",
+      "trust": "Adapter and package verification, not browser host semantics",
+      "required": true
+    }
+  ],
+  "deployments": [
+    {
+      "declaration": "deploymentBrowserSession",
+      "type": "Deployment",
+      "id": "browserSession",
+      "kind": "static-browser",
+      "entry": "index.html",
+      "files": [
+        "index.html",
+        "src/**/*.js",
+        "v86/libv86.js",
+        "v86/v86.wasm",
+        "v86/seabios.bin",
+        "v86/vgabios.bin",
+        "images/buildroot-bzimage.bin"
+      ],
+      "requiredCapabilities": [
+        "dom",
+        "crypto",
+        "monotonicClock",
+        "wallClock",
+        "sessionStorage",
+        "artifactFetch"
+      ],
+      "secrets": [
+        "Cloudflare scoped DNS token only when explicitly supplied; session-local, never in repository"
+      ],
+      "readiness": "Asset load and interactive flow checks required; pure probe acceptance is insufficient.",
+      "rollback": "Retain prior complete asset set; session state may be lost on reload.",
+      "releaseGate": "Runtime tests, artifact closure, vendor license/provenance review, exact SDK model verification and browser integration checks."
+    },
+    {
+      "declaration": "deploymentPureProbe",
+      "type": "Deployment",
+      "id": "pureProbe",
+      "kind": "prism-text-application",
+      "entry": "app/src/StitchApp.lex.tex",
+      "files": [
+        "SDK-generated holo and browser closure"
+      ],
+      "requiredCapabilities": [],
+      "secrets": [],
+      "readiness": "Only actual pinned-SDK verify establishes probe acceptance.",
+      "rollback": "Retain previous immutable holo and exact source lock.",
+      "releaseGate": "lexlean check, Lean and leanchecker, exact axioms, PrismPM artifact and vector verification."
+    }
+  ],
+  "assets": [
+    {
+      "declaration": "assetFile17",
+      "type": "Asset",
+      "path": "images/buildroot-bzimage.bin",
+      "role": "vendored VM dependency",
+      "origin": "Linux 6.18.7 from Buildroot 7fdeadb3b9f12f78e5fccca914d7fef47090ab9a; image 313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07",
+      "licenseStatus": "Corresponding source, configs, patches and licenses published at immutable commit fd59fae669e9a40271fb584ca071270d8ed0b8f8; preserve vendor/guest/SOURCE-NOTICE.md and equivalent source access with image",
+      "redistributionCleared": true,
+      "bytes": 8053248,
+      "sha256": "313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07"
+    },
+    {
+      "declaration": "assetFile0",
+      "type": "Asset",
+      "path": "index.html",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 89258,
+      "sha256": "c7b8a6c92c15eda28d16ce002e3dba31b1cad77e08130cc743ecbe84c8d1b89d"
+    },
+    {
+      "declaration": "assetAuthorityUi",
+      "type": "Asset",
+      "path": "src/authority-ui.js",
+      "role": "Contextual explicit signing, trust-anchor and browser-storage administration",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 9734,
+      "sha256": "96e76a92918a52dff05780b76f59158916540fd38d1ced986fd6001d3ee1482b"
+    },
+    {
+      "declaration": "assetBrowserAuthority",
+      "type": "Asset",
+      "path": "src/layer1-uor/browser-authority.js",
+      "role": "Origin-local signing authority and transactional publication journal",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 22890,
+      "sha256": "3b9ba8d4a23fbe056358791d4e2d5ad377faf5a9a3cc2ac3d2dc1c3906087d09"
+    },
+    {
+      "declaration": "assetFile1",
+      "type": "Asset",
+      "path": "src/layer1-uor/contracts.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 1357,
+      "sha256": "94c67e0811f78029b251c55edbf365b2335040106b8125fa5298e59315d2c2d3"
+    },
+    {
+      "declaration": "assetFile2",
+      "type": "Asset",
+      "path": "src/layer1-uor/custody.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 16869,
+      "sha256": "597b34d6740b6b371e30af24ee18cd10f8c4142da38e616b9ec5e04d042ab74c"
+    },
+    {
+      "declaration": "assetLifecycleEffects",
+      "type": "Asset",
+      "path": "src/layer1-uor/effects.js",
+      "role": "Exact identity projections and model-derived transport, DNS and VM lifecycle admissions",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 9822,
+      "sha256": "b685f497bf80f1ad58a2176e83d32b106e3bb718cb542a75a2b9c1bf6a8b4fb0"
+    },
+    {
+      "declaration": "assetFile3",
+      "type": "Asset",
+      "path": "src/layer1-uor/generated-model.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 1229338,
+      "sha256": "aa3756d0392e9284b9ffd6b23aa0786a6faa6b961e4451a8826657c4ac672d10"
+    },
+    {
+      "declaration": "assetFile4",
+      "type": "Asset",
+      "path": "src/layer1-uor/index.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 16965,
+      "sha256": "55f246f29cdd0bfa934c079d3f3afffca9e1e26c0800777dc4e2351351bca1cf"
+    },
+    {
+      "declaration": "assetFile5",
+      "type": "Asset",
+      "path": "src/layer1-uor/pointer.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 19626,
+      "sha256": "99cce36bc7a981536e1c6df22956b5c34db9689ccc377b0e808b09502d5f09fc"
+    },
+    {
+      "declaration": "assetFile6",
+      "type": "Asset",
+      "path": "src/layer2-schedulers/index.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 18472,
+      "sha256": "3223da0497c3a46c310541278cc7ed9042b5105e37667dd9c9d2e384f2a91f48"
+    },
+    {
+      "declaration": "assetFile7",
+      "type": "Asset",
+      "path": "src/layer2-schedulers/policy.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 5894,
+      "sha256": "8f2074f8fe07a7b1fda51896d78f11a797564afb64accebc7291261e5c00639f"
+    },
+    {
+      "declaration": "assetFile8",
+      "type": "Asset",
+      "path": "src/layer3-storage/custody.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 18523,
+      "sha256": "70ec7500e9a1aea0a2f383344bebea4acbe410c3aff76ccadd8869feaac24aee"
+    },
+    {
+      "declaration": "assetFile9",
+      "type": "Asset",
+      "path": "src/layer3-storage/index.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 49158,
+      "sha256": "905067fe5ebac2f6a6cb2cdda29e37265409f3e7a5e4b786e9e18e21bc4af676"
+    },
+    {
+      "declaration": "assetFile10",
+      "type": "Asset",
+      "path": "src/layer4-compute/index.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 43196,
+      "sha256": "73bcc96f06f89f74ba555f8d24c550ae7e80d91caba2f3a1c2d4c48aadd1a2b4"
+    },
+    {
+      "declaration": "assetFile11",
+      "type": "Asset",
+      "path": "src/layer4-compute/replay.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 9523,
+      "sha256": "112653100e2ea57c6b732e64dbc2086fd5237eb2129fe255cb5627498494f1d3"
+    },
+    {
+      "declaration": "assetVmAdministration",
+      "type": "Asset",
+      "path": "src/layer4-compute/vm-administration.js",
+      "role": "Explicit guest grants, bounded command admission and generation-scoped effect observation",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 8780,
+      "sha256": "2a307a700e38dfb7f38af4a5cfc3207e3d2b274b6c89b943e6b17add424376bc"
+    },
+    {
+      "declaration": "assetChannelFlow",
+      "type": "Asset",
+      "path": "src/layer5-transport/channel-flow.js",
+      "role": "Negotiated DataChannel framing, bounded queues and generation-fenced delivery",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 10835,
+      "sha256": "728ba79197ce0fd73a289a713a7eead42f031deeb55727b720f96e88b5bedaf3"
+    },
+    {
+      "declaration": "assetDnsWire",
+      "type": "Asset",
+      "path": "src/layer5-transport/dns-wire.js",
+      "role": "RFC8484 application DNS-message client",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 11588,
+      "sha256": "186267ac0296ed22d84665627400999d0ee1643e618088309c799f0299e87185"
+    },
+    {
+      "declaration": "assetFile12",
+      "type": "Asset",
+      "path": "src/layer5-transport/index.js",
+      "role": "Stitch browser application",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 56455,
+      "sha256": "cc2cd97926df848aea0031a2a405fe0561881ccf06723ea0bca8a60ffb4485f8"
+    },
+    {
+      "declaration": "assetRelayFraming",
+      "type": "Asset",
+      "path": "src/layer5-transport/relay-framing.js",
+      "role": "Bounded ntfy message framing and reassembly",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 15145,
+      "sha256": "35672c5720f5f1e5d009f1875a1c63de3a6badea2546d66baf73c77fb7c90ae0"
+    },
+    {
+      "declaration": "assetSignaling",
+      "type": "Asset",
+      "path": "src/layer5-transport/signaling.js",
+      "role": "Signed key-owned signaling with current-session challenge and replay rejection",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 6863,
+      "sha256": "422137184e9a95a55c2c1ec7f9bd8c6a21986675a4041ce62f8451c61bb4b876"
+    },
+    {
+      "declaration": "assetRustConformance",
+      "type": "Asset",
+      "path": "src/lib.rs",
+      "role": "Historical Rust conformance source; not loaded by the browser",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 3236,
+      "sha256": "159aeb7ff0afaf9dac4baa41c6ea5959ab55036cfa0d79af728da20c3f77f621"
+    },
+    {
+      "declaration": "assetProductExperience",
+      "type": "Asset",
+      "path": "src/product-experience.js",
+      "role": "Model-derived operator journeys, evidence and guarded DOM actions",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 8322,
+      "sha256": "0ee000cfe9b8c3bd0ce6a0a792561e8afc7cb40314eacc4d64b02148a2f154ae"
+    },
+    {
+      "declaration": "assetRecoveryUi",
+      "type": "Asset",
+      "path": "src/recovery-ui.js",
+      "role": "Contextual operator recovery controls without network, VM or DNS effects",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 12293,
+      "sha256": "ba2672ac912b1d6e1ef4ff8780f460d1643ee751d3507729eb6cd90c97c0ba60"
+    },
+    {
+      "declaration": "assetRecovery",
+      "type": "Asset",
+      "path": "src/recovery.js",
+      "role": "Verified detached recovery bundle import/export; separate exact anchor acceptance and explicit scoped live-head restoration",
+      "origin": "Project-owned source checkout",
+      "licenseStatus": "Project declares MIT; audit applies",
+      "redistributionCleared": true,
+      "bytes": 11049,
+      "sha256": "89c7b3abcd713ee1c2131d6a841a94526f59c0a6118ac09834a2e6cf43c3a2c0"
+    },
+    {
+      "declaration": "assetFile13",
+      "type": "Asset",
+      "path": "v86/libv86.js",
+      "role": "vendored VM dependency",
+      "origin": "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed",
+      "licenseStatus": "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution",
+      "redistributionCleared": true,
+      "bytes": 353762,
+      "sha256": "b80fba71dacb7977e5b46800b3ba194bba7fe13e52fa3d22f80cc060ff015a4e"
+    },
+    {
+      "declaration": "assetFile15",
+      "type": "Asset",
+      "path": "v86/seabios.bin",
+      "role": "vendored VM dependency",
+      "origin": "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425",
+      "licenseStatus": "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution",
+      "redistributionCleared": true,
+      "bytes": 131072,
+      "sha256": "73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98"
+    },
+    {
+      "declaration": "assetFile14",
+      "type": "Asset",
+      "path": "v86/v86.wasm",
+      "role": "vendored VM dependency",
+      "origin": "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed",
+      "licenseStatus": "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution",
+      "redistributionCleared": true,
+      "bytes": 1418156,
+      "sha256": "abd512988f39f5c81d4930f564bafa1a6e1e0d5210de9b20e2bdec13fbc318d9"
+    },
+    {
+      "declaration": "assetFile16",
+      "type": "Asset",
+      "path": "v86/vgabios.bin",
+      "role": "vendored VM dependency",
+      "origin": "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425",
+      "licenseStatus": "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution",
+      "redistributionCleared": true,
+      "bytes": 36352,
+      "sha256": "a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880"
+    }
+  ],
+  "architecture": [
+    {
+      "declaration": "admission",
+      "type": "Foundation.Arch::Component",
+      "index": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "admission",
+      "text": "Four-dimensional reservation ledger. Implementation: src/layer2-schedulers/policy.js. Domain contracts: Stitch.Budget."
+    },
+    {
+      "declaration": "browser",
+      "type": "Foundation.Arch::Component",
+      "index": 1,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.staticSite"
+      },
+      "name": "browser",
+      "text": "Interactive five-layer Stitch product. Implementation: index.html. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "compute",
+      "type": "Foundation.Arch::Component",
+      "index": 2,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "compute",
+      "text": "Deterministic program and checkpoint replay. Implementation: src/layer4-compute/index.js, src/layer4-compute/replay.js. Domain contracts: Stitch.Compute."
+    },
+    {
+      "declaration": "cryptography",
+      "type": "Foundation.Arch::Component",
+      "index": 3,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "cryptography",
+      "text": "Browser WebCrypto SHA-256 and Ed25519. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "discovery",
+      "type": "Foundation.Arch::Component",
+      "index": 4,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "discovery",
+      "text": "DNS-over-HTTPS resolver and scoped DNS writer. Implementation: src/layer5-transport/index.js. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "identity",
+      "type": "Foundation.Arch::Component",
+      "index": 5,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "identity",
+      "text": "Canonical bytes, full commitments, raw encoding and fragments. Implementation: src/layer1-uor/contracts.js, src/layer1-uor/custody.js, src/layer1-uor/generated-model.js. Domain contracts: Stitch.Identity, Stitch.Encoding, Stitch.Fragments."
+    },
+    {
+      "declaration": "legacy",
+      "type": "Foundation.Arch::Component",
+      "index": 6,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "legacy",
+      "text": "Historical UOR and simulation conformance. Implementation: src/layer1-uor/index.js, src/layer3-storage/index.js, src/lib.rs. Domain contracts: historical simulation only."
+    },
+    {
+      "declaration": "nativeRouting",
+      "type": "Foundation.Arch::Component",
+      "index": 7,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "nativeRouting",
+      "text": "External Linux routing daemon; absent from browser. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "peers",
+      "type": "Foundation.Arch::Component",
+      "index": 8,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "peers",
+      "text": "Untrusted remote holders and compute peers. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "pointerAuthority",
+      "type": "Foundation.Arch::Component",
+      "index": 9,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "pointerAuthority",
+      "text": "Independently pinned single-writer key. Implementation: src/layer1-uor/pointer.js. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "publicRelay",
+      "type": "Foundation.Arch::Component",
+      "index": 10,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "publicRelay",
+      "text": "Optional public ntfy warm cache. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "runtimeHost",
+      "type": "Foundation.Arch::Component",
+      "index": 11,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "runtimeHost",
+      "text": "Browser, OS, clocks, RAM, networking and permissions. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "scheduler",
+      "type": "Foundation.Arch::Component",
+      "index": 12,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "scheduler",
+      "text": "Experimental proposals under enforced admission. Implementation: src/layer2-schedulers/index.js. Domain contracts: Stitch.Budget, Stitch.Observation."
+    },
+    {
+      "declaration": "signaling",
+      "type": "Foundation.Arch::Component",
+      "index": 13,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "signaling",
+      "text": "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "staticHost",
+      "type": "Foundation.Arch::Component",
+      "index": 14,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.externalSystem"
+      },
+      "name": "staticHost",
+      "text": "Same-origin publication of application and VM assets. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "storage",
+      "type": "Foundation.Arch::Component",
+      "index": 15,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "storage",
+      "text": "Ephemeral local cache and conditional peer custody. Implementation: src/layer3-storage/custody.js, src/layer3-storage/index.js. Domain contracts: Stitch.Custody, Stitch.System."
+    },
+    {
+      "declaration": "transport",
+      "type": "Foundation.Arch::Component",
+      "index": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "transport",
+      "text": "WebRTC channels, bounded messages and VM Ethernet bridge. Implementation: src/layer5-transport/index.js. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "vm",
+      "type": "Foundation.Arch::Component",
+      "index": 17,
+      "kind": {
+        "constructor": "Foundation.Arch::ComponentKind.service"
+      },
+      "name": "vm",
+      "text": "v86 x86 Linux guest and 9p filesystem bridge. Implementation: src/layer4-compute/index.js, v86/libv86.js, v86/v86.wasm, v86/seabios.bin, v86/vgabios.bin, images/buildroot-bzimage.bin. Host or external boundary; semantics require independent evidence."
+    },
+    {
+      "declaration": "browserAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 0,
+      "fromIndex": 1,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserCompute",
+      "type": "Foundation.Arch::Edge",
+      "index": 1,
+      "fromIndex": 1,
+      "toIndex": 2,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserDiscovery",
+      "type": "Foundation.Arch::Edge",
+      "index": 2,
+      "fromIndex": 1,
+      "toIndex": 4,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserScheduler",
+      "type": "Foundation.Arch::Edge",
+      "index": 3,
+      "fromIndex": 1,
+      "toIndex": 12,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserStorage",
+      "type": "Foundation.Arch::Edge",
+      "index": 4,
+      "fromIndex": 1,
+      "toIndex": 15,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 5,
+      "fromIndex": 1,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "browserVm",
+      "type": "Foundation.Arch::Edge",
+      "index": 6,
+      "fromIndex": 1,
+      "toIndex": 17,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "computeAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 7,
+      "fromIndex": 2,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "computeIdentity",
+      "type": "Foundation.Arch::Edge",
+      "index": 8,
+      "fromIndex": 2,
+      "toIndex": 5,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "computeStorage",
+      "type": "Foundation.Arch::Edge",
+      "index": 9,
+      "fromIndex": 2,
+      "toIndex": 15,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "computeTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 10,
+      "fromIndex": 2,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "discoveryAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 11,
+      "fromIndex": 4,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "discoveryAuthority",
+      "type": "Foundation.Arch::Edge",
+      "index": 12,
+      "fromIndex": 4,
+      "toIndex": 9,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "discoveryHost",
+      "type": "Foundation.Arch::Edge",
+      "index": 13,
+      "fromIndex": 4,
+      "toIndex": 11,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "identityCryptography",
+      "type": "Foundation.Arch::Edge",
+      "index": 14,
+      "fromIndex": 5,
+      "toIndex": 3,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "relayTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 15,
+      "fromIndex": 10,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "schedulerAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 16,
+      "fromIndex": 12,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "schedulerTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 17,
+      "fromIndex": 12,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "signalingTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 18,
+      "fromIndex": 13,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "staticBrowser",
+      "type": "Foundation.Arch::Edge",
+      "index": 19,
+      "fromIndex": 14,
+      "toIndex": 1,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "staticVm",
+      "type": "Foundation.Arch::Edge",
+      "index": 20,
+      "fromIndex": 14,
+      "toIndex": 17,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "storageAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 21,
+      "fromIndex": 15,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "storageIdentity",
+      "type": "Foundation.Arch::Edge",
+      "index": 22,
+      "fromIndex": 15,
+      "toIndex": 5,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "storagePeers",
+      "type": "Foundation.Arch::Edge",
+      "index": 23,
+      "fromIndex": 15,
+      "toIndex": 8,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "storageTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 24,
+      "fromIndex": 15,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "transportAdmission",
+      "type": "Foundation.Arch::Edge",
+      "index": 25,
+      "fromIndex": 16,
+      "toIndex": 0,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "transportPeers",
+      "type": "Foundation.Arch::Edge",
+      "index": 26,
+      "fromIndex": 16,
+      "toIndex": 8,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "transportSignaling",
+      "type": "Foundation.Arch::Edge",
+      "index": 27,
+      "fromIndex": 16,
+      "toIndex": 13,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "transportVm",
+      "type": "Foundation.Arch::Edge",
+      "index": 28,
+      "fromIndex": 16,
+      "toIndex": 17,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "vmStorage",
+      "type": "Foundation.Arch::Edge",
+      "index": 29,
+      "fromIndex": 17,
+      "toIndex": 15,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "vmTransport",
+      "type": "Foundation.Arch::Edge",
+      "index": 30,
+      "fromIndex": 17,
+      "toIndex": 16,
+      "kind": {
+        "constructor": "Foundation.Arch::EdgeKind.dataFlow"
+      }
+    },
+    {
+      "declaration": "operator",
+      "type": "Foundation.Arch::Stakeholder",
+      "index": 0,
+      "name": "Stitch operator",
+      "text": "Chooses mesh participation, public disclosure, trusted pointer authority, DNS writes and VM actions."
+    },
+    {
+      "declaration": "recoverability",
+      "type": "Foundation.Arch::Concern",
+      "index": 0,
+      "name": "Conditional recovery and honest assurance",
+      "text": "Recover exact bytes and replay pure jobs without confusing untrusted host observations, network availability or arbitrary VM effects with proved domain rules."
+    },
+    {
+      "declaration": "productViewpoint",
+      "type": "Foundation.Arch::Viewpoint",
+      "index": 0,
+      "stakeholderIndex": 0,
+      "concernIndex": 0,
+      "modelKindIndex": 0
+    },
+    {
+      "declaration": "productView",
+      "type": "Foundation.Arch::View",
+      "index": 0,
+      "viewpointIndex": 0,
+      "modelKindIndex": 0
+    }
+  ],
+  "hostCapabilities": [
+    "Dom",
+    "Cryptography",
+    "MonotonicClock",
+    "WallClock",
+    "SessionStorage",
+    "PeerChannel",
+    "LocalBroadcast",
+    "PublicSignaling",
+    "DnsRead",
+    "DnsWrite",
+    "PublicRelay",
+    "VirtualMachine",
+    "ArtifactFetch",
+    "NativeRouting",
+    "OriginStorage",
+    "WebLock"
+  ],
+  "sources": [
+    {
+      "path": "app/language/prism.arch/entries/arch-component-kind.toml",
+      "sha256": "bb54f236dd64badfc74d57ee43a0f4d886786b9270edb07347f062541bec613e"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-component.toml",
+      "sha256": "ef7345b3d4cb74e68c5da598895f13cd887cca2d2247058a1fd062adc2597c50"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-concern.toml",
+      "sha256": "e2b1b3f560e85d0fb51f75b19b1c18b9f5f83f48eaf952b6c9a9a75ae73f3248"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge-kind.toml",
+      "sha256": "333c549f1db8311e47c74e391839649e20ba45495f6c40843348a45588db444f"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge.toml",
+      "sha256": "3a9d18d8e28a3a3b50be9d1315037fd2c426d56cfc8e2f6115a4b0785e6a5840"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-model-kind.toml",
+      "sha256": "ccb283501e64ab83914728371e1e2fdf8301837bc502804c4bd18c1d49128ada"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-stakeholder.toml",
+      "sha256": "f8e4bc507df3cf0e384d6c9a92912500ddca2004be3cfeede0f3cc3d38a04ec7"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-standard-reference.toml",
+      "sha256": "07e3dcf71b75ee0dcfe8441894e5ad3744f042577c502619b3bedb787c86ca1b"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-text-application-model.toml",
+      "sha256": "6d92d1a7d29d4516dde60bd9539e758b1076dfbf889860e3e435f289c504b9d1"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view-class.toml",
+      "sha256": "ef9465462b1adcf5c36b10b2669f03057d5215bbfd10e863db58e81727408fdb"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view.toml",
+      "sha256": "2bee3378b0f94165eb8f023279eaab32ec70c5e112e3c06bce7237a1498e0e31"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint-class.toml",
+      "sha256": "c1efce0dd43342b471433ae8a89d7cc46876d54ef3200aed8e08e817f36795cf"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint.toml",
+      "sha256": "a6f53b7f4c58950d7230fb6445a35a80e3a93772fb024b5e7c09381c10cd466c"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-flat-validation-input.toml",
+      "sha256": "e3a0cf83efd144e1aa3ed6ce5b67ea3bed1df1c4f198c71655c817b65b1d0108"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-normalized-model.toml",
+      "sha256": "5f7f66774560717cfa55842e30e8fc1b097e1e038b0eba6da6ea3312b583080e"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-standards-profile.toml",
+      "sha256": "1cf436bcdcc986f4ffcb41db1f31eba74aab4e534a867b4dc5d6d6cf7523417d"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-bounded-byte-buffer.toml",
+      "sha256": "9b8f6d61f42389a8e63bfbac674ec1b3061f5f004adda8279158df549ee7c902"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-browser-system-model.toml",
+      "sha256": "3ba45fd6754e84290033a4f18ebc06f5338c8e8affd5e58ee95b07e572fcf42b"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-production-system-model.toml",
+      "sha256": "91df8207b685a56ba0f0032ed06e875f707202789d21aa3cb6e8b31b4855fb34"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-unicode-text-codec.toml",
+      "sha256": "7c296475b0a97eccee73eb522af93359eaf185b04571e280b01d394b20f9e1e1"
+    },
+    {
+      "path": "app/language/prism.arch/lexicon.toml",
+      "sha256": "14c95df8b512edacacdb1788b58ae90cf573b4e3f1dca0e41074bfde5a380c9f"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-budget.toml",
+      "sha256": "0bba5b43f718ceefbe562a5f08ad29c8724071ccf4464c4bf91860288428d8f9"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-checkpoint.toml",
+      "sha256": "4d52a393476ad8e6944092fba2255b733a2980ca1c200e8e897d6b08e8e1a62a"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-encoding.toml",
+      "sha256": "7e1624765b469c5519fc07888d480477aaf20ab0d14adc2ace1b394939fff543"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-evidence.toml",
+      "sha256": "7bbbe2db8b2970c5b9943e499d1f67ee0e965d9330556f7ab9b428da8c6b6fba"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-fragment.toml",
+      "sha256": "6ecf049cdb84d7b134022012e38c5e1a114471f3b0330fd22aa6e39a1e5af8b1"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-object.toml",
+      "sha256": "9713cff899bf01e9cddbd9599e3ea70395d089b3296c79ffa5cdc1c364329714"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-observation.toml",
+      "sha256": "3ee41f31ef11a0d4fc1b54674c9bd0a55870bd7ec29354b5e189a35ca0cc3579"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-placement.toml",
+      "sha256": "2dfa9c8901fa29b87f33aff74305a72dac70a2f79ca9a480d6790d03cf51b0b2"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-pointer.toml",
+      "sha256": "fbe10dae37ae4a6ef039a7ec38585da18a434b4f8266ab285a4c85b35d3df23b"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-service-model.toml",
+      "sha256": "4277ffc608483787cffbd79f05cfbd7ede7db687549ee0c5ce7b4dbe8bd422d9"
+    },
+    {
+      "path": "app/language/stitch.domain/lexicon.toml",
+      "sha256": "6b9d7544b96a6c0bbeacb5dd9972377ffa4f9ef23dffc92eb191bd90e39cc98d"
+    },
+    {
+      "path": "app/lexlean.toml",
+      "sha256": "48c90de5fb9896bb45b03cc11692ccd1c26c99fadcc0ec4d7c6c2f481da6f56f"
+    },
+    {
+      "path": "app/prism.toml",
+      "sha256": "5445be94ddceff0efdf9492eab20e7746ba7b3533ae4853607c7b72a185b18c9"
+    },
+    {
+      "path": "app/prismpm.toml",
+      "sha256": "9469bbd2a7dd5d844f0e2d0b83b931b4a988f24d21e03f5ee9433fcab1ebe02e"
+    },
+    {
+      "path": "app/src/Foundation/Arch.lex.tex",
+      "sha256": "54fdc8eb15c46707e445ff99814d6cbd1731967f801bf064a6c1f4cc01c45394"
+    },
+    {
+      "path": "app/src/Foundation/Bytes.lex.tex",
+      "sha256": "ce16e5b439128db3231979381f4599d3ff0617f62c2bf00c348bba35393abcd6"
+    },
+    {
+      "path": "app/src/Foundation/View/Text/V1/Model.lex.tex",
+      "sha256": "db124343ad8fe1295bc8eb305c7f59f83cf6ad76d46a5cabea500fe66f3ad5dc"
+    },
+    {
+      "path": "app/src/Product/Architecture.lex.tex",
+      "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
+    },
+    {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "6f2625fdce3d3d51899cabc17ce3d57ec0a9381dd3bf3e6477da6ae3ccfb84bd"
+    },
+    {
+      "path": "app/src/Product/Host.lex.tex",
+      "sha256": "3bb2a621868dc683e776c9b65c58cc60cc2b89e5d007d54c4c152bedd4878871"
+    },
+    {
+      "path": "app/src/Product/Model.lex.tex",
+      "sha256": "281fcf4954a28d3afa3fd86fda167541207ef572f16cb3a853aa1fb43216ebed"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
+    },
+    {
+      "path": "app/src/Stitch/Budget.lex.tex",
+      "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
+    },
+    {
+      "path": "app/src/Stitch/Compute.lex.tex",
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
+    },
+    {
+      "path": "app/src/Stitch/Custody.lex.tex",
+      "sha256": "e9084ba97058adfd3017e634215af1dee12d89c4ff0d409a4271f05387d8d663"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
+    },
+    {
+      "path": "app/src/Stitch/Encoding.lex.tex",
+      "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
+    },
+    {
+      "path": "app/src/Stitch/Evidence.lex.tex",
+      "sha256": "39011e1cf70295427f716d328b1ab754242d3667f0e70a8a48dffa735465c79e"
+    },
+    {
+      "path": "app/src/Stitch/Fragments.lex.tex",
+      "sha256": "5cd8d0602cbe501ae4ffc5c18dde17fc6e5766d930ac1d9277545d1ef8d88b83"
+    },
+    {
+      "path": "app/src/Stitch/Identity.lex.tex",
+      "sha256": "c4c159234e1623b8f339e86cf47da55c89d197bf21fe334bd893f575ba053870"
+    },
+    {
+      "path": "app/src/Stitch/Observation.lex.tex",
+      "sha256": "fe3205a68576d8c7d82f86b45b78f8b6c8b49a873f00c448cccb2eb459749ae8"
+    },
+    {
+      "path": "app/src/Stitch/Pointer.lex.tex",
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
+    },
+    {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
+    },
+    {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
+      "path": "app/src/Stitch/System.lex.tex",
+      "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "4c27a3a3d1b3650aa78d8fe22b6f07a7335d7e9ec58969ad50f7ad9294f30f81"
+    },
+    {
+      "path": "app/src/StitchApp.lex.tex",
+      "sha256": "ffd8a4b6b9072b27b06d67d61e1c11d085a6b82e84be4610f27f3805d87f675b"
+    },
+    {
+      "path": "package-lock.json",
+      "sha256": "2b48cacfb23afb0b149221dfb9f2c9736073f4b6886e6c0d83b9899af0ab4425"
+    },
+    {
+      "path": "package.json",
+      "sha256": "c1c89bc6b5fb746218fe6387c6bfdc20bf58deb0f4eb568bbd74f80d96c6f219"
+    },
+    {
+      "path": "prismpm.lock",
+      "sha256": "3773d32926962ef5d2556b74e0df9b34bdaf72353022f3256ebaa04a4ba8db7f"
+    },
+    {
+      "path": "standards.lock",
+      "sha256": "54448d21cb1ed3a4af826aa44991e9839b51d97b8975a5b125927c78af922b46"
+    },
+    {
+      "path": "vendor/distribution.json",
+      "sha256": "02263c2d4bf1a1913a673466554c19593b5a6c39b22a2da32ce4375675868347"
+    }
+  ],
+  "sourceDigest": "sha256:d41113060544b9443593c0f768653ef808eba28e611eaf159daefbe8c2a05bb2"
+}

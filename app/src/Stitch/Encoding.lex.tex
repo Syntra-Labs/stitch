@@ -1,0 +1,115 @@
+\begin{lexlean}{Stitch.Encoding}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+inductive{
+  name: DependencyKind,
+  type_parameters: [],
+  parameters: [],
+  constructors: [
+    {name: Decoder, fields: []},
+    {name: Parameters, fields: []},
+    {name: Basis, fields: []},
+    {name: Residual, fields: []},
+    {name: Framing, fields: []}
+  ]
+}
+
+structure{
+  name: Dependency,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: root, type: Stitch.Identity::Digest},
+    {name: kind, type: DependencyKind},
+    {name: byteLength, type: Nat},
+    {name: present, type: Bool},
+    {name: integrityChecked, type: Bool}
+  ]
+}
+
+structure{
+  name: Encoding,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: objectRoot, type: Stitch.Identity::Digest},
+    {name: representationRoot, type: Stitch.Identity::Digest},
+    {name: representation, type: Bytes},
+    {name: decoderRoot, type: Stitch.Identity::Digest},
+    {name: dependencies, type: (List Dependency)},
+    {name: modelBytes, type: Nat},
+    {name: parameterBytes, type: Nat},
+    {name: residualBytes, type: Nat},
+    {name: framingBytes, type: Nat},
+    {name: metadataBytes, type: Nat},
+    {name: externalBasisBytes, type: Nat}
+  ]
+}
+
+definition{
+  name: dependenciesReady,
+  parameters: [dependencies : (List Dependency)],
+  result: Bool,
+  body: (match dependencies
+    | List.nil => true
+    | List.cons head tail => ((project head present) && ((project head integrityChecked) && (dependenciesReady tail)))),
+  recursive_argument: dependencies
+}
+
+definition{
+  name: selfContainedBytes,
+  parameters: [encoding : Encoding],
+  result: Nat,
+  body: ((project encoding modelBytes) + ((project encoding parameterBytes) + ((project encoding residualBytes) + ((project encoding framingBytes) + (project encoding metadataBytes)))))
+}
+
+definition{
+  name: totalRecoveryBytes,
+  parameters: [encoding : Encoding],
+  result: Nat,
+  body: ((selfContainedBytes encoding) + (project encoding externalBasisBytes))
+}
+
+definition{name: rawDecode, parameters: [value : Bytes], result: Bytes, body: value}
+
+theorem{
+  name: rawRecoveryExact,
+  parameters: [value : Bytes],
+  statement: ((rawDecode value) = value),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: externalBasisNotFree,
+  parameters: [encoding : Encoding],
+  statement: ((selfContainedBytes encoding) <= (totalRecoveryBytes encoding)),
+  proof: linear_arithmetic{definitions: [selfContainedBytes, totalRecoveryBytes]},
+  axioms: [Quot.sound, propext]
+}
+
+structure{
+  name: RecoveryObservation,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: objectRoot, type: Stitch.Identity::Digest},
+    {name: representationRoot, type: Stitch.Identity::Digest},
+    {name: recoveredBytes, type: Bytes},
+    {name: expectedBytes, type: Bytes},
+    {name: decoderBound, type: Bool},
+    {name: dependenciesPresent, type: Bool}
+  ]
+}
+
+definition{
+  name: exactRecovery,
+  parameters: [observation : RecoveryObservation],
+  result: Bool,
+  body: ((project observation decoderBound) && ((project observation dependenciesPresent) && (prim equal (project observation recoveredBytes) (project observation expectedBytes) : Bool)))
+}
+\end{semanticmodule}
+\end{lexlean}

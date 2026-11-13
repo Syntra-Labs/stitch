@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-service-model"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.System"
+component = "State"
+
+[[form]]
+id = "stitch-service-model"
+channel = "text"
+surface = "Stitch recoverable service model"
+canonical_source = true
+features = ["sentence-case", "singular"]

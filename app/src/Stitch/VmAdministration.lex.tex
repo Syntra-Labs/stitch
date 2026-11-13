@@ -1,0 +1,137 @@
+\begin{lexlean}{Stitch.VmAdministration}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+definition{
+  name: shareAllowed,
+  parameters: [granted : Bool, current : Bool, blocked : Bool],
+  result: Bool,
+  body: (granted && (current && (not blocked)))
+}
+
+definition{
+  name: ethernetAllowed,
+  parameters: [
+    granted : Bool,
+    ready : Bool,
+    current : Bool,
+    open : Bool,
+    valid : Bool,
+    blocked : Bool
+  ],
+  result: Bool,
+  body: (granted && (ready && (current && (open && (valid && (not blocked))))))
+}
+
+definition{
+  name: commandAllowed,
+  parameters: [ready : Bool, busy : Bool, blocked : Bool, capacity : Bool],
+  result: Bool,
+  body: (ready && ((not busy) && ((not blocked) && capacity)))
+}
+
+definition{
+  name: observationAllowed,
+  parameters: [
+    generation : Nat,
+    captured : Nat,
+    sameInstance : Bool,
+    dispatched : Bool,
+    blocked : Bool
+  ],
+  result: Bool,
+  body: ((generation =? captured) && (sameInstance && (dispatched && (not blocked))))
+}
+
+definition{
+  name: administrationAllowed,
+  parameters: [instancePresent : Bool, busy : Bool],
+  result: Bool,
+  body: (instancePresent && (not busy))
+}
+
+definition{
+  name: forgetAllowed,
+  parameters: [present : Bool, resolved : Bool, busy : Bool],
+  result: Bool,
+  body: (present && (resolved && (not busy)))
+}
+
+definition{
+  name: allocationAllowed,
+  parameters: [used : Nat, requested : Nat, limit : Nat],
+  result: Bool,
+  body: ((used + requested) <=? limit)
+}
+
+definition{
+  name: metadataAllowed,
+  parameters: [used : Nat, limit : Nat],
+  result: Bool,
+  body: (used <? limit)
+}
+
+definition{
+  name: resultReadAllowed,
+  parameters: [size : Nat, limit : Nat, regular : Bool],
+  result: Bool,
+  body: (regular && (size <=? limit))
+}
+
+definition{
+  name: terminationRequired,
+  parameters: [cancelled : Bool, expired : Bool, exceeded : Bool],
+  result: Bool,
+  body: (cancelled || (expired || exceeded))
+}
+
+definition{name: filesystemAllocationLimit, parameters: [], result: Nat, body: 67108864}
+
+definition{name: filesystemFileLimit, parameters: [], result: Nat, body: 16777216}
+
+definition{name: filesystemMetadataLimit, parameters: [], result: Nat, body: 4096}
+
+definition{name: outputLimit, parameters: [], result: Nat, body: 4194304}
+
+definition{name: retainedOutputLimit, parameters: [], result: Nat, body: 16777216}
+
+definition{name: runtimeLimitMs, parameters: [], result: Nat, body: 300000}
+
+definition{
+  name: staticAddressAllowed,
+  parameters: [firstOctet : Nat, prefix : Nat, hostPart : Nat, hostMaximum : Nat],
+  result: Bool,
+  body: ((0 <? firstOctet) && ((firstOctet <? 224) && ((not (firstOctet =? 127)) && ((prefix <=? 32) && ((31 <=? prefix) || ((0 <? hostPart) && (hostPart <? hostMaximum)))))))
+}
+
+definition{
+  name: networkChangeAllowed,
+  parameters: [instancePresent : Bool, busy : Bool, booting : Bool],
+  result: Bool,
+  body: ((not instancePresent) && ((not busy) && (not booting)))
+}
+
+definition{
+  name: networkSharingAllowed,
+  parameters: [granted : Bool, configured : Bool],
+  result: Bool,
+  body: ((not granted) || configured)
+}
+
+theorem{
+  name: retainedInstanceCannotReconfigure,
+  parameters: [busy : Bool, booting : Bool],
+  statement: ((networkChangeAllowed true busy booting) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: unconfiguredCannotShareEthernet,
+  parameters: [],
+  statement: ((networkSharingAllowed true false) = false),
+  proof: reflexivity{}
+}
+\end{semanticmodule}
+\end{lexlean}

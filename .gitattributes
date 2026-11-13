@@ -1,0 +1,7 @@
+# Keep generated projections and actual verification records available for audit
+# without obscuring authored source changes in GitHub's default diff view.
+src/layer1-uor/generated-model.js linguist-generated=true
+product/contracts.json linguist-generated=true
+product/source-attestation.json linguist-generated=true
+product/source-build-manifest.json linguist-generated=true
+product/source-verification.json linguist-generated=true

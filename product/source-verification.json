@@ -1,0 +1,284 @@
+{
+  "format": "Stitch exact-source verification summary",
+  "version": 1,
+  "assurance": "Summary of actual pinned LexLean/Lean/leanchecker/axiom verification; not a native Prism artifact certificate or whole-host guarantee",
+  "attestation_id": "f85d00e01268644324d3a86938d5270228a14dc7d1ca2a6eaaf0c8fd8011512c",
+  "attestation_sha256": "cf5469e565e352f3152e631df86645feb3741bb1866f5e495fbbca5bfcf845e9",
+  "source_id": "405f944b887ec154055f62947986ca89c2dbb7114d3fc9d014e880b32253b445",
+  "semantic_id": "6629359d26d7d175e5e1766d87d3065a47b78791613ff4f16789889eedee0bdc",
+  "build_id": "3620ec55cbea22062aaabf69fede3f08fd24d378cd0969c306c62a60aee7103e",
+  "status": "verified",
+  "module_count": 25,
+  "declaration_audits": 1324,
+  "successful_processes": 85,
+  "processes_by_tool": {
+    "lean": 57,
+    "leanchecker": 28
+  },
+  "sources": [
+    {
+      "path": "app/lake-manifest.json",
+      "sha256": "1107bc06d0f0bf1716fbc980995e4895f608331a17863d16bb1ff631d70924f6"
+    },
+    {
+      "path": "app/lakefile.toml",
+      "sha256": "f93d661ae8380e42c7954c0a90166abb296ac100af42b403d7af0ac7e6b50094"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-component-kind.toml",
+      "sha256": "bb54f236dd64badfc74d57ee43a0f4d886786b9270edb07347f062541bec613e"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-component.toml",
+      "sha256": "ef7345b3d4cb74e68c5da598895f13cd887cca2d2247058a1fd062adc2597c50"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-concern.toml",
+      "sha256": "e2b1b3f560e85d0fb51f75b19b1c18b9f5f83f48eaf952b6c9a9a75ae73f3248"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge-kind.toml",
+      "sha256": "333c549f1db8311e47c74e391839649e20ba45495f6c40843348a45588db444f"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-edge.toml",
+      "sha256": "3a9d18d8e28a3a3b50be9d1315037fd2c426d56cfc8e2f6115a4b0785e6a5840"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-model-kind.toml",
+      "sha256": "ccb283501e64ab83914728371e1e2fdf8301837bc502804c4bd18c1d49128ada"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-stakeholder.toml",
+      "sha256": "f8e4bc507df3cf0e384d6c9a92912500ddca2004be3cfeede0f3cc3d38a04ec7"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-standard-reference.toml",
+      "sha256": "07e3dcf71b75ee0dcfe8441894e5ad3744f042577c502619b3bedb787c86ca1b"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-text-application-model.toml",
+      "sha256": "6d92d1a7d29d4516dde60bd9539e758b1076dfbf889860e3e435f289c504b9d1"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view-class.toml",
+      "sha256": "ef9465462b1adcf5c36b10b2669f03057d5215bbfd10e863db58e81727408fdb"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-view.toml",
+      "sha256": "2bee3378b0f94165eb8f023279eaab32ec70c5e112e3c06bce7237a1498e0e31"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint-class.toml",
+      "sha256": "c1efce0dd43342b471433ae8a89d7cc46876d54ef3200aed8e08e817f36795cf"
+    },
+    {
+      "path": "app/language/prism.arch/entries/arch-viewpoint.toml",
+      "sha256": "a6f53b7f4c58950d7230fb6445a35a80e3a93772fb024b5e7c09381c10cd466c"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-flat-validation-input.toml",
+      "sha256": "e3a0cf83efd144e1aa3ed6ce5b67ea3bed1df1c4f198c71655c817b65b1d0108"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-normalized-model.toml",
+      "sha256": "5f7f66774560717cfa55842e30e8fc1b097e1e038b0eba6da6ea3312b583080e"
+    },
+    {
+      "path": "app/language/prism.arch/entries/holo-standards-profile.toml",
+      "sha256": "1cf436bcdcc986f4ffcb41db1f31eba74aab4e534a867b4dc5d6d6cf7523417d"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-bounded-byte-buffer.toml",
+      "sha256": "9b8f6d61f42389a8e63bfbac674ec1b3061f5f004adda8279158df549ee7c902"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-browser-system-model.toml",
+      "sha256": "3ba45fd6754e84290033a4f18ebc06f5338c8e8affd5e58ee95b07e572fcf42b"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-production-system-model.toml",
+      "sha256": "91df8207b685a56ba0f0032ed06e875f707202789d21aa3cb6e8b31b4855fb34"
+    },
+    {
+      "path": "app/language/prism.arch/entries/prism-unicode-text-codec.toml",
+      "sha256": "7c296475b0a97eccee73eb522af93359eaf185b04571e280b01d394b20f9e1e1"
+    },
+    {
+      "path": "app/language/prism.arch/lexicon.toml",
+      "sha256": "14c95df8b512edacacdb1788b58ae90cf573b4e3f1dca0e41074bfde5a380c9f"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-budget.toml",
+      "sha256": "0bba5b43f718ceefbe562a5f08ad29c8724071ccf4464c4bf91860288428d8f9"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-checkpoint.toml",
+      "sha256": "4d52a393476ad8e6944092fba2255b733a2980ca1c200e8e897d6b08e8e1a62a"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-encoding.toml",
+      "sha256": "7e1624765b469c5519fc07888d480477aaf20ab0d14adc2ace1b394939fff543"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-evidence.toml",
+      "sha256": "7bbbe2db8b2970c5b9943e499d1f67ee0e965d9330556f7ab9b428da8c6b6fba"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-fragment.toml",
+      "sha256": "6ecf049cdb84d7b134022012e38c5e1a114471f3b0330fd22aa6e39a1e5af8b1"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-object.toml",
+      "sha256": "9713cff899bf01e9cddbd9599e3ea70395d089b3296c79ffa5cdc1c364329714"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-observation.toml",
+      "sha256": "3ee41f31ef11a0d4fc1b54674c9bd0a55870bd7ec29354b5e189a35ca0cc3579"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-placement.toml",
+      "sha256": "2dfa9c8901fa29b87f33aff74305a72dac70a2f79ca9a480d6790d03cf51b0b2"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-pointer.toml",
+      "sha256": "fbe10dae37ae4a6ef039a7ec38585da18a434b4f8266ab285a4c85b35d3df23b"
+    },
+    {
+      "path": "app/language/stitch.domain/entries/stitch-service-model.toml",
+      "sha256": "4277ffc608483787cffbd79f05cfbd7ede7db687549ee0c5ce7b4dbe8bd422d9"
+    },
+    {
+      "path": "app/language/stitch.domain/lexicon.toml",
+      "sha256": "6b9d7544b96a6c0bbeacb5dd9972377ffa4f9ef23dffc92eb191bd90e39cc98d"
+    },
+    {
+      "path": "app/lean-toolchain",
+      "sha256": "8e3538e0ab5f81a3ee04927d8838c8c674e0e112838b4b3ce87ec218143276af"
+    },
+    {
+      "path": "app/lexlean.lock",
+      "sha256": "b4ad976755fbf8fecba998843d238c57da3bf291bbb142f3cf86f9e125acc3fb"
+    },
+    {
+      "path": "app/lexlean.toml",
+      "sha256": "48c90de5fb9896bb45b03cc11692ccd1c26c99fadcc0ec4d7c6c2f481da6f56f"
+    },
+    {
+      "path": "app/prism.toml",
+      "sha256": "5445be94ddceff0efdf9492eab20e7746ba7b3533ae4853607c7b72a185b18c9"
+    },
+    {
+      "path": "app/prismpm.toml",
+      "sha256": "9469bbd2a7dd5d844f0e2d0b83b931b4a988f24d21e03f5ee9433fcab1ebe02e"
+    },
+    {
+      "path": "app/src/Foundation/Arch.lex.tex",
+      "sha256": "54fdc8eb15c46707e445ff99814d6cbd1731967f801bf064a6c1f4cc01c45394"
+    },
+    {
+      "path": "app/src/Foundation/Bytes.lex.tex",
+      "sha256": "ce16e5b439128db3231979381f4599d3ff0617f62c2bf00c348bba35393abcd6"
+    },
+    {
+      "path": "app/src/Foundation/View/Text/V1/Model.lex.tex",
+      "sha256": "db124343ad8fe1295bc8eb305c7f59f83cf6ad76d46a5cabea500fe66f3ad5dc"
+    },
+    {
+      "path": "app/src/Product/Architecture.lex.tex",
+      "sha256": "d5cc5fd4e64070bddd5c0edc8cb3a318a0965b5e1574efe9a9dfa483b12e8d6d"
+    },
+    {
+      "path": "app/src/Product/Experience.lex.tex",
+      "sha256": "6f2625fdce3d3d51899cabc17ce3d57ec0a9381dd3bf3e6477da6ae3ccfb84bd"
+    },
+    {
+      "path": "app/src/Product/Host.lex.tex",
+      "sha256": "3bb2a621868dc683e776c9b65c58cc60cc2b89e5d007d54c4c152bedd4878871"
+    },
+    {
+      "path": "app/src/Product/Model.lex.tex",
+      "sha256": "281fcf4954a28d3afa3fd86fda167541207ef572f16cb3a853aa1fb43216ebed"
+    },
+    {
+      "path": "app/src/Stitch/Authority.lex.tex",
+      "sha256": "10afc7af1503f08fe7806dbab24d93f565f34370e3b7d18135f48297e64ee573"
+    },
+    {
+      "path": "app/src/Stitch/Budget.lex.tex",
+      "sha256": "581ae188297e3e03e69869a3cfbcdae9554706e007cbeb238d97c8ad30229911"
+    },
+    {
+      "path": "app/src/Stitch/ChannelFlow.lex.tex",
+      "sha256": "7f4356ddd38fc94b32a2d6af237ce7382c34bdc7db43c8e8d6ab94cd94fc3e63"
+    },
+    {
+      "path": "app/src/Stitch/Compute.lex.tex",
+      "sha256": "ef0f1b8dcf15a8ff26a206b7bd8fa51736bb54ae14e7b6e71a4296deeb4528b7"
+    },
+    {
+      "path": "app/src/Stitch/Custody.lex.tex",
+      "sha256": "e9084ba97058adfd3017e634215af1dee12d89c4ff0d409a4271f05387d8d663"
+    },
+    {
+      "path": "app/src/Stitch/Effects.lex.tex",
+      "sha256": "7ccc2c30cca7df663541ceece0c85226f921160f56f4ec681703a8d5b589263b"
+    },
+    {
+      "path": "app/src/Stitch/Encoding.lex.tex",
+      "sha256": "75b412ab0ed56dea3aa41cc77705fb6233991ea1c2e600a7cf509c3b84e5a95f"
+    },
+    {
+      "path": "app/src/Stitch/Evidence.lex.tex",
+      "sha256": "39011e1cf70295427f716d328b1ab754242d3667f0e70a8a48dffa735465c79e"
+    },
+    {
+      "path": "app/src/Stitch/Fragments.lex.tex",
+      "sha256": "5cd8d0602cbe501ae4ffc5c18dde17fc6e5766d930ac1d9277545d1ef8d88b83"
+    },
+    {
+      "path": "app/src/Stitch/Identity.lex.tex",
+      "sha256": "c4c159234e1623b8f339e86cf47da55c89d197bf21fe334bd893f575ba053870"
+    },
+    {
+      "path": "app/src/Stitch/Observation.lex.tex",
+      "sha256": "fe3205a68576d8c7d82f86b45b78f8b6c8b49a873f00c448cccb2eb459749ae8"
+    },
+    {
+      "path": "app/src/Stitch/Pointer.lex.tex",
+      "sha256": "10239748c402cdadfc36b150a7a103dfe5124d81fa27bb276575810470c89c46"
+    },
+    {
+      "path": "app/src/Stitch/Recovery.lex.tex",
+      "sha256": "4a29e91526ffd1c5aa9fcfc8d990ca1b89d5129813742d9ae55e688eeb6a9121"
+    },
+    {
+      "path": "app/src/Stitch/Relay.lex.tex",
+      "sha256": "26a3b5c7f8af3cb058800716a5b73111adbe0188436ae1ad87e1a0e6ce118a03"
+    },
+    {
+      "path": "app/src/Stitch/Signaling.lex.tex",
+      "sha256": "97bdfb5160e41a4ed3ab30788f2e3a558836f622c237e4bd3496536212b330c9"
+    },
+    {
+      "path": "app/src/Stitch/System.lex.tex",
+      "sha256": "b05a639514a2c56f40b8e960c6cf31023aec8b20d1c18c5ed68a0a936a9d7119"
+    },
+    {
+      "path": "app/src/Stitch/VmAdministration.lex.tex",
+      "sha256": "4c27a3a3d1b3650aa78d8fe22b6f07a7335d7e9ec58969ad50f7ad9294f30f81"
+    },
+    {
+      "path": "app/src/StitchApp.lex.tex",
+      "sha256": "ffd8a4b6b9072b27b06d67d61e1c11d085a6b82e84be4610f27f3805d87f675b"
+    }
+  ],
+  "not_covered": [
+    "Native Prism/Holo and guest artifact build",
+    "Browser/provider/VM correctness and physical network trials",
+    "Licensing and release qualification",
+    "Handwritten host-code representation correspondence beyond named runtime tests"
+  ],
+  "attestation_path": "product/source-attestation.json",
+  "build_manifest_path": "product/source-build-manifest.json"
+}

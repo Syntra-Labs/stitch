@@ -1,0 +1,42 @@
+\begin{lexlean}{Stitch.ChannelFlow}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+definition{
+  name: queueAllowed,
+  parameters: [entries : Nat, retained : Nat, bytes : Nat],
+  result: Bool,
+  body: ((entries <? 64) && ((0 <? bytes) && ((bytes <=? 524288) && ((retained + bytes) <=? 2097152))))
+}
+
+definition{
+  name: sendAllowed,
+  parameters: [current : Bool, open : Bool, buffered : Nat, bytes : Nat, maximum : Nat],
+  result: Bool,
+  body: (current && (open && ((0 <? bytes) && ((bytes <=? maximum) && ((buffered + bytes) <=? 1048576)))))
+}
+
+definition{
+  name: appendAllowed,
+  parameters: [received : Nat, offset : Nat, bytes : Nat, total : Nat],
+  result: Bool,
+  body: ((received =? offset) && ((0 <? bytes) && ((total <=? 524288) && ((received + bytes) <=? total))))
+}
+
+definition{
+  name: append,
+  parameters: [received : Nat, offset : Nat, bytes : Nat, total : Nat],
+  result: Nat,
+  body: (if (appendAllowed received offset bytes total) then (received + bytes) else received)
+}
+
+theorem{
+  name: staleCannotSend,
+  parameters: [open : Bool, buffered : Nat, bytes : Nat, maximum : Nat],
+  statement: ((sendAllowed false open buffered bytes maximum) = false),
+  proof: reflexivity{}
+}
+\end{semanticmodule}
+\end{lexlean}

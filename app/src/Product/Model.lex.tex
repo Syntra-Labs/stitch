@@ -1,0 +1,910 @@
+\begin{lexlean}{Product.Model}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Component,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: role, type: String},
+    {name: implementation, type: (List String)},
+    {name: models, type: (List String)},
+    {name: trustBoundary, type: Bool}
+  ]
+}
+
+structure{
+  name: Assumption,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: statement, type: String},
+    {name: evidence, type: String},
+    {name: scope, type: String}
+  ]
+}
+
+structure{
+  name: CapabilityContract,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: owner, type: String},
+    {name: capability, type: String},
+    {name: operation, type: String},
+    {name: source, type: String},
+    {name: inputs, type: (List String)},
+    {name: outputs, type: (List String)},
+    {name: preconditions, type: (List String)},
+    {name: failures, type: (List String)},
+    {name: assumptions, type: (List String)},
+    {name: proofScope, type: String},
+    {name: enabledByDefault, type: Bool}
+  ]
+}
+
+structure{
+  name: Dependency,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: consumer, type: String},
+    {name: kind, type: String},
+    {name: locator, type: String},
+    {name: versionPolicy, type: String},
+    {name: trust, type: String},
+    {name: required, type: Bool}
+  ]
+}
+
+structure{
+  name: Deployment,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: id, type: String},
+    {name: kind, type: String},
+    {name: entry, type: String},
+    {name: files, type: (List String)},
+    {name: requiredCapabilities, type: (List String)},
+    {name: secrets, type: (List String)},
+    {name: readiness, type: String},
+    {name: rollback, type: String},
+    {name: releaseGate, type: String}
+  ]
+}
+
+structure{
+  name: Asset,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: path, type: String},
+    {name: role, type: String},
+    {name: origin, type: String},
+    {name: licenseStatus, type: String},
+    {name: redistributionCleared, type: Bool}
+  ]
+}
+
+definition{
+  name: componentAdmission,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "admission", role := "Four-dimensional reservation ledger", implementation := (cons "src/layer2-schedulers/policy.js" (nil String)), models := (cons "Stitch.Budget" (nil String)), trustBoundary := false})
+}
+
+definition{
+  name: componentBrowser,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "browser", role := "Interactive five-layer Stitch product", implementation := (cons "index.html" (cons "src/product-experience.js" (cons "src/recovery-ui.js" (cons "src/authority-ui.js" (nil String))))), models := (cons "Product.Experience" (cons "Stitch.Recovery" (cons "Product.Host" (cons "Product.Model" (nil String))))), trustBoundary := true})
+}
+
+definition{
+  name: componentCompute,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "compute", role := "Deterministic program and checkpoint replay", implementation := (cons "src/layer4-compute/index.js" (cons "src/layer4-compute/replay.js" (nil String))), models := (cons "Stitch.Compute" (nil String)), trustBoundary := false})
+}
+
+definition{
+  name: componentCryptography,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "cryptography", role := "Browser WebCrypto SHA-256 and Ed25519", implementation := (nil String), models := (cons "Stitch.Identity" (cons "Stitch.Pointer" (nil String))), trustBoundary := true})
+}
+
+definition{
+  name: componentDiscovery,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "discovery", role := "DNS-over-HTTPS resolver and scoped DNS writer", implementation := (cons "src/layer5-transport/index.js" (cons "src/layer5-transport/dns-wire.js" (nil String))), models := (cons "Stitch.Pointer" (cons "Stitch.Observation" (nil String))), trustBoundary := true})
+}
+
+definition{
+  name: componentIdentity,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "identity", role := "Canonical bytes, full commitments, raw encoding and fragments", implementation := (cons "src/layer1-uor/contracts.js" (cons "src/layer1-uor/custody.js" (cons "src/layer1-uor/generated-model.js" (nil String)))), models := (cons "Stitch.Identity" (cons "Stitch.Encoding" (cons "Stitch.Fragments" (nil String)))), trustBoundary := false})
+}
+
+definition{
+  name: componentLegacy,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "legacy", role := "Historical UOR and simulation conformance", implementation := (cons "src/layer1-uor/index.js" (cons "src/layer3-storage/index.js" (cons "src/lib.rs" (nil String)))), models := (nil String), trustBoundary := false})
+}
+
+definition{
+  name: componentNativeRouting,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "nativeRouting", role := "External Linux routing daemon; absent from browser", implementation := (nil String), models := (nil String), trustBoundary := true})
+}
+
+definition{
+  name: componentPeers,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "peers", role := "Untrusted remote holders and compute peers", implementation := (nil String), models := (cons "Stitch.Custody" (cons "Stitch.Observation" (nil String))), trustBoundary := true})
+}
+
+definition{
+  name: componentPointerAuthority,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "pointerAuthority", role := "Independently pinned single-writer key", implementation := (cons "src/layer1-uor/pointer.js" (cons "src/layer1-uor/browser-authority.js" (nil String))), models := (cons "Stitch.Authority" (cons "Stitch.Pointer" (cons "Stitch.Effects" (cons "Product.Host" (cons "Product.Experience" (nil String)))))), trustBoundary := true})
+}
+
+definition{
+  name: componentPublicRelay,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "publicRelay", role := "Optional public ntfy warm cache", implementation := (cons "src/layer5-transport/relay-framing.js" (nil String)), models := (cons "Stitch.Relay" (cons "Stitch.Evidence" (nil String))), trustBoundary := true})
+}
+
+definition{
+  name: componentRuntimeHost,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "runtimeHost", role := "Browser, OS, clocks, RAM, networking and permissions", implementation := (nil String), models := (cons "Product.Host" (nil String)), trustBoundary := true})
+}
+
+definition{
+  name: componentScheduler,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "scheduler", role := "Experimental proposals under enforced admission", implementation := (cons "src/layer2-schedulers/index.js" (nil String)), models := (cons "Stitch.Budget" (cons "Stitch.Observation" (nil String))), trustBoundary := false})
+}
+
+definition{
+  name: componentSignaling,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "signaling", role := "Public ntfy SDP/ICE signaling; BroadcastChannel on same origin", implementation := (cons "src/layer5-transport/signaling.js" (cons "src/layer5-transport/relay-framing.js" (nil String))), models := (cons "Stitch.Signaling" (cons "Stitch.Relay" (cons "Stitch.Effects" (cons "Product.Host" (nil String))))), trustBoundary := true})
+}
+
+definition{
+  name: componentStaticHost,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "staticHost", role := "Same-origin publication of application and VM assets", implementation := (nil String), models := (nil String), trustBoundary := true})
+}
+
+definition{
+  name: componentStorage,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "storage", role := "Ephemeral local cache and conditional peer custody", implementation := (cons "src/layer3-storage/custody.js" (cons "src/layer3-storage/index.js" (cons "src/recovery.js" (nil String)))), models := (cons "Stitch.Custody" (cons "Stitch.System" (cons "Stitch.Recovery" (nil String)))), trustBoundary := false})
+}
+
+definition{
+  name: componentTransport,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "transport", role := "WebRTC channels, bounded messages and VM Ethernet bridge", implementation := (cons "src/layer5-transport/index.js" (cons "src/layer5-transport/channel-flow.js" (nil String))), models := (cons "Stitch.Observation" (cons "Stitch.ChannelFlow" (cons "Product.Host" (nil String)))), trustBoundary := true})
+}
+
+definition{
+  name: componentVm,
+  parameters: [],
+  result: Component,
+  body: (record Component {id := "vm", role := "v86 x86 Linux guest and 9p filesystem bridge", implementation := (cons "src/layer4-compute/index.js" (cons "src/layer4-compute/vm-administration.js" (cons "v86/libv86.js" (cons "v86/v86.wasm" (cons "v86/seabios.bin" (cons "v86/vgabios.bin" (cons "images/buildroot-bzimage.bin" (nil String)))))))), models := (cons "Product.Host" (cons "Stitch.VmAdministration" (nil String))), trustBoundary := true})
+}
+
+definition{
+  name: assumptionArtifactConformance,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "artifactConformance", statement := "Released runtime and model match their exact reviewed source and dependency bytes.", evidence := "Exact local artifact hashes plus pinned-SDK source and build acceptance.", scope := "Full product; runtime source hashing alone does not prove behavior."})
+}
+
+definition{
+  name: assumptionBrowserSemantics,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "browserSemantics", statement := "The browser correctly implements DOM, typed arrays, WebAssembly, WebCrypto, WebRTC and fetch; optional saved authority and DNS publication additionally require correct IndexedDB CryptoKey structured cloning, transaction commit and Web Locks context-lifetime exclusion.", evidence := "Browser vendor assurance and independent integration testing, not a Stitch kernel theorem.", scope := "Host API behavior."})
+}
+
+definition{
+  name: assumptionCryptographicSecurity,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "cryptographicSecurity", statement := "SHA-256 collision resistance and Ed25519 unforgeability hold for the selected implementations.", evidence := "Cryptographic assumptions and implementation review.", scope := "Commitments and pointer signatures only."})
+}
+
+definition{
+  name: assumptionDisclosureConsent,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "disclosureConsent", statement := "External publication is authorized for the exact destination and content. Public relay and signaling are not private.", evidence := "Explicit user choice and configured destination.", scope := "Signaling, DNS writes and optional public payload relay."})
+}
+
+definition{
+  name: assumptionFailureDomains,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "failureDomains", statement := "Different holder identifiers are independently failing machines only if separate evidence establishes that fact.", evidence := "Physical deployment and correlated-failure measurement.", scope := "Availability and durability claims."})
+}
+
+definition{
+  name: assumptionNetworkAvailability,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "networkAvailability", statement := "DoH, DNS provider, STUN, signaling and optional relay are reachable and honor their APIs and policies.", evidence := "Live provider checks and physical multi-network trials.", scope := "No finite field observation establishes indefinite service."})
+}
+
+definition{
+  name: assumptionObserverAnchor,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "observerAnchor", statement := "The pointer writer key and recent retained head are obtained independently and protected from rollback.", evidence := "Independently pinned key and retained observer head, or separately accepted exact recent digest explicitly restored into that same live scope. Both heads and anchor trust remain session-only.", scope := "Single-writer authority and freshness."})
+}
+
+definition{
+  name: assumptionPeerAssertion,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "peerAssertion", statement := "A local checked acknowledgment is an assertion by the named holder, not authenticated durable custody.", evidence := "Receipt authentication, retained bytes and reachability require external evidence.", scope := "Conditional placement and lease observations."})
+}
+
+definition{
+  name: assumptionSerializedJournal,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "serializedJournal", statement := "Host transitions are serialized and their budgets, action IDs, trusted head and journal are retained for the required lifetime.", evidence := "Application adapter review and crash/concurrency tests.", scope := "Pure state transitions do not provide durable atomic storage."})
+}
+
+definition{
+  name: assumptionTimeSources,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "timeSources", statement := "Monotonic elapsed time does not regress; pointer wall-clock error is within a separately accepted bound.", evidence := "Clock integration tests and independent clock policy.", scope := "Freshness, budgets and leases; no global time oracle."})
+}
+
+definition{
+  name: assumptionVmIsolation,
+  parameters: [],
+  result: Assumption,
+  body: (record Assumption {id := "vmIsolation", statement := "v86, BIOS, guest image and 9p/Ethernet bridge obey their reviewed isolation and resource contracts.", evidence := "Exact binary inventory, upstream provenance, security review and VM integration tests.", scope := "Arbitrary guest effects are not ring-program semantics."})
+}
+
+definition{
+  name: capabilityDom,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "dom", owner := "browser", capability := "Dom", operation := "Render and collect explicit UI actions", source := "index.html", inputs := (cons "local UI state" (nil String)), outputs := (cons "rendered DOM" (cons "user action" (nil String))), preconditions := (cons "browser API available" (nil String)), failures := (cons "unsupported browser" (cons "handler failure" (nil String))), assumptions := (cons "browserSemantics" (nil String)), proofScope := "Presentation only; no storage or network evidence.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilityCrypto,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "crypto", owner := "cryptography", capability := "Cryptography", operation := "Hash commitments and verify pointer signatures", source := "src/layer1-uor/custody.js", inputs := (cons "canonical bytes" (cons "domain" (cons "pinned writer key" (nil String)))), outputs := (cons "full digest" (cons "signature-valid observation" (nil String))), preconditions := (cons "exact canonicalization" (cons "supported algorithm" (nil String))), failures := (cons "digest mismatch" (cons "invalid signature" (cons "crypto unavailable" (nil String)))), assumptions := (cons "browserSemantics" (cons "cryptographicSecurity" (cons "observerAnchor" (nil String)))), proofScope := "Integrity/signature observations; no authority bootstrap or retention.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilityMonotonicClock,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "monotonicClock", owner := "runtimeHost", capability := "MonotonicClock", operation := "Observe elapsed time for admission", source := "src/layer2-schedulers/policy.js", inputs := (cons "epoch and retained last time" (nil String)), outputs := (cons "nondecreasing elapsed observation" (nil String)), preconditions := (cons "same clock origin and epoch" (nil String)), failures := (cons "clock regression" (cons "epoch expired" (nil String))), assumptions := (cons "timeSources" (cons "serializedJournal" (nil String))), proofScope := "Elapsed admission only; not UTC, liveness or global order.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilityWallClock,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "wallClock", owner := "runtimeHost", capability := "WallClock", operation := "Check pointer and lease validity intervals", source := "src/layer1-uor/pointer.js", inputs := (cons "not-before and expiry" (nil String)), outputs := (cons "observer-local wall time" (nil String)), preconditions := (cons "declared clock uncertainty accepted" (nil String)), failures := (cons "outside validity interval" (cons "clock unavailable" (nil String))), assumptions := (cons "timeSources" (nil String)), proofScope := "No proof of clock accuracy or network propagation.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilitySessionStorage,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "sessionStorage", owner := "storage", capability := "SessionStorage", operation := "Retain checked bytes and local state in RAM", source := "src/layer3-storage/index.js", inputs := (cons "verified manifest and fragment bytes" (nil String)), outputs := (cons "session-local cached bytes" (nil String)), preconditions := (cons "storage reservation" (cons "bounded input" (cons "integrity checks" (nil String)))), failures := (cons "capacity exhausted" (cons "tab lost" (cons "browser eviction" (nil String)))), assumptions := (cons "browserSemantics" (cons "serializedJournal" (nil String))), proofScope := "RAM is ephemeral; no disk persistence or total-loss recovery.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilityPeerChannel,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "peerChannel", owner := "transport", capability := "PeerChannel", operation := "Open channel and exchange bounded messages", source := "src/layer5-transport/index.js", inputs := (cons "peer observation" (cons "SDP and ICE" (cons "bounded payload" (nil String)))), outputs := (cons "DataChannel event" (cons "untrusted peer response" (nil String))), preconditions := (cons "network reservation" (cons "payload limits" (cons "domain validation before acceptance" (nil String)))), failures := (cons "ICE failure" (cons "timeout" (cons "disconnect" (cons "malformed payload" (nil String))))), assumptions := (cons "browserSemantics" (cons "networkAvailability" (cons "peerAssertion" (nil String)))), proofScope := "Opened channel is not authenticated holder identity or durable placement.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityLocalBroadcast,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "localBroadcast", owner := "signaling", capability := "LocalBroadcast", operation := "Exchange same-origin tab signals", source := "src/layer5-transport/index.js", inputs := (cons "channel topic" (cons "signal envelope" (nil String))), outputs := (cons "same-origin tab message" (nil String)), preconditions := (cons "explicit mesh join" (nil String)), failures := (cons "API unavailable" (cons "tab closes" (nil String))), assumptions := (cons "browserSemantics" (nil String)), proofScope := "Same-origin only; not remote peer discovery.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityPublicSignaling,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "publicSignaling", owner := "signaling", capability := "PublicSignaling", operation := "Publish and receive SDP/ICE through ntfy", source := "src/layer5-transport/index.js", inputs := (cons "channel topic" (cons "SDP and ICE candidates" (nil String))), outputs := (cons "public signaling response" (nil String)), preconditions := (cons "explicit mesh join" (cons "disclosure accepted" (cons "network reservation" (nil String)))), failures := (cons "provider unavailable" (cons "untrusted signal" (cons "topic collision" (nil String)))), assumptions := (cons "disclosureConsent" (cons "networkAvailability" (nil String))), proofScope := "Ed25519 key-owned session signaling with replay rejection; public metadata disclosure. Keys are not trusted human identity or holder authorization; topics are not privacy.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityDnsRead,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "dnsRead", owner := "discovery", capability := "DnsRead", operation := "Read full pointers and SRV records through DoH", source := "src/layer5-transport/index.js", inputs := (cons "query name" (cons "record type" (nil String))), outputs := (cons "bounded untrusted DNS answer" (nil String)), preconditions := (cons "response-byte ceiling" (cons "network reservation" (cons "pointer authority and successor admission" (nil String)))), failures := (cons "HTTP error" (cons "invalid answer" (cons "stale or conflicting pointer" (nil String)))), assumptions := (cons "networkAvailability" (cons "observerAnchor" (cons "timeSources" (nil String)))), proofScope := "DoH observation cannot inspect all recursive caches or establish consensus.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityDnsWrite,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "dnsWrite", owner := "discovery", capability := "DnsWrite", operation := "Write full signed pointer as multipart Cloudflare TXT", source := "src/layer5-transport/index.js", inputs := (cons "zone and record reference" (cons "signed full pointer" (cons "scoped token reference" (nil String)))), outputs := (cons "provider response and record identifier" (nil String)), preconditions := (cons "explicit publish action" (cons "exact destination authorized" (cons "authority key pinned" (cons "network reservation" (nil String))))), failures := (cons "provider rejected" (cons "unknown outcome" (cons "token missing" (cons "DuckDNS full-pointer serialization refused" (nil String))))), assumptions := (cons "disclosureConsent" (cons "networkAvailability" (cons "observerAnchor" (nil String)))), proofScope := "Provider acknowledgment is not global DNS propagation; secrets are not source data.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityPublicRelay,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "publicRelay", owner := "publicRelay", capability := "PublicRelay", operation := "Publish or retrieve explicitly public warm-cache payloads", source := "src/layer5-transport/index.js", inputs := (cons "bounded object fragments or checkpoint" (cons "topic" (nil String))), outputs := (cons "public relay response" (nil String)), preconditions := (cons "relay separately enabled" (cons "public disclosure accepted" (cons "network reservation" (cons "received domain admission" (nil String))))), failures := (cons "disabled" (cons "provider unavailable" (cons "expired payload" (cons "tampered payload" (nil String))))), assumptions := (cons "disclosureConsent" (cons "networkAvailability" (nil String))), proofScope := "Sufficient fragments disclose the object; no encryption, confidentiality or indefinite retention.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityVm,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "vm", owner := "vm", capability := "VirtualMachine", operation := "Boot guest, mirror object files, run shell and bridge Ethernet", source := "src/layer4-compute/index.js", inputs := (cons "five local v86/BIOS/kernel assets" (cons "guest command or object bytes" (nil String))), outputs := (cons "guest output bytes" (cons "Ethernet frames" (nil String))), preconditions := (cons "explicit VM action" (cons "all assets available" (cons "runtime deadline configured before boot" (cons "guarded local 9p allocation installed before run" (nil String))))), failures := (cons "missing asset" (cons "boot failure" (cons "guest timeout or runtime expiry" (cons "filesystem or bounded-result limit" (cons "stop outcome unknown" (cons "bridge failure" (nil String))))))), assumptions := (cons "browserSemantics" (cons "vmIsolation" (nil String))), proofScope := "Source predicates govern local 9p allocation and bounded result reads. Runtime expiry and dispatched-command cancellation request whole-VM stop; prior effects remain unknown. Browser scheduling and host VM behavior are assumptions, not guest isolation or ring-work metering.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityArtifactFetch,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "artifactFetch", owner := "staticHost", capability := "ArtifactFetch", operation := "Serve and load exact local application assets", source := "index.html", inputs := (cons "relative same-origin path" (nil String)), outputs := (cons "asset bytes" (nil String)), preconditions := (cons "published asset inventory" (cons "trusted static origin" (nil String))), failures := (cons "missing file" (cons "substituted bytes" (cons "HTTP failure" (nil String)))), assumptions := (cons "artifactConformance" (cons "browserSemantics" (nil String))), proofScope := "Inventory hashes identify checked local files; current UI does not verify every fetched asset at load time.", enabledByDefault := true})
+}
+
+definition{
+  name: capabilityNativeRouting,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "nativeRouting", owner := "nativeRouting", capability := "NativeRouting", operation := "External BIRD/FRR or DN42 routing daemon", source := "CONTRACT.json", inputs := (nil String), outputs := (nil String), preconditions := (cons "separate Linux daemon and network authority" (nil String)), failures := (cons "unsupported in browser" (nil String)), assumptions := (cons "networkAvailability" (nil String)), proofScope := "Unsupported boundary; browser has no BGP or WireGuard implementation.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityOriginStorage,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "originStorage", owner := "pointerAuthority", capability := "OriginStorage", operation := "Explicitly retain nonextractable signing authority and exact DNS write-ahead intent", source := "src/layer1-uor/browser-authority.js", inputs := (cons "explicit authority setup" (cons "signed scoped publication candidate" (nil String))), outputs := (cons "restored CryptoKey" (cons "committed origin-local journal" (nil String))), preconditions := (cons "IndexedDB and CryptoKey structured cloning available" (cons "successful transaction commit before provider mutation" (nil String))), failures := (cons "quota or transaction abort" (cons "private browsing loss or eviction" (cons "invalid retained authority" (nil String)))), assumptions := (cons "browserSemantics" (cons "serializedJournal" (nil String))), proofScope := "Origin-local retention only; no backup, cross-device durability, automatic key rotation or provider exactly-once guarantee.", enabledByDefault := false})
+}
+
+definition{
+  name: capabilityWebLock,
+  parameters: [],
+  result: CapabilityContract,
+  body: (record CapabilityContract {id := "webLock", owner := "pointerAuthority", capability := "WebLock", operation := "Exclude same-origin concurrent DNS writers while reading, committing and settling", source := "src/layer1-uor/browser-authority.js", inputs := (cons "exact database zone name and authority scope" (nil String)), outputs := (cons "exclusive context-lifetime operation" (nil String)), preconditions := (cons "Web Locks available" (cons "same-origin lock scope" (nil String))), failures := (cons "API unavailable" (cons "owner context termination leaves journal unknown" (nil String))), assumptions := (cons "browserSemantics" (cons "serializedJournal" (nil String))), proofScope := "No timeout takeover, cross-device exclusion, provider CAS or ordering outside this application origin.", enabledByDefault := false})
+}
+
+definition{
+  name: dependencyBrowserApis,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "browserApis", consumer := "runtimeHost", kind := "host", locator := "browser DOM/WebAssembly/WebCrypto/fetch/WebRTC; optional authority publication requires IndexedDB/Web Locks", versionPolicy := "Host-selected implementation; not byte-pinned", trust := "External API and OS trust boundary", required := true})
+}
+
+definition{
+  name: dependencyCloudflareDns,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "cloudflareDns", consumer := "discovery", kind := "external-service", locator := "https://cloudflare-dns.com/dns-query", versionPolicy := "RFC8484 DNS-message client; optional provider JSON mode; no immutable service version", trust := "Read results untrusted until domain admission", required := false})
+}
+
+definition{
+  name: dependencyCloudflareWriter,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "cloudflareWriter", consumer := "discovery", kind := "external-service", locator := "https://api.cloudflare.com/client/v4", versionPolicy := "Cloudflare API v4; scoped secret reference only", trust := "Writes need explicit destination and content approval", required := false})
+}
+
+definition{
+  name: dependencyGoogleStun,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "googleStun", consumer := "transport", kind := "external-service", locator := "stun:stun.l.google.com:19302", versionPolicy := "Host ICE provider; no immutable service version", trust := "Endpoint discovery only", required := false})
+}
+
+definition{
+  name: dependencyCloudflareStun,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "cloudflareStun", consumer := "transport", kind := "external-service", locator := "stun:stun.cloudflare.com:3478", versionPolicy := "Host ICE provider; no immutable service version", trust := "Endpoint discovery only", required := false})
+}
+
+definition{
+  name: dependencyNtfySignaling,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "ntfySignaling", consumer := "signaling", kind := "external-service", locator := "https://ntfy.sh", versionPolicy := "Public HTTP/WebSocket API; no immutable service version", trust := "Signaling disclosure and service availability", required := false})
+}
+
+definition{
+  name: dependencyNtfyRelay,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "ntfyRelay", consumer := "publicRelay", kind := "external-service", locator := "https://ntfy.sh", versionPolicy := "Optional public cache; no persistence promise", trust := "Payload disclosure requires opt-in", required := false})
+}
+
+definition{
+  name: dependencyStaticOrigin,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "staticOrigin", consumer := "staticHost", kind := "hosting", locator := "same-origin relative application paths", versionPolicy := "Publication-selected HTTPS origin", trust := "No release/deployment authority inferred", required := true})
+}
+
+definition{
+  name: dependencyVmAssets,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "vmAssets", consumer := "vm", kind := "vendored-binary", locator := "v86/ and images/buildroot-bzimage.bin", versionPolicy := "Exact bytes in generated product artifact register", trust := "Exact upstream origins and accompanying source/license materials recorded in vendor/distribution.json; guest source pinned in vendor/guest/SOURCE-NOTICE.md", required := false})
+}
+
+definition{
+  name: dependencyPrismSdk,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "prismSdk", consumer := "identity", kind := "build-tool", locator := "prismpm.lock and standards.lock", versionPolicy := "Exact SDK OCI digest and standards lock", trust := "Only real SDK verify may report source/kernel/artifact acceptance", required := true})
+}
+
+definition{
+  name: dependencyPrismCode,
+  parameters: [],
+  result: Dependency,
+  body: (record Dependency {id := "prismCode", consumer := "identity", kind := "build-tool", locator := "package-lock.json", versionPolicy := "prism-code 0.7.2 exact npm lock", trust := "Adapter and package verification, not browser host semantics", required := true})
+}
+
+definition{
+  name: deploymentBrowserSession,
+  parameters: [],
+  result: Deployment,
+  body: (record Deployment {id := "browserSession", kind := "static-browser", entry := "index.html", files := (cons "index.html" (cons "src/**/*.js" (cons "v86/libv86.js" (cons "v86/v86.wasm" (cons "v86/seabios.bin" (cons "v86/vgabios.bin" (cons "images/buildroot-bzimage.bin" (nil String)))))))), requiredCapabilities := (cons "dom" (cons "crypto" (cons "monotonicClock" (cons "wallClock" (cons "sessionStorage" (cons "artifactFetch" (nil String))))))), secrets := (cons "Cloudflare scoped DNS token only when explicitly supplied; session-local, never in repository" (nil String)), readiness := "Asset load and interactive flow checks required; pure probe acceptance is insufficient.", rollback := "Retain prior complete asset set; session state may be lost on reload.", releaseGate := "Runtime tests, artifact closure, vendor license/provenance review, exact SDK model verification and browser integration checks."})
+}
+
+definition{
+  name: deploymentPureProbe,
+  parameters: [],
+  result: Deployment,
+  body: (record Deployment {id := "pureProbe", kind := "prism-text-application", entry := "app/src/StitchApp.lex.tex", files := (cons "SDK-generated holo and browser closure" (nil String)), requiredCapabilities := (nil String), secrets := (nil String), readiness := "Only actual pinned-SDK verify establishes probe acceptance.", rollback := "Retain previous immutable holo and exact source lock.", releaseGate := "lexlean check, Lean and leanchecker, exact axioms, PrismPM artifact and vector verification."})
+}
+
+definition{
+  name: assetLifecycleEffects,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/effects.js", role := "Exact identity projections and model-derived transport, DNS and VM lifecycle admissions", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetProductExperience,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/product-experience.js", role := "Model-derived operator journeys, evidence and guarded DOM actions", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile0,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "index.html", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile1,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/contracts.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile2,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/custody.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile3,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/generated-model.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile4,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/index.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile5,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/pointer.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile6,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer2-schedulers/index.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile7,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer2-schedulers/policy.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile8,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer3-storage/custody.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile9,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer3-storage/index.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile10,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer4-compute/index.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile11,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer4-compute/replay.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile12,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/index.js", role := "Stitch browser application", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile13,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "v86/libv86.js", role := "vendored VM dependency", origin := "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed", licenseStatus := "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile14,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "v86/v86.wasm", role := "vendored VM dependency", origin := "Exact official copy.sh distribution; v86 source 1e4f43c954701db9699fa976b27cc675f9971265; JS independently reconstructed", licenseStatus := "BSD/MIT incorporated notices and source supplied in vendor/v86; include accompanying materials in distribution", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile15,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "v86/seabios.bin", role := "vendored VM dependency", origin := "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425", licenseStatus := "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile16,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "v86/vgabios.bin", role := "vendored VM dependency", origin := "Exact copy/v86 BIOS blobs; SeaBIOS rel-1.16.2 source ea1b7a0733906b8425d948ae94fba63c32b1d425", licenseStatus := "LGPLv3 source, config, build instructions and licenses supplied in vendor/seabios; include accompanying materials in distribution", redistributionCleared := true})
+}
+
+definition{
+  name: assetFile17,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "images/buildroot-bzimage.bin", role := "vendored VM dependency", origin := "Linux 6.18.7 from Buildroot 7fdeadb3b9f12f78e5fccca914d7fef47090ab9a; image 313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07", licenseStatus := "Corresponding source, configs, patches and licenses published at immutable commit fd59fae669e9a40271fb584ca071270d8ed0b8f8; preserve vendor/guest/SOURCE-NOTICE.md and equivalent source access with image", redistributionCleared := true})
+}
+
+definition{
+  name: assetRustConformance,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/lib.rs", role := "Historical Rust conformance source; not loaded by the browser", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetBrowserAuthority,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer1-uor/browser-authority.js", role := "Origin-local signing authority and transactional publication journal", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetAuthorityUi,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/authority-ui.js", role := "Contextual explicit signing, trust-anchor and browser-storage administration", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+structure{
+  name: Model,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: productId, type: String},
+    {name: owner, type: String},
+    {name: version, type: String},
+    {name: lifecycle, type: String},
+    {name: components, type: (List Component)},
+    {name: assumptions, type: (List Assumption)},
+    {name: capabilityContracts, type: (List CapabilityContract)},
+    {name: dependencies, type: (List Dependency)},
+    {name: deployments, type: (List Deployment)},
+    {name: assets, type: (List Asset)}
+  ]
+}
+
+definition{
+  name: assetDnsWire,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/dns-wire.js", role := "RFC8484 application DNS-message client", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetRelayFraming,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/relay-framing.js", role := "Bounded ntfy message framing and reassembly", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetRecovery,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/recovery.js", role := "Verified detached recovery bundle import/export; separate exact anchor acceptance and explicit scoped live-head restoration", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetRecoveryUi,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/recovery-ui.js", role := "Contextual operator recovery controls without network, VM or DNS effects", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetSignaling,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/signaling.js", role := "Signed key-owned signaling with current-session challenge and replay rejection", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetChannelFlow,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer5-transport/channel-flow.js", role := "Negotiated DataChannel framing, bounded queues and generation-fenced delivery", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: assetVmAdministration,
+  parameters: [],
+  result: Asset,
+  body: (record Asset {path := "src/layer4-compute/vm-administration.js", role := "Explicit guest grants, bounded command admission and generation-scoped effect observation", origin := "Project-owned source checkout", licenseStatus := "Project declares MIT; audit applies", redistributionCleared := true})
+}
+
+definition{
+  name: product,
+  parameters: [],
+  result: Model,
+  body: (record Model {productId := "stitch", owner := "Syntra Labs; repository origin afflom/stitch", version := "0.3.0", lifecycle := "development", components := (cons (componentAdmission) (cons (componentBrowser) (cons (componentCompute) (cons (componentCryptography) (cons (componentDiscovery) (cons (componentIdentity) (cons (componentLegacy) (cons (componentNativeRouting) (cons (componentPeers) (cons (componentPointerAuthority) (cons (componentPublicRelay) (cons (componentRuntimeHost) (cons (componentScheduler) (cons (componentSignaling) (cons (componentStaticHost) (cons (componentStorage) (cons (componentTransport) (cons (componentVm) (nil Component))))))))))))))))))), assumptions := (cons (assumptionArtifactConformance) (cons (assumptionBrowserSemantics) (cons (assumptionCryptographicSecurity) (cons (assumptionDisclosureConsent) (cons (assumptionFailureDomains) (cons (assumptionNetworkAvailability) (cons (assumptionObserverAnchor) (cons (assumptionPeerAssertion) (cons (assumptionSerializedJournal) (cons (assumptionTimeSources) (cons (assumptionVmIsolation) (nil Assumption)))))))))))), capabilityContracts := (cons (capabilityDom) (cons (capabilityCrypto) (cons (capabilityMonotonicClock) (cons (capabilityWallClock) (cons (capabilitySessionStorage) (cons (capabilityPeerChannel) (cons (capabilityLocalBroadcast) (cons (capabilityPublicSignaling) (cons (capabilityDnsRead) (cons (capabilityDnsWrite) (cons (capabilityPublicRelay) (cons (capabilityVm) (cons (capabilityArtifactFetch) (cons (capabilityNativeRouting) (cons (capabilityOriginStorage) (cons (capabilityWebLock) (nil CapabilityContract))))))))))))))))), dependencies := (cons (dependencyBrowserApis) (cons (dependencyCloudflareDns) (cons (dependencyCloudflareWriter) (cons (dependencyGoogleStun) (cons (dependencyCloudflareStun) (cons (dependencyNtfySignaling) (cons (dependencyNtfyRelay) (cons (dependencyStaticOrigin) (cons (dependencyVmAssets) (cons (dependencyPrismSdk) (cons (dependencyPrismCode) (nil Dependency)))))))))))), deployments := (cons (deploymentBrowserSession) (cons (deploymentPureProbe) (nil Deployment))), assets := (cons (assetRelayFraming) (cons (assetDnsWire) (cons (assetLifecycleEffects) (cons (assetProductExperience) (cons (assetFile0) (cons (assetFile1) (cons (assetFile2) (cons (assetFile3) (cons (assetFile4) (cons (assetFile5) (cons (assetFile6) (cons (assetFile7) (cons (assetFile8) (cons (assetFile9) (cons (assetFile10) (cons (assetFile11) (cons (assetFile12) (cons (assetFile13) (cons (assetFile14) (cons (assetFile15) (cons (assetFile16) (cons (assetFile17) (cons (assetRustConformance) (cons (assetRecovery) (cons (assetRecoveryUi) (cons (assetSignaling) (cons (assetChannelFlow) (cons (assetVmAdministration) (cons (assetBrowserAuthority) (cons (assetAuthorityUi) (nil Asset)))))))))))))))))))))))))))))))})
+}
+
+definition{
+  name: componentIds,
+  parameters: [rows : (List Component)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head id) (componentIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: assumptionIds,
+  parameters: [rows : (List Assumption)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head id) (assumptionIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: capabilityContractIds,
+  parameters: [rows : (List CapabilityContract)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head id) (capabilityContractIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: dependencyIds,
+  parameters: [rows : (List Dependency)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head id) (dependencyIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: deploymentIds,
+  parameters: [rows : (List Deployment)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head id) (deploymentIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: assetIds,
+  parameters: [rows : (List Asset)],
+  result: (List String),
+  body: (match rows
+    | List.nil => (nil String)
+    | List.cons head tail => (cons (project head path) (assetIds tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: member,
+  parameters: [value : String, rows : (List String)],
+  result: Bool,
+  body: (match rows
+    | List.nil => false
+    | List.cons head tail => ((prim equal value head : Bool) || (member value tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: members,
+  parameters: [values : (List String), rows : (List String)],
+  result: Bool,
+  body: (match values
+    | List.nil => true
+    | List.cons head tail => ((member head rows) && (members tail rows))),
+  recursive_argument: values
+}
+
+definition{
+  name: unique,
+  parameters: [rows : (List String)],
+  result: Bool,
+  body: (match rows
+    | List.nil => true
+    | List.cons head tail => ((not (member head tail)) && (unique tail))),
+  recursive_argument: rows
+}
+
+definition{
+  name: componentAssetsClosed,
+  parameters: [rows : (List Component), assets : (List String)],
+  result: Bool,
+  body: (match rows
+    | List.nil => true
+    | List.cons head tail => ((members (project head implementation) assets) && (componentAssetsClosed tail assets))),
+  recursive_argument: rows
+}
+
+definition{
+  name: contractsClosed,
+  parameters: [
+    rows : (List CapabilityContract),
+    components : (List String),
+    assumptions : (List String)
+  ],
+  result: Bool,
+  body: (match rows
+    | List.nil => true
+    | List.cons head tail => ((member (project head owner) components) && ((members (project head assumptions) assumptions) && (contractsClosed tail components assumptions)))),
+  recursive_argument: rows
+}
+
+definition{
+  name: dependenciesClosed,
+  parameters: [rows : (List Dependency), components : (List String)],
+  result: Bool,
+  body: (match rows
+    | List.nil => true
+    | List.cons head tail => ((member (project head consumer) components) && (dependenciesClosed tail components))),
+  recursive_argument: rows
+}
+
+definition{
+  name: deploymentsClosed,
+  parameters: [rows : (List Deployment), capabilities : (List String)],
+  result: Bool,
+  body: (match rows
+    | List.nil => true
+    | List.cons head tail => ((members (project head requiredCapabilities) capabilities) && (deploymentsClosed tail capabilities))),
+  recursive_argument: rows
+}
+
+definition{
+  name: valid,
+  parameters: [model : Model],
+  result: Bool,
+  body: ((unique (componentIds (project model components))) && ((unique (assumptionIds (project model assumptions))) && ((unique (capabilityContractIds (project model capabilityContracts))) && ((unique (dependencyIds (project model dependencies))) && ((unique (deploymentIds (project model deployments))) && ((unique (assetIds (project model assets))) && ((componentAssetsClosed (project model components) (assetIds (project model assets))) && ((contractsClosed (project model capabilityContracts) (componentIds (project model components)) (assumptionIds (project model assumptions))) && ((dependenciesClosed (project model dependencies) (componentIds (project model components))) && (deploymentsClosed (project model deployments) (capabilityContractIds (project model capabilityContracts))))))))))))
+}
+
+definition{
+  name: redistributionClosed,
+  parameters: [assets : (List Asset)],
+  result: Bool,
+  body: (match assets
+    | List.nil => true
+    | List.cons head tail => ((project head redistributionCleared) && (redistributionClosed tail))),
+  recursive_argument: assets
+}
+
+definition{
+  name: productAssetsRedistributable,
+  parameters: [model : Model],
+  result: Bool,
+  body: (redistributionClosed (project model assets))
+}
+
+theorem{
+  name: productGraphIsClosed,
+  parameters: [],
+  statement: ((valid (product)) = true),
+  proof: decide{}
+}
+
+theorem{
+  name: vendorDistributionMaterialsRecorded,
+  parameters: [],
+  statement: ((productAssetsRedistributable (product)) = true),
+  proof: decide{}
+}
+\end{semanticmodule}
+\end{lexlean}

@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-observation"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Observation"
+component = "PeerObservation"
+
+[[form]]
+id = "stitch-observation"
+channel = "text"
+surface = "peer observation"
+canonical_source = true
+features = ["sentence-case", "singular"]

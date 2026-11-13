@@ -1,0 +1,183 @@
+\begin{lexlean}{Stitch.Pointer}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Authority,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: nameRoot, type: Stitch.Identity::Digest},
+    {name: keyRoot, type: Stitch.Identity::Digest},
+    {name: epoch, type: Nat}
+  ]
+}
+
+structure{
+  name: Pointer,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: nameRoot, type: Stitch.Identity::Digest},
+    {name: authorityRoot, type: Stitch.Identity::Digest},
+    {name: revision, type: Nat},
+    {name: predecessor, type: Stitch.Identity::Digest},
+    {name: objectRoot, type: Stitch.Identity::Digest},
+    {name: transitionRoot, type: Stitch.Identity::Digest},
+    {name: pointerRoot, type: Stitch.Identity::Digest},
+    {name: notBefore, type: Nat},
+    {name: expires, type: Nat},
+    {name: signature, type: Bytes}
+  ]
+}
+
+definition{
+  name: successorAllowed,
+  parameters: [
+    currentRevision : Nat,
+    nextRevision : Nat,
+    predecessorMatches : Bool,
+    authorityMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  result: Bool,
+  body: (authorityMatches && ((nextRevision =? (currentRevision + 1)) && (predecessorMatches && (signatureValid && ((notBefore <=? now) && (now <? expires))))))
+}
+
+definition{
+  name: acceptPointer,
+  parameters: [current : Pointer, candidate : Pointer, signatureValid : Bool, now : Nat],
+  result: Bool,
+  body: (successorAllowed (project current revision) (project candidate revision) (Stitch.Identity::sameDigest (project candidate predecessor) (project current pointerRoot)) ((Stitch.Identity::sameDigest (project current authorityRoot) (project candidate authorityRoot)) && (Stitch.Identity::sameDigest (project current nameRoot) (project candidate nameRoot))) signatureValid (project candidate notBefore) (project candidate expires) now)
+}
+
+definition{
+  name: restoreAllowed,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  result: Bool,
+  body: (accepted && (scopeMatches && (digestMatches && (signatureValid && ((notBefore <=? now) && ((now <? expires) && ((not headPresent) || sameHead)))))))
+}
+
+theorem{
+  name: unacceptedRestoreRefused,
+  parameters: [
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  statement: ((restoreAllowed false scopeMatches digestMatches signatureValid notBefore expires now headPresent sameHead) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: restoreDifferentHeadGuard,
+  parameters: [],
+  statement: (forall (accepted : Bool), (forall (scopeMatches : Bool), (forall (digestMatches : Bool), (forall (signatureValid : Bool), (forall (begun : Bool), (forall (unexpired : Bool), ((accepted && (scopeMatches && (digestMatches && (signatureValid && (begun && (unexpired && ((not true) || false))))))) = false))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: differentRetainedHeadRestoreRefused,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  statement: ((restoreAllowed accepted scopeMatches digestMatches signatureValid notBefore expires now true false) = false),
+  proof: simplify{definitions: [restoreAllowed, restoreDifferentHeadGuard]},
+  axioms: [propext]
+}
+
+theorem{
+  name: expiredRestoreRefused,
+  parameters: [
+    accepted : Bool,
+    scopeMatches : Bool,
+    digestMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat,
+    headPresent : Bool,
+    sameHead : Bool
+  ],
+  statement: ((expires <= now) -> ((restoreAllowed accepted scopeMatches digestMatches signatureValid notBefore expires now headPresent sameHead) = false)),
+  proof: linear_arithmetic{definitions: [restoreAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: successorStrictlyAdvances,
+  parameters: [
+    currentRevision : Nat,
+    nextRevision : Nat,
+    predecessorMatches : Bool,
+    authorityMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  statement: (((successorAllowed currentRevision nextRevision predecessorMatches authorityMatches signatureValid notBefore expires now) = true) -> (currentRevision < nextRevision)),
+  proof: linear_arithmetic{definitions: [successorAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: wrongAuthorityRefused,
+  parameters: [
+    currentRevision : Nat,
+    nextRevision : Nat,
+    predecessorMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  statement: ((successorAllowed currentRevision nextRevision predecessorMatches false signatureValid notBefore expires now) = false),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: rollbackRefused,
+  parameters: [
+    currentRevision : Nat,
+    nextRevision : Nat,
+    predecessorMatches : Bool,
+    authorityMatches : Bool,
+    signatureValid : Bool,
+    notBefore : Nat,
+    expires : Nat,
+    now : Nat
+  ],
+  statement: ((nextRevision <= currentRevision) -> ((successorAllowed currentRevision nextRevision predecessorMatches authorityMatches signatureValid notBefore expires now) = false)),
+  proof: linear_arithmetic{definitions: [successorAllowed]},
+  axioms: [Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

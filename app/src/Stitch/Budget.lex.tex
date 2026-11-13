@@ -1,0 +1,1861 @@
+\begin{lexlean}{Stitch.Budget}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\importmodule{Stitch.Identity}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Resources,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: transferBytes, type: Nat},
+    {name: storageBytes, type: Nat},
+    {name: computeWork, type: Nat},
+    {name: refreshRequests, type: Nat}
+  ]
+}
+
+structure{
+  name: Budget,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: epoch, type: Nat},
+    {name: start, type: Nat},
+    {name: end, type: Nat},
+    {name: last, type: Nat},
+    {name: limit, type: Resources},
+    {name: spent, type: Resources},
+    {name: reserved, type: Resources}
+  ]
+}
+
+definition{
+  name: chooseBool,
+  parameters: [condition : Bool, whenTrue : Bool, whenFalse : Bool],
+  result: Bool,
+  body: (if condition then whenTrue else whenFalse)
+}
+
+definition{
+  name: chooseNat,
+  parameters: [condition : Bool, whenTrue : Nat, whenFalse : Nat],
+  result: Nat,
+  body: (if condition then whenTrue else whenFalse)
+}
+
+theorem{
+  name: boolAndFalse,
+  parameters: [],
+  statement: (forall (value : Bool), ((value && false) = false)),
+  proof: decide{}
+}
+
+theorem{
+  name: boolFalseAnd,
+  parameters: [],
+  statement: (forall (value : Bool), ((false && value) = false)),
+  proof: decide{}
+}
+
+theorem{name: boolNotTrue, parameters: [], statement: ((not true) = false), proof: decide{}}
+
+theorem{
+  name: chooseBoolTrue,
+  parameters: [],
+  statement: (forall (whenTrue : Bool), (forall (whenFalse : Bool), ((chooseBool true whenTrue whenFalse) = whenTrue))),
+  proof: decide{}
+}
+
+theorem{
+  name: chooseBoolFalse,
+  parameters: [],
+  statement: (forall (whenTrue : Bool), (forall (whenFalse : Bool), ((chooseBool false whenTrue whenFalse) = whenFalse))),
+  proof: decide{}
+}
+
+theorem{
+  name: chooseNatFalse,
+  parameters: [whenTrue : Nat, whenFalse : Nat],
+  statement: ((chooseNat false whenTrue whenFalse) = whenFalse),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: chooseNatTrue,
+  parameters: [whenTrue : Nat, whenFalse : Nat],
+  statement: ((chooseNat true whenTrue whenFalse) = whenTrue),
+  proof: reflexivity{}
+}
+
+definition{
+  name: reserveAllowed,
+  parameters: [
+    spent : Nat,
+    reserved : Nat,
+    cost : Nat,
+    limit : Nat,
+    now : Nat,
+    last : Nat,
+    end : Nat
+  ],
+  result: Bool,
+  body: ((last <=? now) && ((now <? end) && ((spent + (reserved + cost)) <=? limit)))
+}
+
+definition{
+  name: reserveAmount,
+  parameters: [
+    spent : Nat,
+    reserved : Nat,
+    cost : Nat,
+    limit : Nat,
+    now : Nat,
+    last : Nat,
+    end : Nat
+  ],
+  result: Nat,
+  body: (if (reserveAllowed spent reserved cost limit now last end) then (reserved + cost) else reserved)
+}
+
+definition{
+  name: settlementAllowed,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Bool,
+  body: (known && ((actual <=? ceiling) && (ceiling <=? reserved)))
+}
+
+definition{
+  name: settleReserved,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Nat,
+  body: (if known then (if (actual <=? ceiling) then (if (ceiling <=? reserved) then (prim subtract reserved ceiling : Nat) else reserved) else reserved) else reserved)
+}
+
+definition{
+  name: settleSpent,
+  parameters: [spent : Nat, reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  result: Nat,
+  body: (if known then (if (actual <=? ceiling) then (if (ceiling <=? reserved) then (spent + actual) else spent) else spent) else spent)
+}
+
+definition{
+  name: resourcesWithin,
+  parameters: [spent : Resources, reserved : Resources, cost : Resources, limit : Resources],
+  result: Bool,
+  body: ((((project spent transferBytes) + ((project reserved transferBytes) + (project cost transferBytes))) <=? (project limit transferBytes)) && ((((project spent storageBytes) + ((project reserved storageBytes) + (project cost storageBytes))) <=? (project limit storageBytes)) && ((((project spent computeWork) + ((project reserved computeWork) + (project cost computeWork))) <=? (project limit computeWork)) && (((project spent refreshRequests) + ((project reserved refreshRequests) + (project cost refreshRequests))) <=? (project limit refreshRequests)))))
+}
+
+definition{
+  name: admitAction,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  result: Bool,
+  body: (((project budget start) <=? now) && (((project budget last) <=? now) && ((now <? (project budget end)) && (resourcesWithin (project budget spent) (project budget reserved) cost (project budget limit)))))
+}
+
+definition{
+  name: reserveAction,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  result: Budget,
+  body: (record Budget {epoch := (project budget epoch), start := (project budget start), end := (project budget end), last := (if (admitAction budget cost now) then now else (project budget last)), limit := (project budget limit), spent := (project budget spent), reserved := (record Resources {transferBytes := (if (admitAction budget cost now) then ((project (project budget reserved) transferBytes) + (project cost transferBytes)) else (project (project budget reserved) transferBytes)), storageBytes := (if (admitAction budget cost now) then ((project (project budget reserved) storageBytes) + (project cost storageBytes)) else (project (project budget reserved) storageBytes)), computeWork := (if (admitAction budget cost now) then ((project (project budget reserved) computeWork) + (project cost computeWork)) else (project (project budget reserved) computeWork)), refreshRequests := (if (admitAction budget cost now) then ((project (project budget reserved) refreshRequests) + (project cost refreshRequests)) else (project (project budget reserved) refreshRequests))})})
+}
+
+theorem{
+  name: reservationPreservesLimit,
+  parameters: [
+    spent : Nat,
+    reserved : Nat,
+    cost : Nat,
+    limit : Nat,
+    now : Nat,
+    last : Nat,
+    end : Nat
+  ],
+  statement: (((spent + reserved) <= limit) -> ((spent + (reserveAmount spent reserved cost limit now last end)) <= limit)),
+  proof: linear_arithmetic{definitions: [reserveAllowed, reserveAmount]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: unknownSettlementRetainsReservation,
+  parameters: [reserved : Nat, ceiling : Nat, actual : Nat],
+  statement: ((settleReserved reserved ceiling actual false) = reserved),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: settlementDoesNotIncreaseCharge,
+  parameters: [spent : Nat, reserved : Nat, ceiling : Nat, actual : Nat, known : Bool],
+  statement: (((settleSpent spent reserved ceiling actual known) + (settleReserved reserved ceiling actual known)) <= (spent + reserved)),
+  proof: linear_arithmetic{definitions: [settleReserved, settleSpent, settlementAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: clockRollbackRefused,
+  parameters: [
+    spent : Nat,
+    reserved : Nat,
+    cost : Nat,
+    limit : Nat,
+    now : Nat,
+    last : Nat,
+    end : Nat
+  ],
+  statement: ((now < last) -> ((reserveAllowed spent reserved cost limit now last end) = false)),
+  proof: linear_arithmetic{definitions: [reserveAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+definition{
+  name: budgetValid,
+  parameters: [budget : Budget],
+  result: Bool,
+  body: (resourcesWithin (project budget spent) (project budget reserved) (record Resources {transferBytes := 0, storageBytes := 0, computeWork := 0, refreshRequests := 0}) (project budget limit))
+}
+
+theorem{
+  name: vectorReservationPreservesBudget,
+  parameters: [budget : Budget, cost : Resources, now : Nat],
+  statement: (((budgetValid budget) = true) -> ((budgetValid (reserveAction budget cost now)) = true)),
+  proof: linear_arithmetic{definitions: [admitAction, budgetValid, reserveAction, resourcesWithin]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: zeroResources,
+  parameters: [],
+  result: Resources,
+  body: (record Resources {transferBytes := 0, storageBytes := 0, computeWork := 0, refreshRequests := 0})
+}
+
+definition{
+  name: addResources,
+  parameters: [left : Resources, right : Resources],
+  result: Resources,
+  body: (record Resources {transferBytes := ((project left transferBytes) + (project right transferBytes)), storageBytes := ((project left storageBytes) + (project right storageBytes)), computeWork := ((project left computeWork) + (project right computeWork)), refreshRequests := ((project left refreshRequests) + (project right refreshRequests))})
+}
+
+definition{
+  name: sameResources,
+  parameters: [left : Resources, right : Resources],
+  result: Bool,
+  body: (((project left transferBytes) =? (project right transferBytes)) && (((project left storageBytes) =? (project right storageBytes)) && (((project left computeWork) =? (project right computeWork)) && ((project left refreshRequests) =? (project right refreshRequests)))))
+}
+
+definition{
+  name: resourcesAtMost,
+  parameters: [actual : Resources, ceiling : Resources],
+  result: Bool,
+  body: (((project actual transferBytes) <=? (project ceiling transferBytes)) && (((project actual storageBytes) <=? (project ceiling storageBytes)) && (((project actual computeWork) <=? (project ceiling computeWork)) && ((project actual refreshRequests) <=? (project ceiling refreshRequests)))))
+}
+
+structure{
+  name: Reservation,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: actionId, type: Stitch.Identity::Digest},
+    {name: epoch, type: Nat},
+    {name: ceiling, type: Resources},
+    {name: actual, type: Resources},
+    {name: settled, type: Bool}
+  ]
+}
+
+structure{
+  name: Ledger,
+  type_parameters: [],
+  parameters: [],
+  fields: [{name: budget, type: Budget}, {name: reservations, type: (List Reservation)}]
+}
+
+inductive{
+  name: SettlementOutcome,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Unknown, fields: []}, {name: Known, fields: []}]
+}
+
+structure{
+  name: SettlementObservation,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: actionId, type: Stitch.Identity::Digest},
+    {name: epoch, type: Nat},
+    {name: actual, type: Resources},
+    {name: outcome, type: SettlementOutcome}
+  ]
+}
+
+inductive{
+  name: Selection,
+  type_parameters: [],
+  parameters: [],
+  constructors: [{name: Reject, fields: []}, {name: Accept, fields: []}]
+}
+
+definition{
+  name: selectionFromBool,
+  parameters: [condition : Bool],
+  result: Selection,
+  body: (if condition then (ctor Selection.Accept) else (ctor Selection.Reject))
+}
+
+definition{
+  name: selectionValue,
+  parameters: [selection : Selection],
+  result: Bool,
+  body: (match selection | Selection.Reject => false | Selection.Accept => true)
+}
+
+definition{
+  name: selectBoth,
+  parameters: [pending : Selection, matching : Selection],
+  result: Selection,
+  body: (match pending | Selection.Reject => (ctor Selection.Reject) | Selection.Accept => matching)
+}
+
+definition{
+  name: selectRemaining,
+  parameters: [pending : Selection, matching : Selection],
+  result: Selection,
+  body: (match pending
+    | Selection.Reject => (ctor Selection.Reject)
+    | Selection.Accept => (match matching
+      | Selection.Reject => (ctor Selection.Accept)
+      | Selection.Accept => (ctor Selection.Reject)))
+}
+
+definition{
+  name: selectBool,
+  parameters: [selection : Selection, whenTrue : Bool, whenFalse : Bool],
+  result: Bool,
+  body: (match selection | Selection.Reject => whenFalse | Selection.Accept => whenTrue)
+}
+
+definition{
+  name: selectNat,
+  parameters: [selection : Selection, whenTrue : Nat, whenFalse : Nat],
+  result: Nat,
+  body: (match selection | Selection.Reject => whenFalse | Selection.Accept => whenTrue)
+}
+
+definition{
+  name: selectLedger,
+  parameters: [selection : Selection, whenTrue : Ledger, whenFalse : Ledger],
+  result: Ledger,
+  body: (match selection | Selection.Reject => whenFalse | Selection.Accept => whenTrue)
+}
+
+theorem{
+  name: boolImpliesTruth,
+  parameters: [],
+  statement: (forall (value : Bool), (((value = true) -> (0 = 0)) <-> (0 = 0))),
+  proof: decide{}
+}
+
+theorem{
+  name: selectedAdmissionSafety,
+  parameters: [],
+  statement: (forall (before : Bool), (forall (guard : Bool), (forall (candidate : Bool), (((before = true) -> ((selectBool (selectionFromBool guard) candidate before) = true)) <-> ((before = true) -> ((guard = true) -> (candidate = true))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: selectionValueFromBool,
+  parameters: [],
+  statement: (forall (value : Bool), ((selectionValue (selectionFromBool value)) = value)),
+  proof: decide{}
+}
+
+theorem{
+  name: selectBoolFromValue,
+  parameters: [selection : Selection, whenTrue : Bool, whenFalse : Bool],
+  statement: ((selectBool selection whenTrue whenFalse) = (chooseBool (selectionValue selection) whenTrue whenFalse)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+definition{
+  name: outcomeKnown,
+  parameters: [outcome : SettlementOutcome],
+  result: Bool,
+  body: (match outcome | SettlementOutcome.Unknown => false | SettlementOutcome.Known => true)
+}
+
+definition{
+  name: reservationUnused,
+  parameters: [reservations : (List Reservation), actionId : Stitch.Identity::Digest],
+  result: Bool,
+  body: (match reservations
+    | List.nil => true
+    | List.cons head tail => ((not (Stitch.Identity::sameDigest (project head actionId) actionId)) && (reservationUnused tail actionId))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: resourceAt,
+  parameters: [resources : Resources, index : Nat],
+  result: Nat,
+  body: (if (index =? 0) then (project resources transferBytes) else (if (index =? 1) then (project resources storageBytes) else (if (index =? 2) then (project resources computeWork) else (project resources refreshRequests))))
+}
+
+definition{
+  name: spentAt,
+  parameters: [reservations : (List Reservation), index : Nat],
+  result: Nat,
+  body: (match reservations
+    | List.nil => 0
+    | List.cons head tail => ((selectNat (selectionFromBool (project head settled)) (resourceAt (project head actual) index) 0) + (spentAt tail index))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: reservedAt,
+  parameters: [reservations : (List Reservation), index : Nat],
+  result: Nat,
+  body: (match reservations
+    | List.nil => 0
+    | List.cons head tail => ((selectNat (selectionFromBool (project head settled)) 0 (resourceAt (project head ceiling) index)) + (reservedAt tail index))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: headChargedAt,
+  parameters: [reservation : Reservation, index : Nat],
+  result: Nat,
+  body: (selectNat (selectionFromBool (project reservation settled)) (resourceAt (project reservation actual) index) (resourceAt (project reservation ceiling) index))
+}
+
+definition{
+  name: chargedAt,
+  parameters: [reservations : (List Reservation), index : Nat],
+  result: Nat,
+  body: (match reservations
+    | List.nil => 0
+    | List.cons head tail => ((headChargedAt head index) + (chargedAt tail index))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: reservedTotal,
+  parameters: [reservations : (List Reservation)],
+  result: Resources,
+  body: (record Resources {transferBytes := (reservedAt reservations 0), storageBytes := (reservedAt reservations 1), computeWork := (reservedAt reservations 2), refreshRequests := (reservedAt reservations 3)})
+}
+
+definition{
+  name: spentTotal,
+  parameters: [reservations : (List Reservation)],
+  result: Resources,
+  body: (record Resources {transferBytes := (spentAt reservations 0), storageBytes := (spentAt reservations 1), computeWork := (spentAt reservations 2), refreshRequests := (spentAt reservations 3)})
+}
+
+definition{
+  name: reservationCostValid,
+  parameters: [reservation : Reservation],
+  result: Bool,
+  body: (if (project reservation settled) then (resourcesAtMost (project reservation actual) (project reservation ceiling)) else (sameResources (project reservation actual) (zeroResources)))
+}
+
+definition{
+  name: reservationsValid,
+  parameters: [reservations : (List Reservation), epoch : Nat],
+  result: Bool,
+  body: (match reservations
+    | List.nil => true
+    | List.cons head tail => ((Stitch.Identity::digestWellFormed (project head actionId)) && (((project head epoch) =? epoch) && ((reservationUnused tail (project head actionId)) && ((reservationCostValid head) && (reservationsValid tail epoch)))))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: ledgerValid,
+  parameters: [ledger : Ledger],
+  result: Bool,
+  body: ((budgetValid (project ledger budget)) && (((project (project ledger budget) start) <=? (project (project ledger budget) last)) && (((project (project ledger budget) last) <? (project (project ledger budget) end)) && ((reservationsValid (project ledger reservations) (project (project ledger budget) epoch)) && ((sameResources (project (project ledger budget) spent) (spentTotal (project ledger reservations))) && (sameResources (project (project ledger budget) reserved) (reservedTotal (project ledger reservations))))))))
+}
+
+definition{
+  name: ledgerBudget,
+  parameters: [budget : Budget, reservations : (List Reservation), now : Nat],
+  result: Budget,
+  body: (record Budget {epoch := (project budget epoch), start := (project budget start), end := (project budget end), last := now, limit := (project budget limit), spent := (spentTotal reservations), reserved := (reservedTotal reservations)})
+}
+
+definition{
+  name: reserveLedgerAllowed,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  result: Bool,
+  body: ((reservationUnused (project ledger reservations) actionId) && ((ledgerValid ledger) && ((Stitch.Identity::digestWellFormed actionId) && (admitAction (project ledger budget) cost now))))
+}
+
+definition{
+  name: reservationCandidate,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  result: Ledger,
+  body: (let reservations : (List Reservation) := (cons (record Reservation {actionId := actionId, epoch := (project (project ledger budget) epoch), ceiling := cost, actual := (zeroResources), settled := false}) (project ledger reservations)); (record Ledger {budget := (ledgerBudget (project ledger budget) reservations now), reservations := reservations}))
+}
+
+definition{
+  name: reserveLedger,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  result: Ledger,
+  body: (selectLedger (selectionFromBool (reserveLedgerAllowed ledger actionId cost now)) (reservationCandidate ledger actionId cost now) ledger)
+}
+
+definition{
+  name: settlementRecorded,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation],
+  result: Bool,
+  body: (match reservations
+    | List.nil => false
+    | List.cons head tail => (selectBool (selectionFromBool (Stitch.Identity::sameDigest (project head actionId) (project observation actionId))) ((not (selectionValue (selectionFromBool (project head settled)))) && (((project head epoch) =? (project observation epoch)) && (resourcesAtMost (project observation actual) (project head ceiling)))) (settlementRecorded tail observation))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: settleLedgerAllowed,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  result: Bool,
+  body: ((outcomeKnown (project observation outcome)) && ((ledgerValid ledger) && (((project observation epoch) =? (project (project ledger budget) epoch)) && (((project (project ledger budget) last) <=? now) && ((now <? (project (project ledger budget) end)) && (settlementRecorded (project ledger reservations) observation))))))
+}
+
+definition{
+  name: selectedSettlementRecord,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation
+  ],
+  result: Reservation,
+  body: (match selection
+    | Selection.Reject => reservation
+    | Selection.Accept => (record Reservation {actionId := (project reservation actionId), epoch := (project reservation epoch), ceiling := (project reservation ceiling), actual := (project observation actual), settled := true}))
+}
+
+definition{
+  name: updateSettlementRecord,
+  parameters: [reservation : Reservation, observation : SettlementObservation, pending : Selection],
+  result: Reservation,
+  body: (selectedSettlementRecord (selectBoth pending (selectionFromBool (Stitch.Identity::sameDigest (project reservation actionId) (project observation actionId)))) reservation observation)
+}
+
+definition{
+  name: recordSettlementFrom,
+  parameters: [
+    reservations : (List Reservation),
+    observation : SettlementObservation,
+    pending : Selection
+  ],
+  result: (List Reservation),
+  body: (match reservations
+    | List.nil => (nil Reservation)
+    | List.cons head tail => (cons (updateSettlementRecord head observation pending) (recordSettlementFrom tail observation (selectRemaining pending (selectionFromBool (Stitch.Identity::sameDigest (project head actionId) (project observation actionId))))))),
+  recursive_argument: reservations
+}
+
+definition{
+  name: recordSettlement,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation],
+  result: (List Reservation),
+  body: (recordSettlementFrom reservations observation (ctor Selection.Accept))
+}
+
+definition{
+  name: settlementCandidate,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  result: Ledger,
+  body: (let reservations : (List Reservation) := (recordSettlement (project ledger reservations) observation); (record Ledger {budget := (ledgerBudget (project ledger budget) reservations now), reservations := reservations}))
+}
+
+definition{
+  name: settleLedger,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  result: Ledger,
+  body: (selectLedger (selectionFromBool (settleLedgerAllowed ledger observation now)) (settlementCandidate ledger observation now) ledger)
+}
+
+theorem{
+  name: unknownOutcomeRetainsLedger,
+  parameters: [
+    ledger : Ledger,
+    actionId : Stitch.Identity::Digest,
+    epoch : Nat,
+    actual : Resources,
+    now : Nat
+  ],
+  statement: ((settleLedger ledger (record SettlementObservation {actionId := actionId, epoch := epoch, actual := actual, outcome := (ctor SettlementOutcome.Unknown)}) now) = ledger),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: staleEpochCannotSettle,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: (((project observation epoch) < (project (project ledger budget) epoch)) -> ((settleLedgerAllowed ledger observation now) = false)),
+  proof: linear_arithmetic{definitions: [settleLedgerAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: settlementClockRollbackRefused,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((now < (project (project ledger budget) last)) -> ((settleLedgerAllowed ledger observation now) = false)),
+  proof: linear_arithmetic{definitions: [settleLedgerAllowed]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: recordedIdCannotBeReservedAgain,
+  parameters: [
+    budget : Budget,
+    head : Reservation,
+    tail : (List Reservation),
+    cost : Resources,
+    now : Nat
+  ],
+  statement: ((reserveLedgerAllowed (record Ledger {budget := budget, reservations := (cons head tail)}) (project head actionId) cost now) = false),
+  proof: simplify{
+    definitions: [
+      boolFalseAnd,
+      boolNotTrue,
+      reservationUnused,
+      reserveLedgerAllowed,
+      Stitch.Identity::fullDigestReflexive
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settledHeadCannotBeChargedAgain,
+  parameters: [
+    actionId : Stitch.Identity::Digest,
+    epoch : Nat,
+    ceiling : Resources,
+    priorActual : Resources,
+    tail : (List Reservation),
+    actual : Resources
+  ],
+  statement: ((settlementRecorded (cons (record Reservation {actionId := actionId, epoch := epoch, ceiling := ceiling, actual := priorActual, settled := true}) tail) (record SettlementObservation {actionId := actionId, epoch := epoch, actual := actual, outcome := (ctor SettlementOutcome.Known)})) = false),
+  proof: simplify{
+    definitions: [
+      boolFalseAnd,
+      boolNotTrue,
+      chooseBoolTrue,
+      selectBoolFromValue,
+      selectionValueFromBool,
+      settlementRecorded,
+      Stitch.Identity::fullDigestReflexive
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: ledgerValiditySelect,
+  parameters: [selection : Selection, whenTrue : Ledger, whenFalse : Ledger],
+  statement: ((ledgerValid (selectLedger selection whenTrue whenFalse)) = (selectBool selection (ledgerValid whenTrue) (ledgerValid whenFalse))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+definition{
+  name: reservationNumericValidity,
+  parameters: [ledger : Ledger],
+  result: Bool,
+  body: ((budgetValid (project ledger budget)) && (((project (project ledger budget) start) <=? (project (project ledger budget) last)) && (((project (project ledger budget) last) <? (project (project ledger budget) end)) && ((sameResources (project (project ledger budget) spent) (spentTotal (project ledger reservations))) && (sameResources (project (project ledger budget) reserved) (reservedTotal (project ledger reservations)))))))
+}
+
+theorem{
+  name: reservationValidityOrder,
+  parameters: [],
+  statement: (forall (b : Bool), (forall (start : Bool), (forall (end : Bool), (forall (valid : Bool), (forall (spent : Bool), (forall (reserved : Bool), ((b && (start && (end && (valid && (spent && reserved))))) = ((b && (start && (end && (spent && reserved)))) && valid)))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: reservationLedgerParts,
+  parameters: [ledger : Ledger],
+  statement: ((ledgerValid ledger) = ((reservationNumericValidity ledger) && (reservationsValid (project ledger reservations) (project (project ledger budget) epoch)))),
+  proof: simplify{definitions: [ledgerValid, reservationNumericValidity, reservationValidityOrder]},
+  axioms: [propext]
+}
+
+theorem{
+  name: reservationConjunctionClosure,
+  parameters: [],
+  statement: (forall (g : Bool), (forall (a : Bool), (forall (b : Bool), (((g = true) -> (a = true)) -> (((g = true) -> (b = true)) -> (((g = true) -> ((a && b) = true)) <-> (0 = 0))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: reservationTrueAnd,
+  parameters: [],
+  statement: (forall (v : Bool), ((true && v) = v)),
+  proof: decide{}
+}
+
+theorem{
+  name: reservationEpochReflexive,
+  parameters: [epoch : Nat],
+  statement: ((epoch =? epoch) = true),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: reservationFreshCostValidity,
+  parameters: [actionId : Stitch.Identity::Digest, epoch : Nat, ceiling : Resources],
+  statement: ((reservationCostValid (record Reservation {actionId := actionId, epoch := epoch, ceiling := ceiling, actual := (zeroResources), settled := false})) = true),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: reservationListAdmissionFact,
+  parameters: [],
+  statement: (forall (unused : Bool), (forall (b : Bool), (forall (start : Bool), (forall (end : Bool), (forall (valid : Bool), (forall (spent : Bool), (forall (reserved : Bool), (forall (digest : Bool), (forall (admitted : Bool), ((((unused && ((b && (start && (end && (valid && (spent && reserved))))) && (digest && admitted))) = true) -> ((digest && (unused && valid)) = true)) <-> (0 = 0))))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: reservationCandidateListGuarantee,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((((reserveLedgerAllowed ledger actionId cost now) = true) -> ((reservationsValid (project (reservationCandidate ledger actionId cost now) reservations) (project (project (reservationCandidate ledger actionId cost now) budget) epoch)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      ledgerBudget,
+      ledgerValid,
+      reservationCandidate,
+      reservationEpochReflexive,
+      reservationFreshCostValidity,
+      reservationListAdmissionFact,
+      reservationTrueAnd,
+      reservationsValid,
+      reserveLedgerAllowed
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: reservationCandidateNumericGuarantee,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((((reserveLedgerAllowed ledger actionId cost now) = true) -> ((reservationNumericValidity (reservationCandidate ledger actionId cost now)) = true)) <-> (0 = 0)),
+  proof: constructor{
+    branches: [
+      linear_arithmetic{},
+      linear_arithmetic{
+        definitions: [
+          admitAction,
+          budgetValid,
+          ledgerBudget,
+          ledgerValid,
+          reservationCandidate,
+          reservationNumericValidity,
+          reserveLedgerAllowed,
+          reservedAt,
+          reservedTotal,
+          resourceAt,
+          resourcesWithin,
+          sameResources,
+          selectNat,
+          selectionFromBool,
+          spentAt,
+          spentTotal,
+          zeroResources
+        ]
+      }
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: reservationCandidateGuarantee,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((((reserveLedgerAllowed ledger actionId cost now) = true) -> ((ledgerValid (reservationCandidate ledger actionId cost now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      reservationCandidateListGuarantee,
+      reservationCandidateNumericGuarantee,
+      reservationConjunctionClosure,
+      reservationLedgerParts
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: reservationSelectedSafety,
+  parameters: [],
+  statement: (forall (before : Bool), (forall (guard : Bool), (forall (candidate : Bool), (((guard = true) -> (candidate = true)) -> (((before = true) -> ((selectBool (selectionFromBool guard) candidate before) = true)) <-> (0 = 0)))))),
+  proof: decide{}
+}
+
+theorem{
+  name: reserveLedgerPreservesValidity,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: (((ledgerValid ledger) = true) -> ((ledgerValid (reserveLedger ledger actionId cost now)) = true)),
+  proof: simplify{
+    definitions: [
+      ledgerValiditySelect,
+      reservationCandidateGuarantee,
+      reservationSelectedSafety,
+      reserveLedger
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: reserveLedgerPreservesValidityFact,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((((ledgerValid ledger) = true) -> ((ledgerValid (reserveLedger ledger actionId cost now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      ledgerValiditySelect,
+      reservationCandidateGuarantee,
+      reservationSelectedSafety,
+      reserveLedger
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: reservationSelectNat,
+  parameters: [selection : Selection, whenTrue : Nat, whenFalse : Nat],
+  result: Nat,
+  body: (match selection | Selection.Reject => whenFalse | Selection.Accept => whenTrue)
+}
+
+theorem{
+  name: reservationLedgerClockSelect,
+  parameters: [selection : Selection, whenTrue : Ledger, whenFalse : Ledger],
+  statement: ((project (project (selectLedger selection whenTrue whenFalse) budget) last) = (reservationSelectNat selection (project (project whenTrue budget) last) (project (project whenFalse budget) last))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: reservationSelectedClockFact,
+  parameters: [condition : Bool, whenTrue : Nat, whenFalse : Nat],
+  statement: (((condition = true) -> ((reservationSelectNat (selectionFromBool condition) whenTrue whenFalse) = whenTrue)) <-> (0 = 0)),
+  proof: constructor{
+    branches: [
+      linear_arithmetic{},
+      linear_arithmetic{definitions: [reservationSelectNat, selectionFromBool]}
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: reservationCandidateClock,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((project (project (reservationCandidate ledger actionId cost now) budget) last) = now),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: reserveLedgerClockFact,
+  parameters: [ledger : Ledger, actionId : Stitch.Identity::Digest, cost : Resources, now : Nat],
+  statement: ((((reserveLedgerAllowed ledger actionId cost now) = true) -> ((project (project (reserveLedger ledger actionId cost now) budget) last) = now)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      reservationCandidateClock,
+      reservationLedgerClockSelect,
+      reservationSelectedClockFact,
+      reserveLedger
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: selectedRecordId,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation
+  ],
+  statement: ((project (selectedSettlementRecord selection reservation observation) actionId) = (project reservation actionId)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: selectedRecordEpoch,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation
+  ],
+  statement: ((project (selectedSettlementRecord selection reservation observation) epoch) = (project reservation epoch)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: selectedRecordCeiling,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation
+  ],
+  statement: ((project (selectedSettlementRecord selection reservation observation) ceiling) = (project reservation ceiling)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: selectedRecordCostValidity,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation
+  ],
+  statement: ((reservationCostValid (selectedSettlementRecord selection reservation observation)) = (selectBool selection (resourcesAtMost (project observation actual) (project reservation ceiling)) (reservationCostValid reservation))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: selectBoolFromBool,
+  parameters: [],
+  statement: (forall (condition : Bool), (forall (whenTrue : Bool), (forall (whenFalse : Bool), ((selectBool (selectionFromBool condition) whenTrue whenFalse) = (chooseBool condition whenTrue whenFalse))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementFromPreservesUnusedIds,
+  parameters: [
+    reservations : (List Reservation),
+    observation : SettlementObservation,
+    actionId : Stitch.Identity::Digest,
+    pending : Selection
+  ],
+  statement: ((reservationUnused (recordSettlementFrom reservations observation pending) actionId) = (reservationUnused reservations actionId)),
+  proof: induction{
+    branches: [
+      {
+        proof: simplify{definitions: [recordSettlementFrom, reservationUnused]},
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            hypothesis,
+            recordSettlementFrom,
+            reservationUnused,
+            selectedRecordId,
+            updateSettlementRecord
+          ]
+        },
+        binders: [head, tail, hypothesis],
+        constructor: cons
+      }
+    ],
+    generalizing: [actionId, observation, pending],
+    scrutinee: reservations
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementPreservesUnusedIds,
+  parameters: [
+    reservations : (List Reservation),
+    observation : SettlementObservation,
+    actionId : Stitch.Identity::Digest
+  ],
+  statement: ((reservationUnused (recordSettlement reservations observation) actionId) = (reservationUnused reservations actionId)),
+  proof: simplify{definitions: [recordSettlement, settlementFromPreservesUnusedIds]},
+  axioms: [propext]
+}
+
+theorem{
+  name: selectNatFromBool,
+  parameters: [selection : Selection, whenTrue : Nat, whenFalse : Nat],
+  statement: ((selectNat selection whenTrue whenFalse) = (chooseNat (selectionValue selection) whenTrue whenFalse)),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: selectedRecordCharge,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation,
+    index : Nat
+  ],
+  statement: ((headChargedAt (selectedSettlementRecord selection reservation observation) index) = (selectNat selection (resourceAt (project observation actual) index) (headChargedAt reservation index))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: scalarAccountingStep,
+  parameters: [
+    selection : Selection,
+    actual : Nat,
+    ceiling : Nat,
+    spent : Nat,
+    reserved : Nat,
+    charged : Nat
+  ],
+  statement: (((((selectNat selection actual 0) + spent) + ((selectNat selection 0 ceiling) + reserved)) = ((selectNat selection actual ceiling) + charged)) <-> ((spent + reserved) = charged)),
+  proof: cases{
+    branches: [
+      {proof: linear_arithmetic{definitions: [selectNat]}, binders: [], constructor: Reject},
+      {proof: linear_arithmetic{definitions: [selectNat]}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: scalarAccounting,
+  parameters: [reservations : (List Reservation), index : Nat],
+  statement: (((spentAt reservations index) + (reservedAt reservations index)) = (chargedAt reservations index)),
+  proof: induction{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: nil},
+      {
+        proof: simplify{
+          definitions: [
+            chargedAt,
+            headChargedAt,
+            hypothesis,
+            reservedAt,
+            scalarAccountingStep,
+            spentAt
+          ]
+        },
+        binders: [head, tail, hypothesis],
+        constructor: cons
+      }
+    ],
+    generalizing: [index],
+    scrutinee: reservations
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementValidityStep,
+  parameters: [pending : Selection, matching : Selection],
+  statement: (forall (identity : Bool), (forall (epoch : Bool), (forall (unused : Bool), (forall (headCost : Bool), (forall (tailValid : Bool), (forall (settled : Bool), (forall (epochMatches : Bool), (forall (actualWithin : Bool), (forall (tailRecorded : Bool), (forall (nextValid : Bool), ((((tailValid = true) -> (((chooseBool (selectionValue (selectRemaining pending matching)) tailRecorded true) = true) -> (nextValid = true))) <-> (0 = 0)) -> ((((identity && (epoch && (unused && (headCost && tailValid)))) = true) -> (((chooseBool (selectionValue pending) (selectBool matching ((not settled) && (epochMatches && actualWithin)) tailRecorded) true) = true) -> ((identity && (epoch && (unused && ((selectBool (selectBoth pending matching) actualWithin headCost) && nextValid)))) = true))) <-> (0 = 0))))))))))))),
+  proof: cases{
+    branches: [
+      {
+        proof: cases{
+          branches: [
+            {proof: decide{}, binders: [], constructor: Reject},
+            {proof: decide{}, binders: [], constructor: Accept}
+          ],
+          scrutinee: matching
+        },
+        binders: [],
+        constructor: Reject
+      },
+      {
+        proof: cases{
+          branches: [
+            {proof: decide{}, binders: [], constructor: Reject},
+            {proof: decide{}, binders: [], constructor: Accept}
+          ],
+          scrutinee: matching
+        },
+        binders: [],
+        constructor: Accept
+      }
+    ],
+    scrutinee: pending
+  }
+}
+
+theorem{
+  name: settlementFromPreservesReservationValidity,
+  parameters: [
+    reservations : (List Reservation),
+    observation : SettlementObservation,
+    epoch : Nat,
+    pending : Selection
+  ],
+  statement: ((((reservationsValid reservations epoch) = true) -> (((chooseBool (selectionValue pending) (settlementRecorded reservations observation) true) = true) -> ((reservationsValid (recordSettlementFrom reservations observation pending) epoch) = true))) <-> (0 = 0)),
+  proof: induction{
+    branches: [
+      {
+        proof: constructor{
+          branches: [
+            linear_arithmetic{},
+            linear_arithmetic{
+              definitions: [chooseBool, recordSettlementFrom, reservationsValid, settlementRecorded]
+            }
+          ]
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            hypothesis,
+            recordSettlementFrom,
+            reservationsValid,
+            selectedRecordCostValidity,
+            selectedRecordEpoch,
+            selectedRecordId,
+            settlementFromPreservesUnusedIds,
+            settlementRecorded,
+            settlementValidityStep,
+            updateSettlementRecord
+          ]
+        },
+        binders: [head, tail, hypothesis],
+        constructor: cons
+      }
+    ],
+    generalizing: [epoch, observation, pending],
+    scrutinee: reservations
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementReservationValidityFact,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation, epoch : Nat],
+  statement: ((((reservationsValid reservations epoch) = true) -> (((settlementRecorded reservations observation) = true) -> ((reservationsValid (recordSettlement reservations observation) epoch) = true))) <-> (0 = 0)),
+  proof: apply{
+    arguments: [reservations, observation, epoch, (ctor Selection.Accept)],
+    theorem: settlementFromPreservesReservationValidity
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementPreservesReservationValidity,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation, epoch : Nat],
+  statement: (((reservationsValid reservations epoch) = true) -> (((settlementRecorded reservations observation) = true) -> ((reservationsValid (recordSettlement reservations observation) epoch) = true))),
+  proof: simplify{definitions: [settlementReservationValidityFact]},
+  axioms: [propext]
+}
+
+theorem{
+  name: scalarBoundToBool,
+  parameters: [left : Nat, right : Nat],
+  statement: ((left <= right) <-> ((left <=? right) = true)),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: scalarBoolToBound,
+  parameters: [left : Nat, right : Nat],
+  statement: (((left <=? right) = true) <-> (left <= right)),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: settledSelectionChargeStep,
+  parameters: [],
+  statement: (forall (tailRecorded : Bool), (forall (epochMatches : Bool), (forall (actualWithin : Bool), (forall (tailBound : Bool), (forall (wholeBound : Bool), ((((((chooseBool (selectionValue (selectRemaining (ctor Selection.Accept) (ctor Selection.Accept))) tailRecorded true) = true) -> (tailBound = true)) <-> (0 = 0)) -> (((chooseBool (selectionValue (ctor Selection.Accept)) (selectBool (ctor Selection.Accept) ((not (selectionValue (ctor Selection.Accept))) && (epochMatches && actualWithin)) tailRecorded) true) = true) -> (wholeBound = true))) <-> (0 = 0))))))),
+  proof: decide{}
+}
+
+definition{
+  name: scalarChargeSafe,
+  parameters: [pending : Selection, recorded : Bool, bound : Bool],
+  result: Bool,
+  body: (selectBool pending ((not recorded) || bound) bound)
+}
+
+theorem{
+  name: scalarChargeRejected,
+  parameters: [recorded : Bool, bound : Bool],
+  statement: ((scalarChargeSafe (ctor Selection.Reject) recorded bound) = bound),
+  proof: reflexivity{}
+}
+
+definition{
+  name: scalarFreshChargeCheck,
+  parameters: [
+    epochMatches : Bool,
+    actualWithin : Bool,
+    actualBound : Bool,
+    tailBound : Bool,
+    resultBound : Bool
+  ],
+  result: Bool,
+  body: ((not (epochMatches && actualWithin)) || resultBound)
+}
+
+theorem{
+  name: scalarAdditionMonotone,
+  parameters: [actual : Nat, ceiling : Nat, before : Nat, after : Nat],
+  statement: (((not (actual <=? ceiling)) || ((not (after <=? before)) || ((actual + after) <=? (ceiling + before)))) = true),
+  proof: linear_arithmetic{},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: scalarFreshChargeGate,
+  parameters: [],
+  statement: (forall (epochMatches : Bool), (forall (actualWithin : Bool), (forall (actualBound : Bool), (forall (tailBound : Bool), (forall (resultBound : Bool), ((((not actualBound) || ((not tailBound) || resultBound)) = true) -> (((((not actualWithin) || actualBound) = true) -> ((tailBound = true) -> ((scalarFreshChargeCheck epochMatches actualWithin actualBound tailBound resultBound) = true))) <-> (0 = 0)))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: scalarSameConsequent,
+  parameters: [constraint : Bool, observed : Bool],
+  statement: ((constraint = true) -> ((observed = true) -> (observed = true))),
+  proof: linear_arithmetic{}
+}
+
+theorem{
+  name: scalarTrueConsequentObserved,
+  parameters: [constraint : Bool, observed : Bool],
+  statement: ((constraint = true) -> ((observed = true) -> (true = true))),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: scalarAdditionCancellation,
+  parameters: [head : Nat, after : Nat, before : Nat],
+  statement: ((((head + after) <=? (head + before)) = true) <-> ((after <=? before) = true)),
+  proof: constructor{branches: [linear_arithmetic{}, linear_arithmetic{}]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: scalarCheckComparisonCongruence,
+  parameters: [pending : Selection],
+  statement: (forall (recorded : Bool), (forall (left : Bool), (forall (right : Bool), (((left = true) <-> (right = true)) -> (((scalarChargeSafe pending recorded left) = true) <-> ((scalarChargeSafe pending recorded right) = true)))))),
+  proof: cases{
+    branches: [
+      {proof: decide{}, binders: [], constructor: Reject},
+      {proof: decide{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: pending
+  }
+}
+
+theorem{
+  name: scalarCheckReflected,
+  parameters: [],
+  statement: (forall (recorded : Bool), (forall (bound : Bool), (((scalarChargeSafe (ctor Selection.Accept) recorded bound) = true) <-> ((recorded = true) -> (bound = true))))),
+  proof: decide{}
+}
+
+theorem{
+  name: scalarCheckAdditionCancellation,
+  parameters: [recorded : Bool, head : Nat, after : Nat, before : Nat],
+  statement: (((scalarChargeSafe (ctor Selection.Accept) recorded ((head + after) <=? (head + before))) = true) <-> ((scalarChargeSafe (ctor Selection.Accept) recorded (after <=? before)) = true)),
+  proof: simplify{definitions: [scalarAdditionCancellation, scalarCheckReflected]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: resourceAtChargeConstraint,
+  parameters: [actual : Resources, ceiling : Resources, index : Nat],
+  statement: (((not (resourcesAtMost actual ceiling)) || ((resourceAt actual index) <=? (resourceAt ceiling index))) = true),
+  proof: linear_arithmetic{definitions: [resourceAt, resourcesAtMost]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+definition{
+  name: scalarStepChargeSafe,
+  parameters: [
+    pending : Selection,
+    matching : Selection,
+    settled : Selection,
+    epochMatches : Bool,
+    actualWithin : Bool,
+    tailRecorded : Bool,
+    actual : Nat,
+    ceiling : Nat,
+    oldActual : Nat,
+    before : Nat,
+    after : Nat
+  ],
+  result: Bool,
+  body: (match pending
+    | Selection.Reject => (after <=? before)
+    | Selection.Accept => (match matching
+      | Selection.Reject => (scalarChargeSafe (ctor Selection.Accept) tailRecorded (after <=? before))
+      | Selection.Accept => (match settled
+        | Selection.Reject => (scalarFreshChargeCheck epochMatches actualWithin (actual <=? ceiling) (after <=? before) ((actual + after) <=? (ceiling + before)))
+        | Selection.Accept => true)))
+}
+
+theorem{
+  name: resourceAtBound,
+  parameters: [actual : Resources, ceiling : Resources, index : Nat],
+  statement: (((resourcesAtMost actual ceiling) = true) -> ((resourceAt actual index) <= (resourceAt ceiling index))),
+  proof: linear_arithmetic{definitions: [resourceAt, resourcesAtMost]},
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: scalarTrueConsequent,
+  parameters: [condition : Bool, actual : Nat, ceiling : Nat, tail : Bool],
+  statement: (((condition = true) -> (actual <= ceiling)) -> ((tail = true) -> (true = true))),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: scalarStepChargeGuarantee,
+  parameters: [
+    pending : Selection,
+    matching : Selection,
+    settled : Selection,
+    epochMatches : Bool,
+    actualWithin : Bool,
+    tailRecorded : Bool,
+    actual : Nat,
+    ceiling : Nat,
+    oldActual : Nat,
+    before : Nat,
+    after : Nat
+  ],
+  statement: ((((not actualWithin) || (actual <=? ceiling)) = true) -> (((scalarChargeSafe (selectRemaining pending matching) tailRecorded (after <=? before)) = true) -> ((scalarStepChargeSafe pending matching settled epochMatches actualWithin tailRecorded actual ceiling oldActual before after) = true))),
+  proof: cases{
+    branches: [
+      {
+        proof: apply{
+          arguments: [((not actualWithin) || (actual <=? ceiling)), (after <=? before)],
+          theorem: scalarSameConsequent
+        },
+        binders: [],
+        constructor: Reject
+      },
+      {
+        proof: cases{
+          branches: [
+            {
+              proof: apply{
+                arguments: [
+                  ((not actualWithin) || (actual <=? ceiling)),
+                  (scalarChargeSafe (ctor Selection.Accept) tailRecorded (after <=? before))
+                ],
+                theorem: scalarSameConsequent
+              },
+              binders: [],
+              constructor: Reject
+            },
+            {
+              proof: cases{
+                branches: [
+                  {
+                    proof: simplify{
+                      definitions: [
+                        scalarAdditionMonotone,
+                        scalarChargeRejected,
+                        scalarFreshChargeGate,
+                        scalarStepChargeSafe,
+                        selectRemaining
+                      ]
+                    },
+                    binders: [],
+                    constructor: Reject
+                  },
+                  {
+                    proof: apply{
+                      arguments: [((not actualWithin) || (actual <=? ceiling)), (after <=? before)],
+                      theorem: scalarTrueConsequentObserved
+                    },
+                    binders: [],
+                    constructor: Accept
+                  }
+                ],
+                scrutinee: settled
+              },
+              binders: [],
+              constructor: Accept
+            }
+          ],
+          scrutinee: matching
+        },
+        binders: [],
+        constructor: Accept
+      }
+    ],
+    scrutinee: pending
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: scalarConsChargeCheck,
+  parameters: [
+    pending : Selection,
+    matching : Selection,
+    settled : Selection,
+    epochMatches : Bool,
+    actualWithin : Bool,
+    tailRecorded : Bool,
+    actual : Nat,
+    ceiling : Nat,
+    oldActual : Nat,
+    before : Nat,
+    after : Nat
+  ],
+  statement: (((scalarChargeSafe pending (selectBool matching ((not (selectionValue settled)) && (epochMatches && actualWithin)) tailRecorded) (((selectNat (selectBoth pending matching) actual (selectNat settled oldActual ceiling)) + after) <=? ((selectNat settled oldActual ceiling) + before))) = true) <-> ((scalarStepChargeSafe pending matching settled epochMatches actualWithin tailRecorded actual ceiling oldActual before after) = true)),
+  proof: cases{
+    branches: [
+      {
+        proof: apply{
+          arguments: [(selectNat settled oldActual ceiling), after, before],
+          theorem: scalarAdditionCancellation
+        },
+        binders: [],
+        constructor: Reject
+      },
+      {
+        proof: cases{
+          branches: [
+            {
+              proof: apply{
+                arguments: [tailRecorded, (selectNat settled oldActual ceiling), after, before],
+                theorem: scalarCheckAdditionCancellation
+              },
+              binders: [],
+              constructor: Reject
+            },
+            {
+              proof: cases{
+                branches: [
+                  {proof: reflexivity{}, binders: [], constructor: Reject},
+                  {proof: reflexivity{}, binders: [], constructor: Accept}
+                ],
+                scrutinee: settled
+              },
+              binders: [],
+              constructor: Accept
+            }
+          ],
+          scrutinee: matching
+        },
+        binders: [],
+        constructor: Accept
+      }
+    ],
+    scrutinee: pending
+  },
+  axioms: [Quot.sound, propext]
+}
+
+theorem{
+  name: selectedRecordChargeExpanded,
+  parameters: [
+    selection : Selection,
+    reservation : Reservation,
+    observation : SettlementObservation,
+    index : Nat
+  ],
+  statement: ((selectNat (selectionFromBool (project (selectedSettlementRecord selection reservation observation) settled)) (resourceAt (project (selectedSettlementRecord selection reservation observation) actual) index) (resourceAt (project (selectedSettlementRecord selection reservation observation) ceiling) index)) = (selectNat selection (resourceAt (project observation actual) index) (selectNat (selectionFromBool (project reservation settled)) (resourceAt (project reservation actual) index) (resourceAt (project reservation ceiling) index)))),
+  proof: cases{
+    branches: [
+      {proof: reflexivity{}, binders: [], constructor: Reject},
+      {proof: reflexivity{}, binders: [], constructor: Accept}
+    ],
+    scrutinee: selection
+  }
+}
+
+theorem{
+  name: scalarSettlementSafety,
+  parameters: [
+    reservations : (List Reservation),
+    observation : SettlementObservation,
+    index : Nat,
+    pending : Selection
+  ],
+  statement: ((scalarChargeSafe pending (settlementRecorded reservations observation) ((chargedAt (recordSettlementFrom reservations observation pending) index) <=? (chargedAt reservations index))) = true),
+  proof: induction{
+    branches: [
+      {
+        proof: cases{
+          branches: [
+            {proof: reflexivity{}, binders: [], constructor: Reject},
+            {proof: reflexivity{}, binders: [], constructor: Accept}
+          ],
+          scrutinee: pending
+        },
+        binders: [],
+        constructor: nil
+      },
+      {
+        proof: simplify{
+          definitions: [
+            chargedAt,
+            headChargedAt,
+            hypothesis,
+            recordSettlementFrom,
+            resourceAtChargeConstraint,
+            scalarConsChargeCheck,
+            scalarStepChargeGuarantee,
+            selectedRecordChargeExpanded,
+            settlementRecorded,
+            updateSettlementRecord
+          ]
+        },
+        binders: [head, tail, hypothesis],
+        constructor: cons
+      }
+    ],
+    generalizing: [index, observation, pending],
+    scrutinee: reservations
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: scalarChargeObservation,
+  parameters: [],
+  statement: (forall (recorded : Bool), (forall (bound : Bool), (((recorded = true) -> (bound = true)) <-> ((scalarChargeSafe (ctor Selection.Accept) recorded bound) = true)))),
+  proof: decide{}
+}
+
+theorem{
+  name: scalarSettlementFact,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation, index : Nat],
+  statement: ((((settlementRecorded reservations observation) = true) -> ((chargedAt (recordSettlement reservations observation) index) <= (chargedAt reservations index))) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      recordSettlement,
+      scalarBoundToBool,
+      scalarChargeObservation,
+      scalarSettlementSafety
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: chargeComparisonObserved,
+  parameters: [left : Nat, right : Nat],
+  statement: (((left <=? right) = true) <-> (left <= right)),
+  proof: linear_arithmetic{},
+  axioms: [propext]
+}
+
+theorem{
+  name: chargeFourConjunctionFact,
+  parameters: [],
+  statement: (forall (guard : Bool), (forall (a : Bool), (forall (b : Bool), (forall (c : Bool), (forall (d : Bool), (((guard = true) -> (a = true)) -> (((guard = true) -> (b = true)) -> (((guard = true) -> (c = true)) -> (((guard = true) -> (d = true)) -> (((guard = true) -> ((a && (b && (c && d))) = true)) <-> (0 = 0))))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementCannotIncreaseLedgerCharge,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation],
+  statement: (((settlementRecorded reservations observation) = true) -> ((resourcesAtMost (addResources (spentTotal (recordSettlement reservations observation)) (reservedTotal (recordSettlement reservations observation))) (addResources (spentTotal reservations) (reservedTotal reservations))) = true)),
+  proof: simplify{
+    definitions: [
+      addResources,
+      chargeComparisonObserved,
+      chargeFourConjunctionFact,
+      reservedTotal,
+      resourcesAtMost,
+      scalarAccounting,
+      scalarSettlementFact,
+      spentTotal
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementCannotIncreaseLedgerChargeFact,
+  parameters: [reservations : (List Reservation), observation : SettlementObservation],
+  statement: ((((settlementRecorded reservations observation) = true) -> ((resourcesAtMost (addResources (spentTotal (recordSettlement reservations observation)) (reservedTotal (recordSettlement reservations observation))) (addResources (spentTotal reservations) (reservedTotal reservations))) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      addResources,
+      chargeComparisonObserved,
+      chargeFourConjunctionFact,
+      reservedTotal,
+      resourcesAtMost,
+      scalarAccounting,
+      scalarSettlementFact,
+      spentTotal
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementValidityProjection,
+  parameters: [],
+  statement: (forall (numeric : Bool), (forall (valid : Bool), ((((numeric && valid) = true) -> (valid = true)) <-> (0 = 0)))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementOldReservationsFact,
+  parameters: [ledger : Ledger],
+  statement: ((((ledgerValid ledger) = true) -> ((reservationsValid (project ledger reservations) (project (project ledger budget) epoch)) = true)) <-> (0 = 0)),
+  proof: simplify{definitions: [reservationLedgerParts, settlementValidityProjection]},
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementListGateFact,
+  parameters: [],
+  statement: (forall (known : Bool), (forall (valid : Bool), (forall (epochMatches : Bool), (forall (lowerBound : Bool), (forall (upperBound : Bool), (forall (recorded : Bool), (forall (beforeList : Bool), (forall (afterList : Bool), (((valid = true) -> (beforeList = true)) -> (((beforeList = true) -> ((recorded = true) -> (afterList = true))) -> ((((known && (valid && (epochMatches && (lowerBound && (upperBound && recorded))))) = true) -> (afterList = true)) <-> (0 = 0)))))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementNumericGateFact,
+  parameters: [],
+  statement: (forall (known : Bool), (forall (valid : Bool), (forall (epochMatches : Bool), (forall (lowerBound : Bool), (forall (upperBound : Bool), (forall (recorded : Bool), (forall (within : Bool), (forall (candidate : Bool), (((recorded = true) -> (within = true)) -> (((valid = true) -> ((lowerBound = true) -> ((upperBound = true) -> ((within = true) -> (candidate = true))))) -> ((((known && (valid && (epochMatches && (lowerBound && (upperBound && recorded))))) = true) -> (candidate = true)) <-> (0 = 0)))))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementCandidateNumericTransferFact,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((ledgerValid ledger) = true) -> ((((project (project ledger budget) last) <=? now) = true) -> (((now <? (project (project ledger budget) end)) = true) -> (((resourcesAtMost (addResources (spentTotal (recordSettlement (project ledger reservations) observation)) (reservedTotal (recordSettlement (project ledger reservations) observation))) (addResources (spentTotal (project ledger reservations)) (reservedTotal (project ledger reservations)))) = true) -> ((reservationNumericValidity (settlementCandidate ledger observation now)) = true))))) <-> (0 = 0)),
+  proof: constructor{
+    branches: [
+      linear_arithmetic{},
+      linear_arithmetic{
+        definitions: [
+          addResources,
+          budgetValid,
+          ledgerBudget,
+          ledgerValid,
+          reservationNumericValidity,
+          resourcesAtMost,
+          resourcesWithin,
+          sameResources,
+          settlementCandidate,
+          zeroResources
+        ]
+      }
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementCandidateClock,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((project (project (settlementCandidate ledger observation now) budget) last) = now),
+  proof: reflexivity{}
+}
+
+theorem{
+  name: settleLedgerClockFact,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((settleLedgerAllowed ledger observation now) = true) -> ((project (project (settleLedger ledger observation now) budget) last) = now)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      reservationLedgerClockSelect,
+      reservationSelectedClockFact,
+      settleLedger,
+      settlementCandidateClock
+    ]
+  },
+  axioms: [propext]
+}
+
+definition{
+  name: settlementImplies,
+  parameters: [guard : Bool, candidate : Bool],
+  result: Bool,
+  body: ((not guard) || candidate)
+}
+
+theorem{
+  name: settlementImplicationObserved,
+  parameters: [],
+  statement: (forall (guard : Bool), (forall (candidate : Bool), (((guard = true) -> (candidate = true)) <-> ((settlementImplies guard candidate) = true)))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementListGateBooleanFact,
+  parameters: [],
+  statement: (forall (known : Bool), (forall (valid : Bool), (forall (epochMatches : Bool), (forall (lowerBound : Bool), (forall (upperBound : Bool), (forall (recorded : Bool), (forall (beforeList : Bool), (forall (afterList : Bool), ((((valid = true) -> (beforeList = true)) -> (((beforeList = true) -> ((recorded = true) -> (afterList = true))) -> ((settlementImplies (known && (valid && (epochMatches && (lowerBound && (upperBound && recorded))))) afterList) = true))) <-> (0 = 0)))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementNumericGateBooleanFact,
+  parameters: [],
+  statement: (forall (known : Bool), (forall (valid : Bool), (forall (epochMatches : Bool), (forall (lowerBound : Bool), (forall (upperBound : Bool), (forall (recorded : Bool), (forall (within : Bool), (forall (candidate : Bool), ((((recorded = true) -> (within = true)) -> (((valid = true) -> ((lowerBound = true) -> ((upperBound = true) -> ((within = true) -> (candidate = true))))) -> ((settlementImplies (known && (valid && (epochMatches && (lowerBound && (upperBound && recorded))))) candidate) = true))) <-> (0 = 0)))))))))),
+  proof: decide{}
+}
+
+theorem{
+  name: settlementListDomainGate,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((ledgerValid ledger) = true) -> ((reservationsValid (project ledger reservations) (project (project ledger budget) epoch)) = true)) -> ((((reservationsValid (project ledger reservations) (project (project ledger budget) epoch)) = true) -> (((settlementRecorded (project ledger reservations) observation) = true) -> ((reservationsValid (recordSettlement (project ledger reservations) observation) (project (project ledger budget) epoch)) = true))) -> ((settlementImplies (settleLedgerAllowed ledger observation now) (reservationsValid (project (settlementCandidate ledger observation now) reservations) (project (project (settlementCandidate ledger observation now) budget) epoch))) = true))),
+  proof: simplify{
+    definitions: [
+      ledgerBudget,
+      settleLedgerAllowed,
+      settlementCandidate,
+      settlementListGateBooleanFact
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementNumericDomainGate,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((settlementRecorded (project ledger reservations) observation) = true) -> ((resourcesAtMost (addResources (spentTotal (recordSettlement (project ledger reservations) observation)) (reservedTotal (recordSettlement (project ledger reservations) observation))) (addResources (spentTotal (project ledger reservations)) (reservedTotal (project ledger reservations)))) = true)) -> ((((ledgerValid ledger) = true) -> ((((project (project ledger budget) last) <=? now) = true) -> (((now <? (project (project ledger budget) end)) = true) -> (((resourcesAtMost (addResources (spentTotal (recordSettlement (project ledger reservations) observation)) (reservedTotal (recordSettlement (project ledger reservations) observation))) (addResources (spentTotal (project ledger reservations)) (reservedTotal (project ledger reservations)))) = true) -> ((reservationNumericValidity (settlementCandidate ledger observation now)) = true))))) -> ((settlementImplies (settleLedgerAllowed ledger observation now) (reservationNumericValidity (settlementCandidate ledger observation now))) = true))),
+  proof: simplify{definitions: [settleLedgerAllowed, settlementNumericGateBooleanFact]},
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementCandidateListBoolean,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((settlementImplies (settleLedgerAllowed ledger observation now) (reservationsValid (project (settlementCandidate ledger observation now) reservations) (project (project (settlementCandidate ledger observation now) budget) epoch))) = true),
+  proof: simplify{
+    definitions: [
+      settlementListDomainGate,
+      settlementOldReservationsFact,
+      settlementReservationValidityFact
+    ]
+  },
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementCandidateNumericBoolean,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((settlementImplies (settleLedgerAllowed ledger observation now) (reservationNumericValidity (settlementCandidate ledger observation now))) = true),
+  proof: simplify{
+    definitions: [
+      settlementCandidateNumericTransferFact,
+      settlementCannotIncreaseLedgerChargeFact,
+      settlementNumericDomainGate
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementCandidateListGuarantee,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((settleLedgerAllowed ledger observation now) = true) -> ((reservationsValid (project (settlementCandidate ledger observation now) reservations) (project (project (settlementCandidate ledger observation now) budget) epoch)) = true)) <-> (0 = 0)),
+  proof: simplify{definitions: [settlementCandidateListBoolean, settlementImplicationObserved]},
+  axioms: [propext]
+}
+
+theorem{
+  name: settlementCandidateNumericGuarantee,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((settleLedgerAllowed ledger observation now) = true) -> ((reservationNumericValidity (settlementCandidate ledger observation now)) = true)) <-> (0 = 0)),
+  proof: simplify{definitions: [settlementCandidateNumericBoolean, settlementImplicationObserved]},
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settlementCandidateGuarantee,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((settleLedgerAllowed ledger observation now) = true) -> ((ledgerValid (settlementCandidate ledger observation now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      reservationConjunctionClosure,
+      reservationLedgerParts,
+      settlementCandidateListGuarantee,
+      settlementCandidateNumericGuarantee
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settleLedgerPreservesValidity,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: (((ledgerValid ledger) = true) -> ((ledgerValid (settleLedger ledger observation now)) = true)),
+  proof: simplify{
+    definitions: [
+      ledgerValiditySelect,
+      reservationSelectedSafety,
+      settleLedger,
+      settlementCandidateGuarantee
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+
+theorem{
+  name: settleLedgerPreservesValidityFact,
+  parameters: [ledger : Ledger, observation : SettlementObservation, now : Nat],
+  statement: ((((ledgerValid ledger) = true) -> ((ledgerValid (settleLedger ledger observation now)) = true)) <-> (0 = 0)),
+  proof: simplify{
+    definitions: [
+      ledgerValiditySelect,
+      reservationSelectedSafety,
+      settleLedger,
+      settlementCandidateGuarantee
+    ]
+  },
+  axioms: [Classical.choice, Quot.sound, propext]
+}
+\end{semanticmodule}
+\end{lexlean}

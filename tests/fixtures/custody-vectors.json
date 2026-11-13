@@ -1,0 +1,630 @@
+{
+  "version": 1,
+  "hashFrame": "UTF8(stitch/<domain>/v1\\0)||uint64be(length)||payload",
+  "vectors": [
+    {
+      "name": "empty",
+      "objectHex": "",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:fb7900812ac6cc8ce7460a52714a0431cf55593738c0c16ddbee146eecb26b2f",
+          "byteLength": 0
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:d5f766a783a1746261ba2f11189efc674e57ecbf138e5ec9e5cdb19629209e31",
+          "byteLength": 0,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 0,
+          "digests": [
+            "sha256:2c6c6991fa87488bf741a07b47913f534fc4fb5f9410c3adf5eff8a876382440",
+            "sha256:3525c2284eb297e9e5442685b72d96880c672e54dc2cd5758e938f9f5bdbd1ef",
+            "sha256:670e56cbfebe05ee008d9531996090fc395bf7dfe634613bdb67f70af4dcbce4"
+          ]
+        },
+        "manifestDigest": "sha256:cf3f1729162d8d260972c627f0524dc05887334aaf520722b9dd9bdb857645d6"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": ""
+        },
+        {
+          "index": 1,
+          "hex": ""
+        },
+        {
+          "index": 2,
+          "hex": ""
+        }
+      ]
+    },
+    {
+      "name": "one-zero",
+      "objectHex": "00",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:47ba360bb38a129bbd7502593271cf768eb46262639fbb40eae8cc67bc9790f0",
+          "byteLength": 1
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:b2a111bdb732cb1694e8c8dd8acb679696f079bd1185259f2b26683818359109",
+          "byteLength": 1,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 1,
+          "digests": [
+            "sha256:6edb5d20728b51bd1f61775e37f0e4927526e1a70c8baa06a6afc35f76dbf3b1",
+            "sha256:55b2e52474e1958d307405507260b4c2d6c1ccafc95a138caaa64743a3b8a618",
+            "sha256:8b2bcaa5c5e21d8cfdd790e050c58d8c4becbb95e58f93e5aa03b47ed8d6896d"
+          ]
+        },
+        "manifestDigest": "sha256:cbd002eceb6529a65efa2bd0ac6309c6840e69e95a18d0b0d1d4886789761714"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "00"
+        },
+        {
+          "index": 1,
+          "hex": "00"
+        },
+        {
+          "index": 2,
+          "hex": "00"
+        }
+      ]
+    },
+    {
+      "name": "odd",
+      "objectHex": "000102feff",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:cdeb0dd11e52d0b86881d0177d1a5eff89af057cf53c456e6bd4c2dab3398c15",
+          "byteLength": 5
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:415c1ca228ee32c009ccb4576151c15477337611a021cb40a4ae9af066187ac9",
+          "byteLength": 5,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 3,
+          "digests": [
+            "sha256:ea5989082be0c6c1853f2a3cb4511d0d2d887772be703ee79ee4197d64646efb",
+            "sha256:985047eea867404d82188c11e746595a4b6becbc23711a8ce0e5c20fb18b0458",
+            "sha256:e956d96e47e3d1eadb4852212bec8bfa21fddb8988ba83854a83ca9b94437f95"
+          ]
+        },
+        "manifestDigest": "sha256:8a4e95da7a2ba851196fe4fba81239454b627f61d3690af9cd84e84c48a28faa"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "000102"
+        },
+        {
+          "index": 1,
+          "hex": "feff00"
+        },
+        {
+          "index": 2,
+          "hex": "fefe02"
+        }
+      ]
+    },
+    {
+      "name": "even",
+      "objectHex": "00010203feff",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:c503995fc94f30e7e2dba8ef09ef37b5cd822a44db86bccdd2b68f40b310d1f0",
+          "byteLength": 6
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:4834367dab8f51e5bb97c54b78945ce6e381ccf327d23d668f2652c502778575",
+          "byteLength": 6,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 3,
+          "digests": [
+            "sha256:208610ffed1fab27d6e45c0664c9eba03f5e01f1f97d9173629614cecdceded2",
+            "sha256:28fc4c36bf9dfc1b2d919c2e3dd069b1cbf2324bc9b34923a6ca02b8a915546b",
+            "sha256:6d005d68c3d2a3d46958d36fb2787e86788eb6bfc5de37df44a95ded46e02cdc"
+          ]
+        },
+        "manifestDigest": "sha256:3c3fe38823160b8d82078e494ed157f526d5d90a73444e0a26946f1fd4c8bfd9"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "000102"
+        },
+        {
+          "index": 1,
+          "hex": "03feff"
+        },
+        {
+          "index": 2,
+          "hex": "03fffd"
+        }
+      ]
+    },
+    {
+      "name": "utf8",
+      "objectHex": "53746974636820e2988320f09fa7b5",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:234a5751accf72f5a6bfd0da002a24d6ad8840a4e97f265dcf2836337762e63a",
+          "byteLength": 15
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:1cea149117f4a73dae21c799a3b48cf5f683fad2fe9805710615e3b2496c04ca",
+          "byteLength": 15,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 8,
+          "digests": [
+            "sha256:69a86c23b2dd6ab8e4a67af66a3d5a3b4aa0536913c116ee308a4be59f8c908a",
+            "sha256:45db8cb4888f2cd25f9b3dd14ee72d8e635bd23dec99298704b149ba591bb08d",
+            "sha256:deda57a02ebed1edbb51d839001a48c4bd35934cf32e036fbd5e8df1072262c5"
+          ]
+        },
+        "manifestDigest": "sha256:63bde6c53d4f955e175ac8408ceeab9f75e7a9164507a0f84f3e3d994da1a975"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "53746974636820e2"
+        },
+        {
+          "index": 1,
+          "hex": "988320f09fa7b500"
+        },
+        {
+          "index": 2,
+          "hex": "cbf74984fccf95e2"
+        }
+      ]
+    },
+    {
+      "name": "all-bytes",
+      "objectHex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:ab0b506a7d86340c4c9967f35b5efc0b4006143faa0291476f0389bd709571a4",
+          "byteLength": 256
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:b53fdb4a800b598b11996ce7187aafc4b449802a1c223d0d2bf8f8a51abece95",
+          "byteLength": 256,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 128,
+          "digests": [
+            "sha256:becfa4b6c8f8cdf4ca0104b8a4a5a00c27fae386006d0ded786de78c40734fdd",
+            "sha256:e077d67e31ed9d9eb1114822dc1abebbf908637f9066da0a3dcbeb70140ecf8d",
+            "sha256:0db3f3aa1e290e3970e5741cda2f43c4afb2955a11aec70b51f0b39ddf7ac67a"
+          ]
+        },
+        "manifestDigest": "sha256:427841c818a690f8f7452b6877ab1abb89d06251093f169a4f8ed84041cc563e"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "000102030405060708090a0b0c0d0e0f101112131415161718191a1b1c1d1e1f202122232425262728292a2b2c2d2e2f303132333435363738393a3b3c3d3e3f404142434445464748494a4b4c4d4e4f505152535455565758595a5b5c5d5e5f606162636465666768696a6b6c6d6e6f707172737475767778797a7b7c7d7e7f"
+        },
+        {
+          "index": 1,
+          "hex": "808182838485868788898a8b8c8d8e8f909192939495969798999a9b9c9d9e9fa0a1a2a3a4a5a6a7a8a9aaabacadaeafb0b1b2b3b4b5b6b7b8b9babbbcbdbebfc0c1c2c3c4c5c6c7c8c9cacbcccdcecfd0d1d2d3d4d5d6d7d8d9dadbdcdddedfe0e1e2e3e4e5e6e7e8e9eaebecedeeeff0f1f2f3f4f5f6f7f8f9fafbfcfdfeff"
+        },
+        {
+          "index": 2,
+          "hex": "8080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080808080"
+        }
+      ]
+    }
+  ],
+  "invalidVectors": [
+    {
+      "name": "duplicate-index",
+      "expectedError": "DuplicateFragment",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:aa702ddfe916aeafb8e6778526ad061f63b05c477c8a75318db5b26861d1eaa5"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 0,
+          "hex": "0102"
+        }
+      ]
+    },
+    {
+      "name": "missing-fragment",
+      "expectedError": "InsufficientFragments",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:aa702ddfe916aeafb8e6778526ad061f63b05c477c8a75318db5b26861d1eaa5"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        }
+      ]
+    },
+    {
+      "name": "truncated-object-digest",
+      "expectedError": "InvalidDigest",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f65761",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:aa702ddfe916aeafb8e6778526ad061f63b05c477c8a75318db5b26861d1eaa5"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    },
+    {
+      "name": "undeclared-external-basis",
+      "expectedError": "InvalidSchema",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": [
+            "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+          ]
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:aa702ddfe916aeafb8e6778526ad061f63b05c477c8a75318db5b26861d1eaa5"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    },
+    {
+      "name": "forged-fragment",
+      "expectedError": "FragmentDigestMismatch",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:aa702ddfe916aeafb8e6778526ad061f63b05c477c8a75318db5b26861d1eaa5"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0002"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    },
+    {
+      "name": "inconsistent-absent-fragment",
+      "expectedError": "InvalidParity",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:0000000000000000000000000000000000000000000000000000000000000000"
+          ]
+        },
+        "manifestDigest": "sha256:2591b87b547c0acf153e11e0f3d8d1f2c85e0768e3534f3cbe0d319796a1ff92"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    },
+    {
+      "name": "nonzero-padding",
+      "expectedError": "InvalidPadding",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:4d49fb0500587743b23331951dbc3594371488ff32d9bc31400287c2bf06255e",
+            "sha256:e22676912370357868ed11c08b7013c8ab4d0e85cc3165d31b2f74379a682cbc"
+          ]
+        },
+        "manifestDigest": "sha256:1fb5ca67c308bac26362925f1e83b6fd857bb3a49fc667840cd25dfbe4a1d0fb"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0307"
+        }
+      ]
+    },
+    {
+      "name": "object-does-not-match",
+      "expectedError": "ObjectDigestMismatch",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:8d3df33ebc100287071f696f2bfe4a10ee6ce75b647e4c2b91f7d289bbc0e1b3",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:04e61628aaef709f0b17cc1cc016732e6d3220d5e19b8d7db03ffbb4dc3b631f",
+            "sha256:99752783f64b911a220a0fb36ad7a03b631d17203fc42e759d71d70c2743c222",
+            "sha256:28d245f2dd41fc7f96cbe80f9ba21485a02060889ca6e3f79274ef241080aedb"
+          ]
+        },
+        "manifestDigest": "sha256:9f3795df3f926c0a06b88087c1f7248574281fe0eb4a5319569e2d60b0be03dd"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    },
+    {
+      "name": "encoding-does-not-match",
+      "expectedError": "EncodingDigestMismatch",
+      "manifest": {
+        "version": 1,
+        "object": {
+          "digestAlgorithm": "sha256",
+          "contentDigest": "sha256:bba24bd4136f657619a38cd64b28fac23988c1afe98691b94ec79c15c04c8b1a",
+          "byteLength": 3
+        },
+        "encoding": {
+          "format": "raw",
+          "encodingDigest": "sha256:0000000000000000000000000000000000000000000000000000000000000000",
+          "byteLength": 3,
+          "dependencies": []
+        },
+        "fragments": {
+          "scheme": "xor-2-of-3",
+          "threshold": 2,
+          "count": 3,
+          "byteLength": 2,
+          "digests": [
+            "sha256:4923c96cc1c8aa51ffcc0c984945dcac5bed0a4fa5dc90225683443c295caa56",
+            "sha256:575d3f8511847b809d64779a3e977558f04c0685e2a4dd2066402ec47386a19e",
+            "sha256:5870c7040547df66144782d022330c64581424232d0df712a9f6e91135479d77"
+          ]
+        },
+        "manifestDigest": "sha256:7e218f8139e4abc87c73ab001ae3672cc05cb1229ad7cc1ac24cc5eda4be3dca"
+      },
+      "fragments": [
+        {
+          "index": 0,
+          "hex": "0102"
+        },
+        {
+          "index": 1,
+          "hex": "0300"
+        }
+      ]
+    }
+  ]
+}

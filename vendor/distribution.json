@@ -1,0 +1,170 @@
+{
+  "format": "Stitch reviewed distribution materials",
+  "version": 1,
+  "review": "docs/vendor-provenance.md",
+  "assets": {
+    "v86/libv86.js": {
+      "sha256": "b80fba71dacb7977e5b46800b3ba194bba7fe13e52fa3d22f80cc060ff015a4e",
+      "materials": [
+        {
+          "path": "vendor/v86/INCORPORATED-NOTICES.md",
+          "sha256": "17998a9a85d7ff0dedd15d6a8c3cf92f874492c7930f1b79267cc7dd4378f765"
+        },
+        {
+          "path": "vendor/v86/LICENSE",
+          "sha256": "3f61ba65e3215b09ef264ba8d777d73c19644309fbb705967634eb5147e500a0"
+        },
+        {
+          "path": "vendor/v86/LICENSE.MIT",
+          "sha256": "be2a564f95c110b381fde87ea17b24adb50a5cd4c279ecb7991dee7821041069"
+        },
+        {
+          "path": "vendor/v86/README.md",
+          "sha256": "dae62cd71ef551eea5f0b4bf8671fd227037d67a87634a27542998fe71ab3762"
+        },
+        {
+          "path": "vendor/v86/SHA256SUMS",
+          "sha256": "1a482a93128d19fca8993debdc1c6dc58af134fc8bc20c2813f2bf73b9298a2a"
+        },
+        {
+          "path": "vendor/v86/ZSTD-LICENSE",
+          "sha256": "2c1a7fa704df8f3a606f6fc010b8b5aaebf403f3aeec339a12048f1ba7331a0b"
+        },
+        {
+          "path": "vendor/v86/build-js.sh",
+          "sha256": "24831f719392fa881e35ff486dfb84dc6aaf36ff1f844e773636a6abeca5999d"
+        },
+        {
+          "path": "vendor/v86/source.tar.gz",
+          "sha256": "5a2861504ace41bd41a6e549d0fe827952f490601c067ab623a346fbe4ba7af2"
+        }
+      ]
+    },
+    "v86/v86.wasm": {
+      "sha256": "abd512988f39f5c81d4930f564bafa1a6e1e0d5210de9b20e2bdec13fbc318d9",
+      "materials": [
+        {
+          "path": "vendor/v86/INCORPORATED-NOTICES.md",
+          "sha256": "17998a9a85d7ff0dedd15d6a8c3cf92f874492c7930f1b79267cc7dd4378f765"
+        },
+        {
+          "path": "vendor/v86/LICENSE",
+          "sha256": "3f61ba65e3215b09ef264ba8d777d73c19644309fbb705967634eb5147e500a0"
+        },
+        {
+          "path": "vendor/v86/LICENSE.MIT",
+          "sha256": "be2a564f95c110b381fde87ea17b24adb50a5cd4c279ecb7991dee7821041069"
+        },
+        {
+          "path": "vendor/v86/README.md",
+          "sha256": "dae62cd71ef551eea5f0b4bf8671fd227037d67a87634a27542998fe71ab3762"
+        },
+        {
+          "path": "vendor/v86/SHA256SUMS",
+          "sha256": "1a482a93128d19fca8993debdc1c6dc58af134fc8bc20c2813f2bf73b9298a2a"
+        },
+        {
+          "path": "vendor/v86/ZSTD-LICENSE",
+          "sha256": "2c1a7fa704df8f3a606f6fc010b8b5aaebf403f3aeec339a12048f1ba7331a0b"
+        },
+        {
+          "path": "vendor/v86/build-js.sh",
+          "sha256": "24831f719392fa881e35ff486dfb84dc6aaf36ff1f844e773636a6abeca5999d"
+        },
+        {
+          "path": "vendor/v86/source.tar.gz",
+          "sha256": "5a2861504ace41bd41a6e549d0fe827952f490601c067ab623a346fbe4ba7af2"
+        }
+      ]
+    },
+    "v86/seabios.bin": {
+      "sha256": "73e3f359102e3a9982c35fce98eb7cd08f18303ac7f1ba6ebfbe6cdc1c244d98",
+      "materials": [
+        {
+          "path": "vendor/seabios/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        },
+        {
+          "path": "vendor/seabios/COPYING.LESSER",
+          "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+        },
+        {
+          "path": "vendor/seabios/README.md",
+          "sha256": "c55407da1970218d267286f5573518617f113986a9e425b0dc1aa92202b1a25a"
+        },
+        {
+          "path": "vendor/seabios/SHA256SUMS",
+          "sha256": "0a42331c461afd724f1a9152057c2dd9f2b575b6662316bdc9d1ec7b1ed6670c"
+        },
+        {
+          "path": "vendor/seabios/build.sh",
+          "sha256": "a361f7bc184be43d2996d4d4d4b8b3d467a1dac4e070b245cbdfca0edb3af92c"
+        },
+        {
+          "path": "vendor/seabios/seabios.config",
+          "sha256": "7d1337b30591277356ca1b1bf1a192c2c1f17e15ec9e5740befcc57bb000339d"
+        },
+        {
+          "path": "vendor/seabios/source.tar.gz",
+          "sha256": "52a3a1cc63f7d6bcb61d90e45e89051dd7e870b330b594aae80d18f326ec1768"
+        },
+        {
+          "path": "vendor/seabios/upstream-build.sh",
+          "sha256": "057856a817ae3dc85b18dc00f19274f6e877e6f28a36dce1afc5be751739e24a"
+        }
+      ]
+    },
+    "v86/vgabios.bin": {
+      "sha256": "a4bc0d80cc3ca028c73dafa8fee396b8d054ce87ebd8abfbd31b06b437607880",
+      "materials": [
+        {
+          "path": "vendor/seabios/COPYING",
+          "sha256": "8ceb4b9ee5adedde47b31e975c1d90c73ad27b6b165a1dcd80c7c545eb65b903"
+        },
+        {
+          "path": "vendor/seabios/COPYING.LESSER",
+          "sha256": "a853c2ffec17057872340eee242ae4d96cbf2b520ae27d903e1b2fef1a5f9d1c"
+        },
+        {
+          "path": "vendor/seabios/README.md",
+          "sha256": "c55407da1970218d267286f5573518617f113986a9e425b0dc1aa92202b1a25a"
+        },
+        {
+          "path": "vendor/seabios/SHA256SUMS",
+          "sha256": "0a42331c461afd724f1a9152057c2dd9f2b575b6662316bdc9d1ec7b1ed6670c"
+        },
+        {
+          "path": "vendor/seabios/build.sh",
+          "sha256": "a361f7bc184be43d2996d4d4d4b8b3d467a1dac4e070b245cbdfca0edb3af92c"
+        },
+        {
+          "path": "vendor/seabios/seabios.config",
+          "sha256": "7d1337b30591277356ca1b1bf1a192c2c1f17e15ec9e5740befcc57bb000339d"
+        },
+        {
+          "path": "vendor/seabios/source.tar.gz",
+          "sha256": "52a3a1cc63f7d6bcb61d90e45e89051dd7e870b330b594aae80d18f326ec1768"
+        },
+        {
+          "path": "vendor/seabios/upstream-build.sh",
+          "sha256": "057856a817ae3dc85b18dc00f19274f6e877e6f28a36dce1afc5be751739e24a"
+        }
+      ]
+    },
+    "images/buildroot-bzimage.bin": {
+      "sha256": "313a6b545290a2b47856b49bfcc4c7577469749b315932ae008d39fe70fc7f07",
+      "sourceUrl": "https://github.com/afflom/stitch/tree/fd59fae669e9a40271fb584ca071270d8ed0b8f8",
+      "sourceArchiveSha256": "fbc04b0c55f8421ca9bcf9e9dbac1952c07a1a2d82fd644ac67e66415b0106bc",
+      "materials": [
+        {
+          "path": "vendor/guest/SOURCE-NOTICE.md",
+          "sha256": "58685d5670b7d1deb3ef64c3f55de9da75b6986e7f83f2ad75b02bafcd1f9c58"
+        },
+        {
+          "path": "vendor/guest/source-parts.json",
+          "sha256": "489abc6ea5aba6774827eb61806a2103b98b4c139d143acb84307a11049fc0c6"
+        }
+      ]
+    }
+  }
+}

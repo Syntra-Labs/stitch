@@ -1,0 +1,6 @@
+name = "StitchModel"
+version = "0.3.0"
+defaultTargets = ["StitchModel"]
+
+[[lean_lib]]
+name = "StitchModel"

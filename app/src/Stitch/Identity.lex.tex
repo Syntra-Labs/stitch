@@ -1,0 +1,75 @@
+\begin{lexlean}{Stitch.Identity}
+\useglossary{lexlean.std.bool@1.2.0}
+\useglossary{lexlean.std.nat@1.2.0}
+\useglossary{stitch.domain@1.0.0}
+\title{Stitch recoverable service model}
+\begin{semanticmodule}
+structure{
+  name: Digest,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: w0, type: Nat},
+    {name: w1, type: Nat},
+    {name: w2, type: Nat},
+    {name: w3, type: Nat},
+    {name: w4, type: Nat},
+    {name: w5, type: Nat},
+    {name: w6, type: Nat},
+    {name: w7, type: Nat}
+  ]
+}
+
+structure{
+  name: Object,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: digest, type: Digest},
+    {name: canonicalBytes, type: Bytes},
+    {name: byteLength, type: Nat}
+  ]
+}
+
+structure{
+  name: DigestObservation,
+  type_parameters: [],
+  parameters: [],
+  fields: [
+    {name: expected, type: Digest},
+    {name: observed, type: Digest},
+    {name: domainMatches, type: Bool},
+    {name: canonicalSerializationMatches, type: Bool}
+  ]
+}
+
+definition{
+  name: sameDigest,
+  parameters: [left : Digest, right : Digest],
+  result: Bool,
+  body: (((project left w0) =? (project right w0)) && (((project left w1) =? (project right w1)) && (((project left w2) =? (project right w2)) && (((project left w3) =? (project right w3)) && (((project left w4) =? (project right w4)) && (((project left w5) =? (project right w5)) && (((project left w6) =? (project right w6)) && ((project left w7) =? (project right w7)))))))))
+}
+
+definition{
+  name: digestWellFormed,
+  parameters: [digest : Digest],
+  result: Bool,
+  body: (((project digest w0) <? 4294967296) && (((project digest w1) <? 4294967296) && (((project digest w2) <? 4294967296) && (((project digest w3) <? 4294967296) && (((project digest w4) <? 4294967296) && (((project digest w5) <? 4294967296) && (((project digest w6) <? 4294967296) && ((project digest w7) <? 4294967296))))))))
+}
+
+definition{
+  name: digestAccepted,
+  parameters: [observation : DigestObservation],
+  result: Bool,
+  body: ((digestWellFormed (project observation expected)) && ((digestWellFormed (project observation observed)) && ((sameDigest (project observation expected) (project observation observed)) && ((project observation domainMatches) && (project observation canonicalSerializationMatches)))))
+}
+
+theorem{
+  name: fullDigestReflexive,
+  parameters: [digest : Digest],
+  statement: ((sameDigest digest digest) = true),
+  proof: linear_arithmetic{definitions: [sameDigest]},
+  axioms: [propext]
+}
+\end{semanticmodule}
+\end{lexlean}

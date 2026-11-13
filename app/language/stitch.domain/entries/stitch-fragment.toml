@@ -1,0 +1,17 @@
+spec = "lexlean/entry/1"
+id = "stitch-fragment"
+category = "label-word"
+surface_arity = 0
+frame = "atom"
+
+[denotation]
+kind = "document"
+module = "Stitch.Fragments"
+component = "Fragment"
+
+[[form]]
+id = "stitch-fragment"
+channel = "text"
+surface = "recovery fragment"
+canonical_source = true
+features = ["sentence-case", "singular"]

@@ -1,0 +1,17 @@
+{
+  "source_commit": "a7a3041cd85d745bb2d6dfc7ee72513185fa48be",
+  "files": [
+    {
+      "path": "app/src/Contract.lex.tex",
+      "sha256": "9b5e120204c51602fc783cc2f6bea7456ec64882877528341b523a4f4a580fb3"
+    },
+    {
+      "path": "app/src/Foundation/Bytes.lex.tex",
+      "sha256": "ce16e5b439128db3231979381f4599d3ff0617f62c2bf00c348bba35393abcd6"
+    },
+    {
+      "path": "app/src/Foundation/View/Text/V1/Model.lex.tex",
+      "sha256": "db124343ad8fe1295bc8eb305c7f59f83cf6ad76d46a5cabea500fe66f3ad5dc"
+    }
+  ]
+}

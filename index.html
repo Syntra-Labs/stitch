@@ -48,11 +48,14 @@
       margin-bottom: 12px;
     }
 
+    .grid:has(> section[id$="Panel"]) { grid-template-columns: minmax(0, 1fr); }
+
     @media (max-width: 1024px) {
       .grid { grid-template-columns: 1fr; }
     }
 
     .stratum {
+      min-width: 0;
       border: 1px solid var(--border);
       background: var(--panel);
       padding: 12px;
@@ -78,7 +81,7 @@
       align-items: center;
     }
 
-    input {
+    input, textarea, select {
       background: #000;
       color: var(--fg);
       border: 1px solid var(--border);
@@ -142,148 +145,358 @@
       font-size: 12px;
       color: #e8e8e8;
     }
+    .experience-evidence { padding: 8px 12px; border-inline-start: 3px solid; line-height: 1.5; }
+    #operatorJourneyNav { display: flex; gap: 8px; flex-wrap: wrap; }
+    #operatorJourneyNav [aria-current="location"] { border-color: #e6e6e6; }
+    :focus-visible { outline: 2px solid #9bc4ff; outline-offset: 3px; }
+    input, textarea, select { max-width: 100%; }
+    .controls > label { display: flex; flex-direction: column; gap: 4px; }
+    .controls > label:has(input[type="checkbox"]) { display: inline; }
+    .mono-out { overflow-wrap: anywhere; }
+    [hidden] { display: none !important; }
   </style>
 </head>
 <body>
   <header>
     <div>
-      <h1>Syntra-Labs / stitch — Live Multi-Peer UOR Database, Distributed Compute & In-Browser Linux 5.6 VM</h1>
+      <h1 id="productTitle">Stitch / recoverable objects and replayable pure jobs</h1>
       <div class="muted">
         Local Node: <strong id="nodeIdLabel">...</strong> |
         WebRTC Open Peers: <strong id="peerCountLabel">0</strong> |
-        Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
-        P(alive): <strong id="schedPAliveLabel">1.000</strong> |
-        H(p): <strong id="schedEntropyLabel">0.000 bit</strong>
+        Application budget: <strong id="budgetLabel">0 requests</strong>
       </div>
-    </div>
-    <div class="controls">
-      <label class="muted">Mesh Key:</label>
-      <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
-      <button id="reconnectBtn">Join Mesh & Sync</button>
-      <button id="toggleMetricsLabBtn" class="secondary">Show Metrics & Falsification Lab (C1–C10)</button>
-      <button id="exportJsonlBtn" class="secondary">Export Trials (.jsonl)</button>
     </div>
   </header>
 
-  <!-- EXTERNAL INFRASTRUCTURE PROOF BANNER (PROVES EXECUTION OUTSIDE BROWSER MEMORY) -->
-  <section class="stratum" style="margin-bottom: 12px;">
+  <section class="stratum" aria-label="Operator journey navigation" style="margin-bottom: 12px;">
+    <nav id="operatorJourneyNav" aria-label="Stitch operator journeys"></nav>
+    <p id="operatorJourneySummary"></p>
+    <p><strong>Available next actions: </strong><span id="operatorNextActions"></span></p>
+    <button type="button" id="reviewResourcePolicyBtn" class="secondary" hidden>Review resource policy</button>
+    <details><summary>About modeled evidence</summary><p id="experienceProvenance" class="muted"></p></details>
+    <noscript>Stitch needs JavaScript for model-derived action guards and live evidence. No mesh connection starts without explicit disclosure and join.</noscript>
+  </section>
+
+  <section class="stratum" id="meshPanel" tabindex="-1" style="margin-bottom: 12px;">
+    <div class="controls">
+      <h2 id="meshTitle">Join a mesh</h2>
+      <label class="muted" for="meshKeyInput">Mesh Key:</label>
+      <input type="text" id="meshKeyInput" value="syntra-uor-bus-01" style="width: 150px;" />
+      <label for="allowMeshSignalingInput">Public signaling consent <input type="checkbox" id="allowMeshSignalingInput" /><span id="meshDisclosureText">Allow public mesh signaling</span></label>
+      <button id="reconnectBtn">Join Mesh & Sync</button>
+
+    </div>
+    <p id="meshEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="meshActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="meshExplanationPanel"><summary id="meshExplanationLabel">What this evidence means</summary><p id="meshExplanation"></p></details>
+    <details id="networkInspectionPanel"><summary>Inspect external network observations</summary>
+      <p class="muted">Scheduler estimates, not availability evidence: Scheduler λ̂: <strong id="schedLambdaLabel">0.017/s</strong> |
+        P(alive): <strong id="schedPAliveLabel">1.000</strong> |
+        H(p): <strong id="schedEntropyLabel">0.000 bit</strong> |</p>
     <div class="stratum-head">
-      <h2>External Infrastructure Proof & Independent CLI Verification (Zero Local-Only Simulation)</h2>
+      <h2>Network evidence and independent verification</h2>
       <span class="muted"> Cloudflare Edge PoP: <strong id="cfTraceLabel">probing 1.1.1.1...</strong> | STUN Candidate: <strong id="stunTypeLabel">waiting</strong></span>
     </div>
     <div class="controls" style="justify-content: space-between;">
-      <span class="muted">Run these commands in any external Linux terminal (or another machine) to verify live shards, checkpoints, and DNS pointers outside this browser:</span>
-      <button id="copyCliProofBtn" class="secondary">Copy Terminal Proof Command</button>
+      <span class="muted">These commands inspect external records. Inspection alone does not establish integrity, authority, or durability; use the repository verifier for exported object evidence:</span>
+      <button id="copyCliProofBtn" class="secondary">Copy Inspection Commands</button>
     </div>
     <div class="mono-out" id="cliProofBox" style="max-height: 76px;">curl -s "https://ntfy.sh/syntra-warm-syntra-uor-bus-01/json?poll=1&since=30m" | tail -n 5</div>
+    </details>
+
+  </section>
+
+
+
+  <section class="stratum" id="resourcesPanel" tabindex="-1" style="margin-bottom: 12px;">
+    <h2 id="resourcesTitle">Inspect and renew allowances</h2>
+    <p id="resourcesEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="resourcesActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="resourcesExplanationPanel"><summary id="resourcesExplanationLabel">What this evidence means</summary><p id="resourcesExplanation"></p></details>
+    <details id="budgetPolicyPanel">
+      <summary><strong>Application resource policy</strong> (operational demo configuration)</summary>
+      <p class="muted">These are configurable operating allowances, not semantic limits. An expired epoch or exhausted allowance refuses further effects. Choose a new epoch to continue; previous charges are retained, including failed or uncertain effects. Existing objects, jobs and pointer heads stay in this tab.</p>
+      <div class="controls">
+        <label for="budgetMinutesInput">Epoch minutes <input type="number" id="budgetMinutesInput" min="0.001" step="any" style="width: 80px;" /></label>
+        <label for="budgetRequestsInput">Requests <input type="number" id="budgetRequestsInput" min="0" step="1" style="width: 100px;" /></label>
+        <label for="budgetTransferInput">Application transfer bytes <input type="number" id="budgetTransferInput" min="0" step="1" style="width: 130px;" /></label>
+        <label for="budgetStorageInput">New cache allocation bytes <input type="number" id="budgetStorageInput" min="0" step="1" style="width: 130px;" /></label>
+        <label for="budgetComputeInput">Replay work units <input type="number" id="budgetComputeInput" min="0" step="1" style="width: 120px;" /></label>
+        <label for="budgetActionsInput">Reservation log entries <input type="number" id="budgetActionsInput" min="1" max="65536" step="1" style="width: 100px;" /></label>
+        <label for="budgetRefreshInput">Discovery refreshes <input type="number" id="budgetRefreshInput" min="0" step="1" style="width: 80px;" /></label>
+        <button id="renewBudgetBtn">Start New Epoch with These Limits</button>
+        <button id="exportBudgetHistoryBtn" class="secondary">Export Policy History</button>
+      </div>
+      <p class="muted">Transfer allowances include reserved relay/DNS response ceilings. Cache allowances count new allocations in each epoch, not total browser memory. TLS, ICE/STUN, VM work and host overhead are outside this accounting. History is kept in this tab until exported. Renewal does not retry failed effects; use the relevant sync or resume control.</p>
+      <div class="mono-out" id="budgetUsageBox" style="max-height: 100px;"></div>
+      <div class="mono-out" id="budgetHistoryBox" style="max-height: 140px;">No prior epochs.</div>
+    </details>
+    <div id="budgetStatus" role="status" aria-live="polite"></div>
+    <details><summary>Experimental diagnostics and trial export</summary><div class="controls">
+      <button id="toggleMetricsLabBtn" class="secondary">Show Metrics & Falsification Lab (C1–C10)</button>
+      <button id="exportJsonlBtn" class="secondary">Export Trials (.jsonl)</button>
+    </div></details>
   </section>
 
   <!-- LIVE WIRED SECTION: REAL NETWORK DATABASE + DISTRIBUTED COMPUTE + IN-BROWSER LINUX VM -->
   <div class="grid">
     <!-- LIVE PANEL A: REAL NETWORK-BACKED UOR CONTENT-ADDRESSED DATABASE -->
-    <section class="stratum">
+    <section class="stratum" id="objectsPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
-        <span class="muted">Survives tab closes & 0-peer gaps</span>
+        <h2 id="objectsTitle">Live Network UOR Database (2-of-3 XOR Parity + WebRTC + Warm Cache)</h2>
+        <span class="muted">Recovery requires enough reachable fragments; relay storage is optional</span>
+      </div>
+      <p id="objectsEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="objectsActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="objectsExplanationPanel"><summary id="objectsExplanationLabel">What this evidence means</summary><p id="objectsExplanation"></p></details>
+
+      <div class="controls">
+        <label for="dbLabelInput">Object label (/mnt alias)</label>
+        <input type="text" id="dbLabelInput" aria-describedby="objectInputHelp" value="state.txt" placeholder="Filename in /mnt" style="width: 100px;" />
+        <label for="dbPayloadInput">Object text (UTF-8)</label>
+        <input type="text" id="dbPayloadInput" aria-describedby="objectInputHelp" value="Hello from live UOR mesh storage" style="flex: 1;" />
+        <button id="dbPutBtn">Put & Replicate</button>
+        <button id="dbWipeLocalBtn" class="secondary" title="Clears this browser tab's memory to 0 objects to prove recovery comes from external infrastructure">Wipe Local RAM</button>
+        <button id="dbSyncBtn" class="secondary">Fetch Reachable Fragments</button>
+        <label for="allowPublicRelayInput">Public relay consent <input type="checkbox" id="allowPublicRelayInput" /><span id="relayDisclosureText">Public relay: share object/job bytes on ntfy.sh (not private)</span></label>
       </div>
 
       <div class="controls">
-        <input type="text" id="dbLabelInput" value="state.txt" placeholder="Filename in /mnt" style="width: 100px;" />
-        <input type="text" id="dbPayloadInput" value="Hello from live UOR mesh storage" style="flex: 1;" />
-        <button id="dbPutBtn">Put & Replicate</button>
-        <button id="dbWipeLocalBtn" class="secondary" title="Clears this browser tab's memory to 0 objects to prove recovery comes from external infrastructure">Wipe Local RAM</button>
-        <button id="dbSyncBtn" class="secondary">Recover from Public Bus</button>
+        <label for="placementObject">Retained object to repair <select id="placementObject" aria-describedby="placementHelp"></select></label>
+        <label for="placementReplaceHolder">Holder to replace <select id="placementReplaceHolder"><option value="">Keep current live holders</option></select></label>
+        <button id="repairPlacementBtn" class="secondary" aria-describedby="placementHelp placementEvidence">Repair Selected Placement</button>
       </div>
-
+      <p id="placementHelp" class="muted">After peers join or change, select exact retained bytes and repair. Missing or expired fragments need fresh receipts. Optional replacement keeps the old holder until the new receipt commits, then requests exact release. A timeout never proves deletion.</p>
+      <p id="placementEvidence" role="status" aria-live="polite" aria-atomic="true">No retained verified object selected.</p>
+      <p id="objectInputHelp" class="muted">Text is encoded as UTF-8, at most 128 KiB. The label is a convenience alias, not identity. New objects are shared with the guest only when guest object sharing is enabled.</p>
       <table>
         <thead>
           <tr>
-            <th>UOR ContentAddress (u128)</th>
-            <th>Label (/mnt)</th>
-            <th>Size</th>
-            <th>Verified</th>
-            <th>Source</th>
-            <th>Payload Preview</th>
+            <th scope="col">Object commitment (SHA-256)</th>
+            <th scope="col">Label (/mnt)</th>
+            <th scope="col">Size</th>
+            <th scope="col">Verified</th>
+            <th scope="col">Source</th>
+            <th scope="col">Payload Preview</th>
           </tr>
         </thead>
         <tbody id="liveDbBody">
-          <tr><td colspan="6" class="muted">No objects yet. Click "Put & Replicate" or "Recover from Warm Cache".</td></tr>
+          <tr><td colspan="6" class="muted">No local object bytes.</td></tr>
         </tbody>
       </table>
+      <details id="recoveryControls">
+        <summary>Export and restore recovery evidence</summary>
+        <p>Keep a separate backup before clearing RAM. Import checks objects and pure jobs in a local recovery vault, without sending packets, mounting files or retrying writes. Closing this tab loses the vault. Signing keys and pending-write journals are not included.</p>
+        <div class="controls">
+          <label for="recoveryByteLimit">Wire byte allowance <input id="recoveryByteLimit" type="number" min="0" step="1" /></label>
+          <label for="recoveryStepLimit">Replay work allowance <input id="recoveryStepLimit" type="number" min="0" step="1" /></label>
+          <label for="recoveryExportSelection">Live evidence to export (up to 32 entries) <select id="recoveryExportSelection" aria-describedby="recoverySelectionHelp" multiple size="5"></select></label>
+          <button id="exportRecoveryBtn" class="secondary">Export Live Evidence</button>
+          <label for="recoveryFile">Recovery file <input id="recoveryFile" type="file" accept="application/json,.json" /></label>
+          <button id="importRecoveryBtn" class="secondary">Verify and Import Locally</button>
+          <button id="exportRecoveredBtn" class="secondary">Export Recovery Vault</button>
+        </div>
+      <p id="recoverySelectionHelp" class="muted">Select 1–32 live entries. Use Ctrl/Command to toggle individual choices or Shift for a range. Reopening refreshes available evidence and retains still-available selections. Imported evidence stays in the separate recovery vault and is not added to live objects or jobs.</p>
+        <p class="muted">At most 32 entries, each object up to the live 128 KiB limit. Default wire allowance includes hex fragments and job overhead. Limits bound this operation, not total browser memory; replay is pure computation, not VM execution.</p>
+        <div class="controls">
+          <label for="recoveryObjects">Recovered object <select id="recoveryObjects"></select></label>
+          <button id="downloadRecoveredObjectBtn" class="secondary">Download Verified Object</button>
+          <label for="recoveryJobs">Recovered job <select id="recoveryJobs"></select></label>
+          <button id="resumeRecoveredJobBtn" class="secondary">Finish Pure Job Locally</button>
+        </div>
+        <details><summary>Review supplied pointer anchors</summary>
+          <p>Signatures inside a file do not establish trust or freshness. Independently obtain the exact recent pointer digest and writer key. First accept the exact recent anchor here. Then, in “Pin, discover and publish pointers”, independently pin the same query name and writer key. Return here to restore the accepted anchor into that live observer. Import and acceptance alone never change a live head.</p>
+          <label for="recoveryAnchors">Supplied anchor <select id="recoveryAnchors"></select></label>
+          <label for="recoveryAuthority">Independently trusted writer key <input id="recoveryAuthority" type="text" autocomplete="off" /></label>
+          <label for="recoveryDigest">Independently trusted recent digest <input id="recoveryDigest" type="text" autocomplete="off" /></label>
+          <label for="recoveryAnchorConsent">Accept this exact anchor <input id="recoveryAnchorConsent" type="checkbox" />I independently verified this exact anchor is recent and trust its writer.</label>
+          <button id="acceptRecoveryAnchorBtn" class="secondary">Accept Exact Recent Anchor</button>
+          <p id="recoveryLiveScope" role="status" aria-live="polite" style="overflow-wrap: anywhere"></p>
+          <p id="recoveryRestoreHelp">Restore only an empty observer or the exact already-retained head. A different live head is never overwritten, even by a newer accepted anchor. This session-only action enables ordinary next-revision admission, not publication, key rotation or proof of global freshness.</p>
+          <button id="restoreRecoveryAnchorBtn" class="secondary" aria-describedby="recoveryRestoreHelp">Restore Accepted Live Head</button>
+        </details>
+        <p id="recoveryEvidence" role="status" aria-live="polite"></p>
+        <p id="recoveryStatus" role="status" aria-live="polite">No recovery file imported.</p>
+      </details>
     </section>
 
     <!-- LIVE PANEL B: REAL DISTRIBUTED COMPUTE & FAILOVER TAKEOVER -->
-    <section class="stratum">
+    <section class="stratum" id="computePanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
-        <span class="muted">Close tab mid-job; peer tab resumes from last step</span>
+        <h2 id="computeTitle">Live Distributed Compute Engine (Cross-Tab Checkpoint Failover)</h2>
+        <span class="muted">Pure jobs replay before resume; VM effects are outside this contract</span>
       </div>
+      <p id="computeEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="computeActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="computeExplanationPanel"><summary id="computeExplanationLabel">What this evidence means</summary><p id="computeExplanation"></p></details>
 
       <div class="controls">
-        <label class="muted">Steps:</label>
-        <input type="number" id="jobStepsInput" value="12" min="3" max="60" style="width: 60px;" />
-        <label class="muted">Step Delay (ms):</label>
-        <input type="number" id="jobDelayInput" value="800" min="100" max="3000" style="width: 75px;" />
+        <label class="muted" for="jobStepsInput">Steps:</label>
+        <input type="number" id="jobStepsInput" aria-describedby="jobInputHelp" value="12" min="3" max="60" style="width: 60px;" />
+        <label class="muted" for="jobDelayInput">Step delay (ms):</label>
+        <input type="number" id="jobDelayInput" aria-describedby="jobInputHelp" value="800" min="100" max="3000" style="width: 75px;" />
         <button id="startJobBtn">Start Distributed UOR Job</button>
-        <button id="takeoverJobsBtn" class="secondary">Scan & Take Over Stalled Jobs</button>
+        <button id="takeoverJobsBtn" class="secondary">Scan & Resume Unfinished Jobs</button>
       </div>
 
+      <p id="jobInputHelp" class="muted">This demonstration constructs a deterministic W64 ring program. Choose 3–60 steps and a 100–3000 ms delay. Pure replay is separate from guest shell execution.</p>
       <table>
         <thead>
           <tr>
-            <th>Job ID</th>
-            <th>Progress</th>
-            <th>Owner Node</th>
-            <th>Current W64 Ring Value</th>
-            <th>Status</th>
-            <th>Trace Verified</th>
+            <th scope="col">Job ID</th>
+            <th scope="col">Progress</th>
+            <th scope="col">Owner Node</th>
+            <th scope="col">Current W64 Ring Value</th>
+            <th scope="col">Status</th>
+            <th scope="col">Execution evidence</th>
           </tr>
         </thead>
         <tbody id="liveJobsBody">
-          <tr><td colspan="6" class="muted">No active jobs. Start a job and close this tab mid-run to test peer takeover.</td></tr>
+          <tr><td colspan="6" class="muted">No pure jobs observed. Use the current journey to start or inspect checkpoint recovery.</td></tr>
         </tbody>
       </table>
     </section>
 
-    <!-- LIVE PANEL C: IN-BROWSER X86 LINUX 5.6 VM (v86) + ETHERNET OVER WEBRTC -->
-    <section class="stratum">
+    <!-- LIVE PANEL C: IN-BROWSER X86 LINUX VM (v86) + ETHERNET OVER WEBRTC -->
+    <section class="stratum" id="vmPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>In-Browser x86 Linux 5.6 VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
+        <h2 id="vmTitle">In-Browser x86 Linux VM (v86 + 9p /mnt + Ethernet-over-WebRTC)</h2>
         <span class="muted" id="vmStatusLabel">VM Standby</span>
       </div>
+      <p id="vmEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="vmActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="vmExplanationPanel"><summary id="vmExplanationLabel">What this evidence means</summary><p id="vmExplanation"></p></details>
 
+      <details id="vmLimitsPanel">
+        <summary>Guest limits and stopping</summary>
+        <label for="vmRuntimeSeconds">VM runtime allowance (seconds, set before boot)</label>
+        <input id="vmRuntimeSeconds" type="number" min="1" max="300" value="300" aria-describedby="vmLimitsHelp" />
+        <p id="vmLimitsHelp" class="muted">The whole VM stops when its elapsed-time allowance expires, when Cancel is requested after dispatch, or when a filesystem/result limit is exceeded. This includes background commands and console work. Browser scheduling can delay stopping; this is not an instruction-accurate CPU quota. Destroy the instance before changing its allowance.</p>
+        <p class="muted">Guest RAM: 64 MiB. Local 9p /mnt: 16 MiB per buffer, 64 MiB cumulative allocation requests, and 4096 inode/link admissions per instance. Removing files does not refund that allowance. Result reads: 4 MiB per command, 16 MiB retained in total. Other guest filesystems consume configured guest memory; these controls are not a complete host-memory or guest-isolation guarantee.</p>
+        <p id="vmResourceUsage" role="status" aria-live="polite">No guest resource usage observed.</p>
+      </details>
+      <details id="vmNetworkPanel">
+        <summary>Optional guest networking: <span id="vmNetworkSummary">offline</span></summary>
+        <div class="controls">
+        <label for="vmIpv4Address">Guest static IPv4 address (optional, set before boot)</label>
+        <input id="vmIpv4Address" type="text" placeholder="e.g. 10.42.0.2" aria-describedby="vmNetworkHelp" />
+        <label for="vmPrefixLength">Subnet prefix length (0–32)</label>
+        <input id="vmPrefixLength" type="number" min="0" max="32" step="1" value="24" aria-describedby="vmNetworkHelp" />
+        <p id="vmNetworkHelp" class="muted">Leave blank for offline shell and object work. For Ethernet sharing, choose a different address for every guest on the mesh and compatible subnet prefixes. The example is not an allocation. Display names do not assign addresses. No DHCP, duplicate-address detection, gateway or DNS setup is provided. /31 is for point-to-point links; /32 needs explicit guest routes. Destroy a retained instance before changing configuration.</p>
+        <p id="vmNetworkStatus" role="status">No static address configured.</p>
+        <p id="vmNetworkValidation" role="status" aria-live="polite"></p>
+        </div>
+      </details>
       <div class="controls">
-        <button id="bootVmBtn">Boot Linux 5.6 VM</button>
-        <input type="text" id="vmCmdInput" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
+        <button id="bootVmBtn">Boot Linux VM</button>
+        <button id="stopVmBtn" class="secondary">Stop VM</button>
+        <button id="destroyVmBtn" class="secondary">Destroy VM</button>
+        <label for="vmShareObjects">Guest object sharing <input type="checkbox" id="vmShareObjects" /> Share new database objects with this guest</label>
+        <label for="vmShareEthernet">Guest network sharing <input type="checkbox" id="vmShareEthernet" /> Bridge guest Ethernet to mesh peers</label>
+        <div id="vmCommandControls" class="controls" hidden>
+        <label for="vmCmdInput">Guest shell command</label>
+        <input type="text" id="vmCmdInput" aria-describedby="vmCommandHelp" value="uname -a && ifconfig eth0 && ls -la /mnt" style="flex: 1;" />
         <button id="runVmCmdBtn" class="secondary">Run in VM & Store Output in UOR DB</button>
+        </div>
       </div>
 
-      <div id="vmScreenContainer">
-        <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux 5.6 VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
-All UOR database objects are automatically mounted inside /mnt/ in the VM, and eth0 is bridged over WebRTC.</div>
+      <p id="vmCommandHelp" class="muted">Commands run in the guest, not on this host. Stdout and stderr are captured as bytes and shown as text below, including when storing the object fails. After dispatch, Cancel requests a stop of the whole VM, including other guest work. Public relay consent also applies to stored command output.</p>
+      <p id="vmCommandOutcome" role="status" aria-live="polite">No guest command submitted.</p>
+      <div id="vmRetainedCommandControls" class="controls" hidden>
+        <label for="vmCommandSelection">Retained command handle</label>
+        <select id="vmCommandSelection" aria-describedby="vmCommandOutcome"></select>
+        <button id="cancelVmObservationBtn" class="secondary">Cancel and stop VM</button>
+        <button id="forgetVmCommandBtn" class="secondary">Forget Resolved Command Evidence</button>
+        <button id="reconcileVmCommandBtn" class="secondary">Observe selected command result</button>
+      </div>
+      <p class="muted">Cancelling before dispatch prevents the command. After dispatch, cancellation stops the whole VM and leaves prior effects unknown. A short observation timeout keeps the guest running until cancellation or the runtime limit. Unknown commands are never automatically replayed. Stop and destroy revoke grants; failures retain the instance for destroy retry. These controls do not certify guest isolation.</p>
+      <h3 id="vmStdoutTitle">Observed guest command output (text)</h3>
+      <p id="vmStdoutSummary" role="status" aria-live="polite" aria-atomic="true">No guest output observed.</p>
+      <pre id="vmStdoutText" class="mono-out" tabindex="0" role="region" aria-labelledby="vmStdoutTitle" aria-describedby="vmStdoutSummary">No guest output observed.</pre>
+      <p class="muted">The console below is the emulator display. Shell commands and their captured text above do not require interacting with its canvas. Graphics-only guest applications may have no text equivalent.</p>
+      <div id="vmScreenContainer" role="region" aria-label="Guest emulator display">
+        <div style="white-space: pre; font: 12px monospace; line-height: 14px;">Click "Boot Linux VM" to start the in-browser x86 kernel (./images/buildroot-bzimage.bin).
+Object sharing and Ethernet bridging start off. Grants expose data to the guest or mesh peers. Revocation blocks future transfers; it does not erase guest copies or undo effects.</div>
         <canvas style="display: none;"></canvas>
       </div>
     </section>
 
-    <!-- LIVE PANEL D: LAYER 5 DNS SRV/TXT DoH READER + PUBLIC DUCKDNS TXT WRITER & TELEMETRY -->
-    <section class="stratum">
+    <!-- POINTER DISCOVERY, EXPLICIT AUTHORITY AND PROVIDER PUBLICATION -->
+    <section class="stratum" id="pointersPanel" tabindex="-1">
       <div class="stratum-head">
-        <h2>Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
-        <span class="muted">RFC 8484 DoH + Single-GET Dynamic DNS</span>
+        <h2 id="pointersTitle">Layer 5: DNS DoH Resolver, Lightweight DuckDNS TXT Writer & Wire Log</h2>
       </div>
+      <p id="pointersEvidence" class="experience-evidence" role="status" aria-live="polite"></p>
+      <p id="pointersActionStatus" role="status" aria-live="polite" aria-atomic="true"></p>
+      <details id="pointersExplanationPanel"><summary id="pointersExplanationLabel">What this evidence means</summary><p id="pointersExplanation"></p></details>
 
       <div class="controls">
-        <input type="text" id="dnsQueryInput" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
+        <label for="dnsQueryInput">DNS name (discovery and pointer scope)</label>
+        <input type="text" id="dnsQueryInput" aria-describedby="pointerScopeHelp" value="_xmpp-client._tcp.jabber.org" style="flex: 1;" />
         <button id="resolveSrvBtn" class="secondary">Resolve SRV (DoH)</button>
         <button id="resolveTxtBtn" class="secondary">Resolve TXT (DoH)</button>
       </div>
 
+      <p id="pointerScopeHelp" class="muted">The DNS name, writer key and Zone ID select an exact publication scope. Changing any of them selects another scope; it does not resolve earlier unknown writes. After reload, pin the original writer, enter its exact name and zone, then load saved publication before reconciling. Reconciliation also needs a scoped token.</p>
+      <details id="pointerPublicationSetup"><summary>Provider publication setup and reconciliation</summary>
       <div class="controls">
-        <input type="text" id="cfZoneInput" placeholder="CF Zone ID or DuckDNS sub" style="width: 150px;" />
-        <input type="text" id="cfTokenInput" placeholder="Scoped API Token" style="width: 130px;" />
-        <button id="writeSignedDnsBtn" class="secondary">Sign (Ed25519) & Write DNS</button>
+        <label for="cfZoneInput">Cloudflare Zone ID</label>
+        <input type="text" id="cfZoneInput" aria-describedby="pointerScopeHelp" placeholder="Cloudflare Zone ID" style="width: 150px;" />
+        <label for="cfTokenInput">Scoped Cloudflare API token</label>
+        <input type="password" id="cfTokenInput" aria-describedby="providerTokenHelp" placeholder="Scoped API Token" style="width: 130px;" />
+        <button id="writeSignedDnsBtn" class="secondary">Admit Next Pointer & Publish TXT</button>
+        <button id="loadPublicationBtn" class="secondary">Load Saved Publication</button>
+        <button id="reconcilePointerBtn" class="secondary" hidden>Reconcile Unknown Publication</button>
       </div>
+      <p id="providerTokenHelp" class="muted">Use a token with DNS Edit restricted to this exact zone. It is sent only to the Cloudflare API when you publish or reconcile; it is not saved or exported. Replace it here when expired or revoked. A provider acknowledgement is not DNS propagation.</p>
+      </details>
 
+      <div class="controls">
+        <label for="pointerAuthorityInput">Independently trusted Ed25519 writer key</label>
+        <input type="text" id="pointerAuthorityInput" aria-describedby="pointerScopeHelp" placeholder="Trusted Ed25519 key (64 hex), pin out of band" style="flex: 1;" />
+        <button id="pinSessionAuthorityBtn" class="secondary">Trust This Session Key (demo)</button>
+      </div>
+      <details id="authorityLifecyclePanel"><summary>Signing authority, saved trust and storage care</summary>
+        <p>Save or restore a nonextractable Ed25519 key on this origin. Origin scripts can use it; only use a trusted deployment. Local rotation or revocation does not change independently trusted keys, DNS records or remote copies.</p>
+        <button id="saveAuthorityBtn" class="secondary">Set Up or Restore Saved Authority</button>
+        <p id="authorityStorageStatus" role="status">Checking saved signing authority…</p>
+        <p id="authoritySavedSummary"></p>
+        <div id="authoritySignerControls" hidden>
+          <label for="authorityExpectedKey">Exact saved signer key to rotate or revoke</label>
+          <input id="authorityExpectedKey" type="text" placeholder="Type the saved 64-hex public key" style="width: 100%;" />
+          <button id="rotateAuthorityBtn" class="secondary">Rotate Saved Signing Key</button>
+          <button id="revokeAuthorityBtn" class="secondary">Revoke Saved Signing Key Locally</button>
+        </div>
+        <details><summary>Independently accepted exact trust anchor</summary>
+          <p id="authorityTrustSummary"></p>
+          <p>Enter the public key and exact recent pointer digest obtained independently. Save requires this observer's admitted head. Migration uses the complete signed JSON below, and does not change the live pin. Select the new pin and restore separately. Timestamps and signatures alone do not establish trust or global recency.</p>
+          <label for="authorityAnchorKey">Independently accepted public key</label><input id="authorityAnchorKey" type="text" style="width: 100%;" />
+          <label for="authorityAnchorDigest">Independently accepted exact pointer digest</label><input id="authorityAnchorDigest" type="text" placeholder="sha256:…" style="width: 100%;" />
+          <label for="authorityAnchorConsent"><input id="authorityAnchorConsent" type="checkbox" /> I independently confirmed this key and exact recent digest for this DNS name.</label>
+          <button id="saveTrustedAnchorBtn" class="secondary">Save Current Exact Trust Anchor</button>
+          <div id="authorityTrustControls" hidden>
+            <button id="restoreTrustedAnchorBtn" class="secondary">Restore Saved Head to Current Pin</button>
+            <button id="migrateTrustedAnchorBtn" class="secondary">Migrate Saved Trust to Pasted Anchor</button>
+            <button id="revokeTrustedAnchorBtn" class="secondary">Revoke Saved Trust Locally</button>
+          </div>
+        </details>
+        <details><summary>Quota, eviction and public journal</summary>
+          <p>Storage estimates cover this whole origin. Persistence permission is not a backup. Clearing or eviction can lose keys and unknown-write evidence. Export preserves public anchors, exact candidates and provider identities, never signing keys or API tokens. There is no automatic journal import or unknown-write reset.</p>
+          <button id="inspectAuthorityStorageBtn" class="secondary">Inspect Origin Storage and Journal</button>
+          <button id="persistAuthorityStorageBtn" class="secondary">Request Browser Storage Persistence</button>
+          <button id="exportAuthorityJournalBtn" class="secondary">Export Public Authority Journal</button>
+          <button id="compactAuthorityJournalBtn" class="secondary">Remove Definitely Refused Journal Entries</button>
+        </details>
+        <label for="authorityLifecycleConsent"><input id="authorityLifecycleConsent" type="checkbox" /> I confirm the exact local key operation or removal of definitely refused journal entries. Unknown writes and published provider identities must remain.</label>
+        <p id="authorityLifecycleStatus" role="status" aria-live="polite" aria-atomic="true">No lifecycle operation requested.</p>
+      </details>
+      <div class="muted">Session-only keys and unsaved observer heads last only this session. Save an independently accepted recent trust anchor to restore strict succession after reload. Full pointers use multiple TXT strings, not the legacy 255-byte claim.</div>
+      <p id="pointerAdmissionHelp" class="muted">Paste complete signed JSON, at most 4096 UTF-8 bytes. Admission checks this exact name, independently pinned key and retained head. Restoring an anchor in the recovery vault does not change this observer.</p>
+      <div id="pointerAdmissionControls">
+      <label for="pointerJsonInput">Signed pointer JSON</label>
+        <textarea id="pointerJsonInput" aria-describedby="pointerAdmissionHelp" aria-label="Signed pointer JSON" placeholder="Paste signed pointer JSON to admit it against the pinned key and retained head" style="width: 100%; min-height: 64px;"></textarea>
+      <button id="admitPointerBtn" class="secondary">Admit Pasted Pointer</button>
+      </div>
       <div class="mono-out" id="wireLogBox">Initializing live mesh node...</div>
     </section>
   </div>
@@ -305,7 +518,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
       <table>
         <thead>
-          <tr><th>Hasher</th><th>Width (B)</th><th>Collisions</th><th>Time (ms)</th><th>Ops/sec</th><th>MB/s</th></tr>
+          <tr><th scope="col">Hasher</th><th scope="col">Width (B)</th><th scope="col">Collisions</th><th scope="col">Time (ms)</th><th scope="col">Ops/sec</th><th scope="col">MB/s</th></tr>
         </thead>
         <tbody id="l1BenchBody"></tbody>
       </table>
@@ -318,7 +531,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
       <table>
         <thead>
-          <tr><th>Policy</th><th>Refreshes</th><th>Unavailable (s)</th><th>Availability</th><th>Mean Lag (s)</th></tr>
+          <tr><th scope="col">Policy</th><th scope="col">Refreshes</th><th scope="col">Unavailable (s)</th><th scope="col">Availability</th><th scope="col">Mean Lag (s)</th></tr>
         </thead>
         <tbody id="l2BenchBody"></tbody>
       </table>
@@ -331,7 +544,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
       <table>
         <thead>
-          <tr><th>Strategy</th><th>Gen-0 Left</th><th>Recovered</th><th>Retention</th><th>Amp</th><th>Repair Bytes</th></tr>
+          <tr><th scope="col">Strategy</th><th scope="col">Gen-0 Left</th><th scope="col">Recovered</th><th scope="col">Retention</th><th scope="col">Amp</th><th scope="col">Repair Bytes</th></tr>
         </thead>
         <tbody id="l3BenchBody"></tbody>
       </table>
@@ -344,7 +557,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       </div>
       <table>
         <thead>
-          <tr><th>Strategy</th><th>Done</th><th>Latency (ticks)</th><th>Total Ops</th><th>Wasted Ops</th><th>Trace Verified</th></tr>
+          <tr><th scope="col">Strategy</th><th scope="col">Done</th><th scope="col">Latency (ticks)</th><th scope="col">Total Ops</th><th scope="col">Wasted Ops</th><th scope="col">Execution evidence</th></tr>
         </thead>
         <tbody id="l4BenchBody"></tbody>
       </table>
@@ -370,24 +583,94 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     import {
       DohResolver,
       WebRtcTransportNode,
-      generatePointerKeyPair,
-      signPointerTxt,
-      verifyPointerTxt,
+      readBoundedText,
       ExperimentTrialLogger
     } from './src/layer5-transport/index.js';
 
-    const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.0.0' });
-    let peerSigningKeys = null;
-    generatePointerKeyPair().then(kp => {
-      peerSigningKeys = kp;
+    import { createOperatorExperience, integrityLabel, executionLabel } from './src/product-experience.js';
+    import { placementStatus } from './src/layer3-storage/custody.js';
+    import { parseCanonicalJson } from './src/layer1-uor/custody.js';
+    import { ResourceAdmission } from './src/layer2-schedulers/policy.js';
+    import { installRecoveryControls } from './src/recovery-ui.js';
+    import { installAuthorityControls } from './src/authority-ui.js';
+    import { BrowserAuthorityStore } from './src/layer1-uor/browser-authority.js';
+    import { generateAuthority, signPointer, PointerObserver, PointerPublisher, pointerDnsText, parsePointerDnsText } from './src/layer1-uor/pointer.js';
+
+    // One stable handle is shared by every adapter. Only the explicit renewal
+    // control replaces the underlying epoch. Prior ledgers stay retained.
+    let operatorExperience = null;
+    let authorityControls = null;
+    function renderExperience() { operatorExperience?.render(); authorityControls?.render(); }
+    // The same model guard protects keyboard, repeated and programmatic events.
+    function bindModelAction(id, handler) {
+      document.getElementById(id).addEventListener('click', async (...args) => {
+        if (!operatorExperience?.allow(id)) return;
+        try { return await handler(...args); }
+        catch (error) {
+          operatorExperience.report(id, `Action refused or interrupted: ${error.code || error.message}. Inspect retained evidence before retrying.`);
+          if (id === 'saveAuthorityBtn') document.getElementById('authorityStorageStatus').textContent = `Saved authority setup failed: ${error.message}. No replacement key was selected. Restore or storage errors do not establish that a key is absent.`;
+          throw error;
+        }
+        finally { renderExperience(); }
+      });
+    }
+    let activeAdmission = new ResourceAdmission();
+    let policyEpoch = 1;
+    let lastPolicyRefusal = null;
+    const policyHistory = [];
+    const admission = {
+      get state() { return activeAdmission.state; },
+      reservationCurrent(id, epoch) { return activeAdmission.reservationCurrent(id, epoch); },
+      reserve(kind, cost) {
+        try { return activeAdmission.reserve(kind, cost); }
+        catch (error) {
+          if (['epoch-expired', 'budget-exhausted', 'action-capacity', 'clock-regression'].includes(error.code)) {
+            lastPolicyRefusal = error.code;
+            document.getElementById('budgetPolicyPanel').open = true;
+            renderBudgetPolicy();
+          }
+          throw error;
+        }
+      },
+      run(kind, cost, effect) { this.reserve(kind, cost); return effect(); }
+    };
+    const trialLogger = new ExperimentTrialLogger({ contractVersion: '1.1.0' });
+    const authorityStore = new BrowserAuthorityStore();
+    let authorityReady = Promise.resolve(null);
+    let persistentAuthority = false;
+    // Restore only; missing, blocked or invalid storage never silently creates a key.
+    const authorityRestore = (async () => {
+      const status = await authorityStore.authorityStatus();
+      persistentAuthority = !!status;
+      const authority = status?.status === 'revoked' ? null : await authorityStore.restoreAuthority();
+      if (authority) authorityReady = Promise.resolve(authority);
+      document.getElementById('authorityStorageStatus').textContent = status?.status === 'revoked'
+        ? 'Saved signer revoked locally. Explicit rotation is required; no replacement key or trust was selected.'
+        : authority ? 'Saved signing key restored. Explicitly pin it to trust it for this name.'
+        : 'No saved signing key. Choose session-only or saved authority explicitly.';
+    })().catch(() => {
+      document.getElementById('authorityStorageStatus').textContent = 'Browser storage unavailable or invalid. No key replaced. Persistent signing and publication require working storage. Missing evidence does not prove an earlier write never happened.';
     });
+    const pointerObservers = new Map();
+    const unpublishedPointers = new WeakMap();
+    let pointerWriteInFlight = false;
 
     const logBox = document.getElementById('wireLogBox');
     const cliProofBox = document.getElementById('cliProofBox');
     function logWire(tag, text) {
       const ts = new Date().toISOString().slice(11, 19);
       logBox.textContent = `[${ts}] [${tag}] ${text}\n` + logBox.textContent.slice(0, 3500);
+      const journey = /^(VM)/.test(tag) ? 'vm' : /^(POINTER|DNS|DOH|CF-DNS|AUTHORITY)/.test(tag) ? 'pointers'
+        : /^(PUT|WIPE|WARM|UOR)/.test(tag) ? 'objects' : /^(COMPUTE|RESUME)/.test(tag) ? 'compute'
+        : /^POLICY/.test(tag) ? 'resources' : /^(SYNC|MESH)/.test(tag) ? 'mesh' : null;
+      if (journey) document.getElementById(`${journey}ActionStatus`).textContent = `${tag}: ${text}`;
+      renderExperience();
     }
+
+    window.addEventListener('unhandledrejection', ev => {
+      logWire('REFUSED', ev.reason?.code || ev.reason?.message || String(ev.reason));
+      ev.preventDefault();
+    });
 
     function updateCliProof(extraLine = '') {
       const warmTopic = transport.warmCacheTopic();
@@ -395,7 +678,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       const lines = [
         `# 1. Inspect live 2-of-3 XOR shards & compute checkpoints on public warm bus:`,
         `curl -s "https://ntfy.sh/${warmTopic}/json?poll=1&since=30m" | tail -n 5`,
-        `# 2. Query Cloudflare RFC 8484 DoH for live DNS pointer record:`,
+        `# 2. Inspect the provider DNS-JSON discovery response:`,
         `curl -s -H "accept: application/dns-json" "https://cloudflare-dns.com/dns-query?name=${dnsName}&type=SRV"`
       ];
       if (extraLine) lines.push(extraLine);
@@ -403,27 +686,27 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     }
 
     // Probe real Cloudflare edge datacenter & client egress IP
-    fetch('https://1.1.1.1/cdn-cgi/trace')
-      .then(r => r.text())
+    Promise.resolve().then(() => admission.run('retrieve', { requests: 1, transferBytes: 4096 },
+      () => fetch('https://1.1.1.1/cdn-cgi/trace')))
+      .then(r => readBoundedText(r, 4096))
       .then(txt => {
         const kv = Object.fromEntries(txt.trim().split('\n').map(l => l.split('=')));
         document.getElementById('cfTraceLabel').textContent = `${kv.colo || 'CF'} (${kv.ip || 'edge'} / ${kv.http || 'h2'})`;
       })
       .catch(() => {
-        document.getElementById('cfTraceLabel').textContent = 'cloudflare-dns.com (DoH active)';
+        document.getElementById('cfTraceLabel').textContent = 'Trace unavailable; no network evidence';
       });
 
     // 1. Layer-2 Budget-Paced Survival Scheduler driving live refreshes (C3 compliant)
-    const scheduler = new BudgetPacedSurvivalScheduler({
+    let scheduler = new BudgetPacedSurvivalScheduler({
       ttlSeconds: 60,
       durationSeconds: 600,
       maxRefreshBudget: 30,
       minFloorSeconds: 5
     });
-    const nowSec = () => Date.now() / 1000;
+    const schedulerEpoch = performance.now();
+    const nowSec = () => (performance.now() - schedulerEpoch) / 1000;
     scheduler.markRefreshed(nowSec());
-    scheduler.recordFailure(nowSec() - 80);
-    scheduler.recordFailure(nowSec() - 40);
 
     // 2. Layer-5 Multi-Peer WebRTC Mesh Transport
     const hashKey = location.hash.replace(/^#/, '').trim();
@@ -432,6 +715,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     const transport = new WebRtcTransportNode({
       channelKey: document.getElementById('meshKeyInput').value.trim(),
       trialLogger,
+      admission,
       onEvent: async ev => {
         document.getElementById('peerCountLabel').textContent = String(transport.openPeers().length);
 
@@ -442,7 +726,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
           document.getElementById('stunTypeLabel').textContent = ev.candidateType;
         } else if (ev.type === 'channel_open') {
           logWire('WEBRTC', `DataChannel open with ${ev.remoteId} (ICE=${ev.iceSetupSec}s); requesting UOR shard sync`);
-          transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', from: transport.peerId });
+          transport.sendToPeer(ev.remoteId, { type: 'uor_sync_req', version: 1 });
         } else if (ev.type === 'c1_trial_complete') {
           logWire('C1-TRIAL', `Logged C1 trial for ${ev.remote_peer}: success=${ev.success}, ice=${ev.ice_setup_sec}s, hb=${ev.heartbeats_passed}`);
         } else if (ev.type === 'peer_disconnected') {
@@ -454,7 +738,7 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
           }
         } else if (ev.type === 'mesh_message') {
           const { from, msg } = ev;
-          if (msg.type === 'uor_shard' || msg.type === 'uor_sync_req') {
+          if (msg.type === 'uor_shard' || msg.type === 'uor_sync_req' || msg.type === 'uor_shard_ack' || msg.type === 'uor_fragment_req') {
             await liveDb.handleMeshMessage(from, msg);
           } else if (msg.type === 'compute_ckpt') {
             await computeCoord.handleMeshMessage(from, msg);
@@ -467,18 +751,23 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     document.getElementById('nodeIdLabel').textContent = transport.peerId;
 
-    // 3. Layer-4 In-Browser Linux 5.6 VM Node (v86)
+    // 3. Layer-4 In-Browser Linux VM Node (v86)
     const vmNode = new LinuxVmNode({
       transport,
       screenContainer: document.getElementById('vmScreenContainer'),
       onStatus: st => {
         document.getElementById('vmStatusLabel').textContent =
           st.state === 'online'
-            ? `ONLINE (eth0=${st.ip})`
+            ? `ONLINE (eth0=${st.cidr || st.ip || 'offline'})`
             : st.state === 'booting'
-            ? `BOOTING LINUX 5.6 (${st.ip})...`
-            : `ERROR: ${st.message}`;
-        logWire('VM', `Linux 5.6 state=${st.state} ip=${st.ip || ''}`);
+            ? `BOOTING LINUX (${st.cidr || st.ip || 'offline'})...`
+            : ['offline', 'stopping'].includes(st.state)
+            ? st.message
+            : `ERROR: ${st.message || 'Unknown VM lifecycle observation'}`;
+        document.getElementById('vmShareObjects').checked = Boolean(vmNode.objectSharing);
+        document.getElementById('vmShareEthernet').checked = Boolean(vmNode.ethernetSharing);
+        showVmCommand();
+        logWire('VM', `Linux state=${st.state} ip=${st.ip || ''}${st.message ? `: ${st.message}` : ''}`);
       }
     });
 
@@ -490,31 +779,61 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       onUpdate: ev => {
         renderLiveDbTable();
         if (ev.type === 'object_verified') {
-          logWire('UOR-DB', `Verified & mounted ${ev.entry.addressHex.slice(0, 22)}... (${ev.entry.originalLength}B) from ${ev.entry.source}`);
+          logWire('UOR-DB', `Verified local object ${ev.entry.addressHex.slice(0, 22)}... (${ev.entry.originalLength}B) from ${ev.entry.source}`);
         }
       }
     });
 
+    function renderRows(tbody, rows) {
+      tbody.replaceChildren(...rows.map(values => {
+        const row = document.createElement('tr');
+        for (const value of values) {
+          const cell = document.createElement('td');
+          cell.textContent = String(value);
+          row.append(cell);
+        }
+        return row;
+      }));
+    }
+
+    function renderPlacementControls() {
+      const select = document.getElementById('placementObject');
+      const selected = select.value;
+      const objects = [...liveDb.objects.values()].filter(e => e.verified && e.bytes);
+      const option = (value, text) => { const o = document.createElement('option'); o.value = value; o.textContent = text; return o; };
+      const replaceOptions = (control, options) => {
+        const current = Array.from(control.children);
+        if (current.length !== options.length || current.some((o, i) => o.value !== options[i].value || o.textContent !== options[i].textContent)) control.replaceChildren(...options);
+      };
+      replaceOptions(select, [option('', 'Select an exact object'), ...objects.map(e => option(e.addressHex, `${e.label || 'object'} · ${e.addressHex}`))]);
+      select.value = objects.some(e => e.addressHex === selected) ? selected : '';
+      const replace = document.getElementById('placementReplaceHolder'), previous = replace.value;
+      const state = liveDb.placements.get(select.value);
+      const holders = (state?.copies || []).filter(c => c.status === 'committed').map(c => c.holder);
+      replaceOptions(replace, [option('', 'Keep current live holders'), ...holders.map(holder => option(holder, holder))]);
+      replace.value = holders.includes(previous) ? previous : '';
+      renderPlacementEvidence();
+    }
+
+    function renderPlacementEvidence() {
+      const select = document.getElementById('placementObject');
+      let summary;
+      try { summary = liveDb.placementSummary(select.value); }
+      catch (error) { document.getElementById('placementEvidence').textContent = `Placement observation refused: ${error.code || error.message}. Retained bytes and custody history are unchanged.`; return; }
+      const text = summary ? `${select.value}: ${summary.committedFragments}/3 current distinct-holder receipts; ${summary.requestedTransfers} awaiting ACK; ${summary.uncertainTransfers} uncertain transfers; ${summary.assertedCopies} retained copy assertions; ${summary.pendingReleases} pending releases. ${summary.canRecoverFromCommitted ? 'Conditional remote recovery observed.' : 'Remote recovery threshold not established.'} Local full bytes are additional. No durability or independent-machine guarantee.` : 'No retained verified object selected.';
+      const evidence = document.getElementById('placementEvidence');
+      if (evidence.textContent !== text) evidence.textContent = text;
+    }
+
     function renderLiveDbTable() {
-      const tbody = document.getElementById('liveDbBody');
+      renderPlacementControls();
+      renderExperience();
       const items = Array.from(liveDb.objects.values());
-      if (items.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="6" class="muted">Local browser RAM is empty (0 objects). Click "Recover from Public Bus" to pull shards from external infrastructure.</td></tr>';
-        return;
-      }
-      tbody.innerHTML = items.map(e => {
-        const preview = e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(reassembling shards...)';
-        return `
-          <tr>
-            <td><code>${e.addressHex.slice(0, 24)}…</code></td>
-            <td>${e.label || '—'}</td>
-            <td>${e.originalLength} B</td>
-            <td>${e.verified ? 'YES (UOR)' : 'PARTIAL'}</td>
-            <td>${e.source}</td>
-            <td><code>${preview.replace(/</g, '&lt;')}</code></td>
-          </tr>
-        `;
-      }).join('');
+      renderRows(document.getElementById('liveDbBody'), items.length ? items.map(e => [
+        e.addressHex, e.label || '—', `${e.originalLength} B`,
+        integrityLabel(e.verified), e.source,
+        e.bytes ? new TextDecoder().decode(e.bytes).slice(0, 48) : '(awaiting fragments)'
+      ]) : [['No local objects. Recovery needs enough retained, reachable fragments.']]);
     }
 
     // 5. Layer-4 Live Distributed Compute Coordinator
@@ -525,100 +844,314 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     });
 
     function renderJobsTable() {
-      const tbody = document.getElementById('liveJobsBody');
+      renderExperience();
       const jobs = Array.from(computeCoord.jobs.values());
-      if (jobs.length === 0) return;
-      tbody.innerHTML = jobs.map(j => `
-        <tr>
-          <td><strong>${j.jobId}</strong></td>
-          <td>${j.stepIndex} / ${j.totalSteps}</td>
-          <td>${j.ownerPeerId} (${j.sourceTag})</td>
-          <td><code>${j.currentValueHex}</code></td>
-          <td>${j.status.toUpperCase()}</td>
-          <td>${j.verified ? 'CERTIFIED' : 'IN-FLIGHT'}</td>
-        </tr>
-      `).join('');
+      renderRows(document.getElementById('liveJobsBody'), jobs.length ? jobs.map(j => [
+        j.jobId, `${j.stepIndex} / ${j.totalSteps}`, `${j.ownerPeerId} (${j.sourceTag})`,
+        j.currentValueHex, j.status.toUpperCase(), executionLabel(j.verification === 'replayed')
+      ]) : [['No active pure jobs. Host and VM effects are not replay-certified.']]);
     }
+
+    const publicRelayEnabled = () => document.getElementById('allowPublicRelayInput').checked;
+    transport.publicRelayConsent = publicRelayEnabled;
+    document.getElementById('allowPublicRelayInput').addEventListener('change', () => {
+      computeCoord.allowPublicRelay = publicRelayEnabled();
+      renderExperience();
+    });
 
     // UI Controls Wiring
     async function joinAndSync() {
       const key = document.getElementById('meshKeyInput').value.trim() || 'syntra-uor-bus-01';
       location.hash = key;
       transport.connect(key);
-      const rec = await liveDb.syncFromNetwork('30m');
+      const rec = await liveDb.syncFromNetwork('30m', { publicData: publicRelayEnabled() });
       const resumed = await computeCoord.syncAndTakeOverJobs('30m');
       logWire('SYNC', `Recovered ${rec} UOR objects from warm cache; resumed ${resumed.length} jobs.`);
     }
 
-    document.getElementById('reconnectBtn').addEventListener('click', joinAndSync);
+    bindModelAction('reconnectBtn', joinAndSync);
 
     document.getElementById('toggleMetricsLabBtn').addEventListener('click', () => {
       const sec = document.getElementById('metricsLabSection');
       const btn = document.getElementById('toggleMetricsLabBtn');
       const hidden = sec.style.display === 'none';
       sec.style.display = hidden ? 'block' : 'none';
+      if (hidden) runAllBenchmarks();
       btn.textContent = hidden ? 'Hide Metrics & Falsification Lab' : 'Show Metrics & Falsification Lab (C1–C10)';
     });
 
-    document.getElementById('copyCliProofBtn').addEventListener('click', () => {
-      navigator.clipboard?.writeText(cliProofBox.textContent);
-      logWire('CLI-PROOF', 'Copied external terminal verification commands to clipboard.');
+    document.getElementById('copyCliProofBtn').addEventListener('click', async () => {
+      try {
+        if (!navigator.clipboard?.writeText) throw Error('Clipboard unavailable; select the commands below and copy them manually.');
+        await navigator.clipboard.writeText(cliProofBox.textContent);
+        document.getElementById('meshActionStatus').textContent = 'Inspection commands copied. Inspection alone is not verification.';
+      } catch (error) { document.getElementById('meshActionStatus').textContent = error.message; }
     });
 
-    document.getElementById('dbPutBtn').addEventListener('click', async () => {
+    bindModelAction('dbPutBtn', async () => {
       const label = document.getElementById('dbLabelInput').value.trim() || 'data.txt';
       const payload = document.getElementById('dbPayloadInput').value;
-      const entry = await liveDb.put(payload, { label, persistWarm: true });
+      const entry = await liveDb.put(payload, { label, persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
       renderLiveDbTable();
       updateCliProof(`# Verify object ${entry.addressHex} directly from terminal:\ncurl -s "https://ntfy.sh/${transport.warmCacheTopic()}/json?poll=1&since=30m" | grep "${entry.addressHex}"`);
-      logWire('PUT', `Stored & replicated ${entry.addressHex} (2-of-3 XOR parity shards)`);
+      logWire('PUT', `Committed ${entry.addressHex}; remote placement is conditional on verified receipts and reachability.`);
     });
 
-    document.getElementById('dbWipeLocalBtn').addEventListener('click', () => {
-      liveDb.objects.clear();
+    document.getElementById('placementObject').addEventListener('change', () => { renderPlacementControls(); renderExperience(); });
+    bindModelAction('repairPlacementBtn', async () => {
+      const key = document.getElementById('placementObject').value;
+      const replaceHolder = document.getElementById('placementReplaceHolder').value || null;
+      const summary = await liveDb.repairPlacement(key, { replaceHolder });
       renderLiveDbTable();
-      logWire('WIPE-RAM', 'Cleared local browser RAM to 0 objects. Now click "Recover from Public Bus" to prove external persistence.');
+      document.getElementById('objectsActionStatus').textContent = `Repair checked ${key}. ${summary.committedFragments}/3 current receipts; ${summary.requestedTransfers} awaiting ACK, ${summary.uncertainTransfers} uncertain transfers. Fresh receipts may arrive later; no pending request counts as custody.${summary.replacementUnavailable ? ' No spare distinct-holder route is available for the selected replacement; the original custody remains retained.' : ''}`;
     });
 
-    document.getElementById('dbSyncBtn').addEventListener('click', async () => {
-      const count = await liveDb.syncFromNetwork('30m');
+    bindModelAction('dbWipeLocalBtn', async () => {
+      await liveDb.clearLocal();
+      renderLiveDbTable();
+      logWire('WIPE-RAM', 'Cleared local object bytes. Recovery succeeds only if enough fragments remain elsewhere.');
+    });
+
+    bindModelAction('dbSyncBtn', async () => {
+      const count = await liveDb.syncFromNetwork('30m', { publicData: publicRelayEnabled() });
       renderLiveDbTable();
       logWire('WARM-SYNC', `Recovered ${count} verified UOR objects from warm relay buffer.`);
     });
 
-    document.getElementById('startJobBtn').addEventListener('click', () => {
-      const totalSteps = Number(document.getElementById('jobStepsInput').value) || 12;
-      const stepDelayMs = Number(document.getElementById('jobDelayInput').value) || 800;
-      computeCoord.startOrResumeJob({ totalSteps, stepDelayMs });
+    bindModelAction('startJobBtn', () => {
+      const totalSteps = Number(document.getElementById('jobStepsInput').value);
+      const stepDelayMs = Number(document.getElementById('jobDelayInput').value);
+      if (!Number.isSafeInteger(totalSteps) || totalSteps < 3 || totalSteps > 60 || !Number.isSafeInteger(stepDelayMs) || stepDelayMs < 100 || stepDelayMs > 3000) throw Error('Choose 3–60 whole steps and a 100–3000 ms whole-number delay.');
+      computeCoord.startOrResumeJob({ totalSteps, stepDelayMs }).catch(e => logWire('COMPUTE-ERR', e.code || e.message));
       logWire('COMPUTE', `Started ${totalSteps}-step distributed UOR reduction job`);
     });
 
-    document.getElementById('takeoverJobsBtn').addEventListener('click', async () => {
+    bindModelAction('takeoverJobsBtn', async () => {
       const resumed = await computeCoord.syncAndTakeOverJobs('30m');
-      logWire('TAKEOVER', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No stalled jobs found.');
+      for (const job of computeCoord.jobs.values()) {
+        if (job.status === 'running' && job.ownerPeerId === transport.peerId && !computeCoord.running.has(job.jobId)) {
+          resumed.push(job.jobId);
+          computeCoord.startOrResumeJob({ jobId: job.jobId, stepDelayMs: 0 }).catch(error =>
+            logWire('COMPUTE-REFUSED', error.code || error.message));
+        }
+      }
+      logWire('RESUME', resumed.length ? `Resumed jobs: ${resumed.join(', ')}` : 'No unfinished jobs ready to resume.');
     });
 
-    document.getElementById('bootVmBtn').addEventListener('click', () => {
-      vmNode.boot();
+    document.getElementById('vmShareObjects').addEventListener('change', event => vmNode.setObjectSharing(event.target.checked));
+    document.getElementById('vmShareEthernet').addEventListener('change', event => {
+      try { vmNode.setEthernetSharing(event.target.checked); }
+      catch (error) {
+        event.target.checked = Boolean(vmNode.ethernetSharing);
+        document.getElementById('vmNetworkPanel').open = true;
+        document.getElementById('vmNetworkValidation').textContent = error.message;
+        logWire('VM-REFUSED', error.message);
+      }
+    });
+    async function administerVm(action) {
+      try {
+        const pending = vmNode[action]();
+        showVmCommand(); renderExperience();
+        await pending;
+      } finally {
+        document.getElementById('vmShareObjects').checked = vmNode.objectSharing;
+        document.getElementById('vmShareEthernet').checked = vmNode.ethernetSharing;
+        // onStatus runs before the host clears adminBusy. Refresh settled locks too.
+        showVmCommand(); renderExperience();
+      }
+    }
+    bindModelAction('stopVmBtn', () => administerVm('stop'));
+    bindModelAction('destroyVmBtn', () => administerVm('destroy'));
+    let vmStdoutCommandId;
+    function showVmStdout(bytes, commandId) {
+      vmStdoutCommandId = commandId;
+      const limit = 16384;
+      document.getElementById('vmStdoutText').textContent = bytes.length
+        ? new TextDecoder().decode(bytes.slice(0, limit)) : '(Empty output)';
+      document.getElementById('vmStdoutSummary').textContent = `Command ${commandId || 'unavailable'}: ${bytes.length} observed bytes. ${bytes.length > limit ? `Showing first ${limit} bytes. ` : ''}UTF-8 text preview; binary or cut characters may display replacements. This does not certify guest execution or object storage.`;
+    }
+    function selectedVmCommandId() {
+      return document.getElementById('vmCommandSelection').value || vmNode.lastCommandId;
+    }
+    function showVmCommand(selectLatest = false) {
+      const control = document.getElementById('vmCommandSelection');
+      const previous = selectLatest ? vmNode.lastCommandId : selectedVmCommandId();
+      const entries = vmNode.commands instanceof Map ? [...vmNode.commands.keys()] : [];
+      document.getElementById('vmRetainedCommandControls').hidden = entries.length === 0;
+      control.replaceChildren(...entries.map(id => {
+        const option = document.createElement('option'); option.value = id;
+        option.textContent = `${id}: ${vmNode.commandEvidence(id)?.outcome}`; return option;
+      }));
+      if (entries.includes(previous)) control.value = previous;
+      const evidence = vmNode.commandEvidence(selectedVmCommandId());
+      document.getElementById('vmRuntimeSeconds').disabled = Boolean(vmNode.v86 || vmNode.adminBusy);
+      const networkLocked = !vmNode.lifecycle.canConfigureNetwork;
+      document.getElementById('vmIpv4Address').disabled = networkLocked;
+      document.getElementById('vmPrefixLength').disabled = networkLocked;
+      document.getElementById('vmNetworkSummary').textContent = `${vmNode.networkConfiguration?.cidr || 'offline'}${networkLocked ? '; configuration locked' : ''}`;
+      document.getElementById('vmNetworkStatus').textContent = vmNode.networkConfiguration
+        ? `Configured eth0: ${vmNode.networkConfiguration.cidr} (netmask ${vmNode.networkConfiguration.netmask}). ${networkLocked ? 'Instance retained; configuration locked.' : 'Applied at next boot.'} Address uniqueness and peer subnet compatibility must be checked by the operator.`
+        : 'Offline configuration: shell and object work available; Ethernet sharing requires configuration before Boot.';
+      const usage = vmNode.filesystemUsage;
+      document.getElementById('vmResourceUsage').textContent = usage
+        ? `9p allocation requests admitted: ${usage.allocatedBytes}/67108864 bytes. Inode admissions: ${usage.createdInodes}/4096; directory-entry admissions: ${usage.linkedEntries}/4096. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s. ${vmNode.boundaryReason || ''}`
+        : `No guest resource usage observed. Runtime allowance: ${vmNode.vmRuntimeMs / 1000}s.`;
+      document.getElementById('vmCommandOutcome').textContent = evidence
+        ? `Command ${evidence.id}: ${evidence.outcome} (VM generation ${evidence.generation}); termination: ${evidence.termination}. Retained evidence: ${vmNode.commands.size}/128. Destroying the VM does not undo guest effects or discard this evidence.` : `No guest command selected. Retained evidence: ${vmNode.commands.size}/128.`;
+    }
+    document.getElementById('vmCommandSelection').addEventListener('change', () => { showVmCommand(); renderExperience(); });
+    bindModelAction('cancelVmObservationBtn', async () => {
+      const pending = vmNode.cancelCommand(selectedVmCommandId());
+      showVmCommand(); renderExperience();
+      await pending; showVmCommand();
+    });
+    bindModelAction('forgetVmCommandBtn', () => {
+      const commandId = selectedVmCommandId();
+      if (vmNode.forgetCommand(commandId) && commandId === vmStdoutCommandId) {
+        vmStdoutCommandId = undefined;
+        document.getElementById('vmStdoutText').textContent = 'Output preview forgotten.';
+        document.getElementById('vmStdoutSummary').textContent = 'Resolved command evidence and its preview forgotten. Guest files and separately stored objects are unchanged.';
+      }
+      showVmCommand();
+    });
+    bindModelAction('reconcileVmCommandBtn', async () => {
+      try {
+        const commandId = selectedVmCommandId();
+        const bytes = await vmNode.reconcileCommand(commandId);
+        if (bytes !== null) {
+          showVmStdout(bytes, commandId);
+          const entry = await liveDb.put(bytes, { label: 'vm_stdout.txt', persistWarm: false, publicData: false });
+          renderLiveDbTable(); logWire('VM-OBSERVED', `Stored observed output locally at ${entry.addressHex}`);
+        }
+      } catch (error) { logWire('VM-ERR', error.message); }
+      showVmCommand();
     });
 
-    document.getElementById('runVmCmdBtn').addEventListener('click', async () => {
+    function configureVmNetwork() {
+      const feedback = document.getElementById('vmNetworkValidation');
+      try {
+        const prefixText = document.getElementById('vmPrefixLength').value;
+        vmNode.setNetworkConfiguration(document.getElementById('vmIpv4Address').value || null, /^(0|[1-9][0-9]*)$/.test(prefixText) ? Number(prefixText) : NaN);
+        feedback.textContent = '';
+        showVmCommand();
+        return true;
+      } catch (error) {
+        document.getElementById('vmNetworkPanel').open = true;
+        feedback.textContent = error.message;
+        logWire('VM-REFUSED', error.message);
+        return false;
+      }
+    }
+    for (const id of ['vmIpv4Address', 'vmPrefixLength'])
+      document.getElementById(id).addEventListener('change', configureVmNetwork);
+    bindModelAction('bootVmBtn', () => {
+      if (!configureVmNetwork()) return;
+      try {
+        vmNode.setRuntimeAllowance(Number(document.getElementById('vmRuntimeSeconds').value) * 1000);
+        vmNode.boot(); showVmCommand();
+      } catch (error) { logWire('VM-REFUSED', error.message); }
+    });
+
+    bindModelAction('runVmCmdBtn', async () => {
       const cmd = document.getElementById('vmCmdInput').value.trim();
       if (!cmd) return;
       try {
-        logWire('VM-EXEC', `Running inside Linux 5.6 VM: ${cmd}`);
-        const outBytes = await vmNode.executeShellCommand(cmd, 8000);
-        const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: true });
+        logWire('VM-EXEC', `Running inside Linux VM: ${cmd}`);
+        const pending = vmNode.executeShellCommand(cmd, 8000);
+        const commandId = vmNode.lastCommandId;
+        showVmCommand(true);
+        renderExperience();
+        const outBytes = await pending;
+        showVmStdout(outBytes, commandId);
+        const entry = await liveDb.put(outBytes, { label: 'vm_stdout.txt', persistWarm: publicRelayEnabled(), publicData: publicRelayEnabled() });
         renderLiveDbTable();
         logWire('VM-DONE', `Stored VM stdout in UOR DB at ${entry.addressHex}`);
       } catch (e) {
         logWire('VM-ERR', e.message);
+      } finally { showVmCommand(); }
+    });
+
+    const policyFields = {
+      requests: 'budgetRequestsInput', transferBytes: 'budgetTransferInput',
+      storageBytes: 'budgetStorageInput', computeSteps: 'budgetComputeInput'
+    };
+    const initialPolicy = admission.state;
+    for (const [measure, id] of Object.entries(policyFields)) document.getElementById(id).value = String(initialPolicy.limit[measure]);
+    document.getElementById('budgetMinutesInput').value = String((initialPolicy.endMs - initialPolicy.startMs) / 60000);
+    document.getElementById('budgetActionsInput').value = String(activeAdmission.maxActions);
+    document.getElementById('budgetRefreshInput').value = String(scheduler.maxRefreshBudget);
+
+    function renderBudgetPolicy() {
+      const budget = admission.state;
+      const expired = activeAdmission.clock() >= budget.endMs;
+      const reached = Object.keys(budget.limit).filter(k => budget.spent[k] >= budget.limit[k]);
+      const actionsFull = budget.reservations.length >= activeAdmission.maxActions;
+      const refreshesUsed = Math.max(0, scheduler.refreshCount - 1);
+      const refreshesFull = refreshesUsed >= scheduler.maxRefreshBudget;
+      const remainingSeconds = Math.max(0, Math.ceil((budget.endMs - activeAdmission.clock()) / 1000));
+      document.getElementById('budgetLabel').textContent = `epoch ${policyEpoch}: ${budget.spent.requests}/${budget.limit.requests} requests, ${budget.spent.transferBytes}/${budget.limit.transferBytes} application bytes, ${remainingSeconds}s left`;
+      const status = document.getElementById('budgetStatus');
+      const reason = expired ? 'Epoch expired.' : actionsFull ? 'Reservation log allowance reached.'
+        : refreshesFull ? 'Discovery refresh allowance reached.' : lastPolicyRefusal ? `An effect was refused (${lastPolicyRefusal}).` : reached.length ? `Allowance reached: ${reached.join(', ')}.` : '';
+      status.textContent = reason ? `${reason} Review Application resource policy and choose Start New Epoch to grant another bounded allowance. Previous charges stay retained.`
+        : `Epoch ${policyEpoch} active. Edit the operational allowances above and choose Start New Epoch only when you want a new allowance.`;
+      status.style.color = reason ? '#f5b66b' : '';
+      document.getElementById('budgetUsageBox').textContent = `Current epoch ${policyEpoch}: ${JSON.stringify(budget.spent)} / limits ${JSON.stringify(budget.limit)}; ${budget.reservations.length}/${activeAdmission.maxActions} reservation entries; ${refreshesUsed}/${scheduler.maxRefreshBudget} discovery refreshes.`;
+      renderExperience();
+      document.getElementById('budgetHistoryBox').textContent = policyHistory.length
+        ? policyHistory.map(entry => `Epoch ${entry.epoch}: ${JSON.stringify(entry.budget.spent)}; ${entry.budget.reservations.length} reservations retained; ${entry.refreshesUsed} discovery refreshes.`).join('\n')
+        : 'No prior epochs. Current charges remain in the active ledger.';
+    }
+
+    bindModelAction('renewBudgetBtn', () => {
+      try {
+        const integerInput = (id, minimum = 0) => {
+          const raw = document.getElementById(id).value.trim();
+          const value = Number(raw);
+          if (!raw || !Number.isSafeInteger(value) || value < minimum) throw Error('Policy limits must be nonnegative safe integers.');
+          return value;
+        };
+        const minutesText = document.getElementById('budgetMinutesInput').value.trim();
+        const durationMs = Number(minutesText) * 60000;
+        if (!minutesText || !Number.isSafeInteger(durationMs) || durationMs <= 0) throw Error('Choose a positive epoch duration representable in whole milliseconds.');
+        const limit = Object.fromEntries(Object.entries(policyFields).map(([measure, id]) => [measure, integerInput(id)]));
+        const maxActions = integerInput('budgetActionsInput', 1);
+        const refreshLimit = integerInput('budgetRefreshInput');
+        const next = new ResourceAdmission({ durationMs, limit, maxActions });
+        const nextScheduler = new BudgetPacedSurvivalScheduler({ ttlSeconds: scheduler.ttlSeconds,
+          durationSeconds: durationMs / 1000, maxRefreshBudget: refreshLimit, minFloorSeconds: scheduler.minFloorSeconds });
+        nextScheduler.failureTimestamps = [...scheduler.failureTimestamps];
+        nextScheduler.markRefreshed(nowSec());
+        // No old reservation is settled/refunded, and no data or authority state is cleared.
+        policyHistory.push({ epoch: policyEpoch, budget: activeAdmission.state, maxActions: activeAdmission.maxActions,
+          refreshesUsed: Math.max(0, scheduler.refreshCount - 1), refreshLimit: scheduler.maxRefreshBudget });
+        activeAdmission = next;
+        policyEpoch++;
+        scheduler = nextScheduler;
+        liveDb.scheduler = scheduler;
+        lastPolicyRefusal = null;
+        renderBudgetPolicy();
+        logWire('POLICY', `Started epoch ${policyEpoch} by explicit choice. Previous charges retained; pending work was not automatically retried.`);
+      } catch (error) {
+        document.getElementById('budgetStatus').textContent = `Policy unchanged: ${error.code || error.message}`;
+        logWire('POLICY-REFUSED', error.code || error.message);
       }
     });
 
-    // DNS DoH & DuckDNS TXT Controls
-    const doh = new DohResolver();
-    document.getElementById('resolveSrvBtn').addEventListener('click', async () => {
+    bindModelAction('exportBudgetHistoryBtn', () => {
+      const entries = [...policyHistory, { epoch: policyEpoch, budget: activeAdmission.state, maxActions: activeAdmission.maxActions,
+        refreshesUsed: Math.max(0, scheduler.refreshCount - 1), refreshLimit: scheduler.maxRefreshBudget }];
+      const blob = new Blob([JSON.stringify({ version: 1, accounting: 'application resource ceilings, not host or network measurements', epochs: entries }, null, 2)], { type: 'application/json' });
+      const link = document.createElement('a');
+      const url = URL.createObjectURL(blob);
+      link.href = url; link.download = `stitch-policy-history-${Date.now()}.json`; link.click();
+      setTimeout(() => URL.revokeObjectURL(url), 0);
+    });
+
+    // RFC8484 DNS-message discovery and Cloudflare multipart TXT publication controls
+    const doh = new DohResolver({ admission });
+    const pointerPublisher = new PointerPublisher({ resolver: doh, journal: authorityStore });
+    bindModelAction('resolveSrvBtn', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
         const r = await doh.resolve(q, 'SRV');
@@ -628,64 +1161,136 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
       }
     });
 
-    document.getElementById('resolveTxtBtn').addEventListener('click', async () => {
+    bindModelAction('resolveTxtBtn', async () => {
       const q = document.getElementById('dnsQueryInput').value.trim();
       try {
         const r = await doh.resolve(q, 'TXT');
-        logWire('DOH-TXT', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms, records=${JSON.stringify(r.records)}`);
+        logWire('DOH-TXT', `${q} -> TTL=${r.ttl_seconds}s, RTT=${r.rtt_ms}ms`);
+        const candidates = r.rawRecords.flatMap(raw => {
+          try {
+            const p = parsePointerDnsText(raw);
+            return p && typeof p === 'object' && Number.isSafeInteger(p.revision) ? [p] : [];
+          } catch { return []; }
+        }).sort((a, b) => a.revision - b.revision);
+        for (const candidate of candidates) {
+          try {
+            const accepted = await pointerObserver().admit(candidate);
+            logWire('POINTER-ADMIT', `revision=${accepted.revision}, root=${accepted.objectRoot}; observer-local, not consensus`);
+          } catch (error) { logWire('POINTER-REFUSED', error.code || error.message); }
+        }
       } catch (e) {
         logWire('DOH-ERR', e.message);
       }
     });
 
-    document.getElementById('writeSignedDnsBtn').addEventListener('click', async () => {
-      const zoneOrSub = document.getElementById('cfZoneInput').value.trim();
-      const token = document.getElementById('cfTokenInput').value.trim();
-      const latestRoot = Array.from(liveDb.objects.keys()).pop() || '0';
-      if (!peerSigningKeys) peerSigningKeys = await generatePointerKeyPair();
+    function pointerObserver() {
+      const name = document.getElementById('dnsQueryInput').value.trim();
+      const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
+      if (!trustedAuthorityKey) throw Error('Pin an independently trusted authority key first, or explicitly trust the demo session key.');
+      const key = `${name}:${trustedAuthorityKey}`;
+      if (!pointerObservers.has(key)) pointerObservers.set(key, new PointerObserver({ name, trustedAuthorityKey, admission, trustStore: authorityStore }));
+      return pointerObservers.get(key);
+    }
 
-      const signed = await signPointerTxt(
-        {
-          peerId: transport.peerId,
-          endpoint: transport.signalTopic(),
-          rootAddress: latestRoot.slice(0, 24)
-        },
-        peerSigningKeys.privateKey
-      );
-      const verified = await verifyPointerTxt(signed.txt, peerSigningKeys.publicKeyB64Url);
-      trialLogger.logTrial('C8', {
-        byte_length: signed.byteLength,
-        c10_within_255b: signed.c10_within_255b,
-        sign_latency_ms: signed.signLatencyMs,
-        verify_latency_ms: verified.verifyLatencyMs,
-        verified: verified.ok
-      });
-      logWire('C8-SIGN', `Ed25519 signed TXT (${signed.byteLength}B <= 255B, verify=${verified.verifyLatencyMs}ms): ${signed.txt}`);
+    authorityControls = installAuthorityControls({ document, store: authorityStore, pointerObserver,
+      onAuthorityChanged: async status => {
+        persistentAuthority = true;
+        authorityReady = status.status === 'active' ? authorityStore.restoreAuthority() : Promise.resolve(null);
+        await authorityReady;
+        document.getElementById('authorityStorageStatus').textContent = `Saved signer ${status.status}. Visible trust pin unchanged; unknown publications retained.`;
+      }, onChange: renderExperience });
 
-      if (!zoneOrSub || !token) {
-        logWire('DNS-WRITE', 'Signed pointer logged to O5 trials. Provide Cloudflare Zone ID (32-hex) or DuckDNS subdomain + token to publish.');
-        return;
-      }
-      try {
-        if (/^[a-f0-9]{32}$/i.test(zoneOrSub)) {
-          const epochName = `e${Math.floor(Date.now() / 1000)}._stitch._udp.${ document.getElementById('dnsQueryInput').value.trim() }`;
-          const res = await doh.writeCloudflareRecord({
-            zoneId: zoneOrSub,
-            apiToken: token,
-            type: 'TXT',
-            name: epochName,
-            content: signed.txt,
-            ttl: 30
-          });
-          logWire('CF-DNS', `Published Cloudflare TXT ${epochName} (TTL=30s) -> ok=${res.ok}`);
-        } else {
-          const res = await doh.writeDuckDnsTxt({ subdomain: zoneOrSub, token, txtValue: signed.txt });
-          logWire('DUCK-DNS', `Updated ${res.fqdn} TXT -> response=${res.response}`);
-        }
-      } catch (e) {
-        logWire('DNS-ERR', e.message);
-      }
+    bindModelAction('pinSessionAuthorityBtn', async () => {
+      await authorityRestore;
+      if (persistentAuthority) authorityReady = authorityStore.restoreAuthority();
+      else if (!await authorityReady) authorityReady = generateAuthority();
+      document.getElementById('pointerAuthorityInput').value = (await authorityReady).publicKey;
+      logWire('POINTER-PIN', persistentAuthority ? 'Explicitly pinned the restored saved key. Existing trust is not transferred from other keys.' : 'Created and pinned a session-only key. Closing this tab loses signing authority; no automatic replacement after reload.');
     });
+    bindModelAction('saveAuthorityBtn', async () => {
+      await authorityRestore;
+      const current = await authorityReady;
+      if (current && !persistentAuthority) throw Error('Session-only key already chosen. Reload and choose saved authority before signing; keys are never silently replaced.');
+      const authority = await authorityStore.setupAuthority();
+      authorityReady = Promise.resolve(authority); persistentAuthority = true;
+      document.getElementById('pointerAuthorityInput').value = authority.publicKey;
+      document.getElementById('authorityStorageStatus').textContent = 'Saved nonextractable signing key and pinned its public key. Browser clearing, eviction or private-session closure can destroy it. No private-key backup is included in evidence exports.';
+      await authorityControls.refresh();
+      logWire('AUTHORITY', 'Saved authority ready; public-key trust is explicit and origin-scoped.');
+    });
+    bindModelAction('loadPublicationBtn', async () => {
+      const destination = { zoneId: document.getElementById('cfZoneInput').value.trim(),
+        name: document.getElementById('dnsQueryInput').value.trim(),
+        trustedAuthorityKey: document.getElementById('pointerAuthorityInput').value.trim() };
+      const pending = await pointerPublisher.restore(destination);
+      if (pending) document.getElementById('pointerJsonInput').value = JSON.stringify(pending);
+      logWire('DNS-JOURNAL', `${destination.name} / zone ${destination.zoneId} / writer ${destination.trustedAuthorityKey}: ${pending ? 'Retained exact candidate loaded. Reconcile reads only; absence never authorizes repeating this write.' : 'No unknown write retained for this exact scope. Storage loss is not evidence that a write never happened.'}`);
+    });
+    bindModelAction('admitPointerBtn', async () => {
+      const text = document.getElementById('pointerJsonInput').value;
+      if (text.length > 4096) throw Error('Pointer input exceeds its size limit');
+      const accepted = await pointerObserver().admit(parseCanonicalJson(text, { maxBytes: 4096 }));
+      logWire('POINTER-ADMIT', `Retained revision ${accepted.revision}: ${accepted.objectRoot}`);
+    });
+
+    async function publishOrReconcilePointer() {
+      if (pointerWriteInFlight) return;
+      pointerWriteInFlight = true;
+      try {
+        const observer = pointerObserver();
+        const zoneId = document.getElementById('cfZoneInput').value.trim();
+        const apiToken = document.getElementById('cfTokenInput').value.trim();
+        const objectRoot = Array.from(liveDb.objects.values()).filter(e => e.verified).at(-1)?.manifest.object.contentDigest;
+        await authorityRestore;
+        const authority = await authorityReady;
+        const restored = /^[a-f0-9]{32}$/i.test(zoneId) ? await pointerPublisher.restore({ zoneId, name: observer.name, trustedAuthorityKey: observer.trustedAuthorityKey }) : null;
+        if (!restored && (!authority || observer.trustedAuthorityKey !== authority.publicKey)) throw Error('This session does not hold the private key for the pinned authority.');
+        const unresolved = restored;
+        let candidate = unresolved ?? unpublishedPointers.get(observer) ?? null;
+        // An unresolved candidate remains the reconciliation target even if the
+        // latest object or its validity interval changed while publication awaited.
+        if (!unresolved && (!candidate || candidate.pointerDigest !== observer.head?.pointerDigest)) {
+          if (!objectRoot) throw Error('Store or recover a verified object before creating a pointer.');
+          const current = observer.head;
+          const nowMs = Date.now();
+          const body = { version: 1, name: observer.name, authorityKey: authority.publicKey,
+            revision: current ? current.revision + 1 : 0, previousDigest: current?.pointerDigest ?? null,
+            objectRoot, validFromMs: nowMs, validUntilMs: nowMs + 600000 };
+          candidate = persistentAuthority ? await authorityStore.signPointer(body, authority.publicKey) : await signPointer(body, authority.privateKey);
+          // Source-derived succession, pinned authority and signature checks run
+          // before any DNS publication. A retained local head is not a publish receipt.
+          await observer.admit(candidate);
+          unpublishedPointers.set(observer, candidate);
+        }
+        document.getElementById('pointerJsonInput').value = JSON.stringify(candidate);
+        const txt = pointerDnsText(candidate);
+        trialLogger.logTrial('ST-POINTER', { revision: candidate.revision, byte_length: new TextEncoder().encode(txt).length,
+          authority: 'explicit-pinned-authority', admission: 'observer-local', published: false });
+        if (!zoneId || !apiToken) {
+          logWire('POINTER-LOCAL', `Admitted revision ${candidate.revision} locally; not published. Full signed JSON is above.`);
+          return;
+        }
+        if (!/^[a-f0-9]{32}$/i.test(zoneId)) throw Error('Full signed pointers require Cloudflare multipart TXT; this is not a 255-byte DuckDNS payload.');
+        const result = await pointerPublisher.publish({ zoneId, apiToken, name: observer.name,
+          trustedAuthorityKey: observer.trustedAuthorityKey, candidate });
+        if (result.outcome === 'unknown') {
+          logWire('POINTER-UNKNOWN', result.reason);
+          return;
+        }
+        if (result.outcome === 'refused') {
+          logWire('DNS-REFUSED', 'The provider rejected this publication. Local head retained; retry checks the provider before writing.');
+          return;
+        }
+        if (unpublishedPointers.get(observer)?.pointerDigest === candidate.pointerDigest) unpublishedPointers.delete(observer);
+        logWire('CF-DNS', `${result.reconciled ? 'Reconciled' : 'Published'} admitted revision ${candidate.revision} at ${observer.name}; provider record ${result.recordId}. Observer-local only, not atomic DNS ordering.`);
+      } catch (error) {
+        logWire('POINTER-REFUSED', error.code || error.message);
+      } finally { pointerWriteInFlight = false; }
+    }
+    bindModelAction('writeSignedDnsBtn', publishOrReconcilePointer);
+    bindModelAction('reconcilePointerBtn', publishOrReconcilePointer);
+
+    const recoveryControls = installRecoveryControls({ document, liveDb, computeCoord, pointerObservers, pointerObserver, bindModelAction, onChange: renderExperience });
 
     document.getElementById('exportJsonlBtn').addEventListener('click', () => {
       const jsonl = trialLogger.toJsonl();
@@ -700,12 +1305,13 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
     // Live Scheduler Tick Loop (evaluates entropy & triggers proactive sync)
     setInterval(() => {
       const st = scheduler.evaluate(nowSec());
+      renderPlacementEvidence();
+      renderBudgetPolicy();
       document.getElementById('schedLambdaLabel').textContent = `${st.lambda.toFixed(3)}/s`;
       document.getElementById('schedPAliveLabel').textContent = st.pAlive.toFixed(3);
       document.getElementById('schedEntropyLabel').textContent = `${st.entropyBits.toFixed(3)} bit`;
 
-      if (st.shouldRefresh) {
-        scheduler.markRefreshed(nowSec());
+      if (operatorExperience?.facts().meshJoined && st.shouldRefresh && scheduler.markRefreshed(nowSec())) {
         transport.sendSignal({ kind: 'announce' });
         logWire('SCHED', `Proactive refresh triggered [reason=${st.reason}, H=${st.entropyBits.toFixed(3)} bit]`);
       }
@@ -737,8 +1343,72 @@ All UOR database objects are automatically mounted inside /mnt/ in the VM, and e
 
     document.getElementById('runAllBenchBtn').addEventListener('click', runAllBenchmarks);
 
-    runAllBenchmarks();
-    joinAndSync();
+    operatorExperience = createOperatorExperience({
+      document,
+      snapshot: () => {
+        const objects = Array.from(liveDb.objects.values());
+        const jobs = Array.from(computeCoord.jobs.values());
+        const mesh = transport.lifecycle;
+        const vm = { ...vmNode.lifecycle, ...vmNode.commandLifecycle?.(selectedVmCommandId()) };
+        const trustedAuthorityKey = document.getElementById('pointerAuthorityInput').value.trim();
+        const name = document.getElementById('dnsQueryInput').value.trim();
+        const zoneId = document.getElementById('cfZoneInput').value.trim();
+        const observer = pointerObservers.get(`${name}:${trustedAuthorityKey}`);
+        const publication = pointerPublisher.status({ zoneId, name, trustedAuthorityKey });
+        const budget = admission.state;
+        // Only globally impossible admissions disable every application action.
+        // Resource dimensions and prior operation refusals are not a second ledger:
+        // each actual adapter checks its own exact resource vector before effects.
+        const blocked = activeAdmission.clock() >= budget.endMs ||
+          budget.reservations.length >= activeAdmission.maxActions || lastPolicyRefusal === 'clock-regression';
+        const attention = Boolean(lastPolicyRefusal) ||
+          Object.keys(budget.limit).some(k => budget.spent[k] >= budget.limit[k]) ||
+          Math.max(0, scheduler.refreshCount - 1) >= scheduler.maxRefreshBudget;
+        const unfinished = jobs.filter(j => j.status !== 'completed');
+        return {
+          ...recoveryControls.facts(),
+          vmTerminationPending: vm?.terminationObservation === 'pending',
+          vmStopped: vm?.terminationObservation === 'stopped', vmDestroyed: vm?.terminationObservation === 'destroyed',
+          vmCanBoot: Boolean(vm?.canBoot), vmCanExecute: Boolean(vm?.canExecute),
+          vmCanAdminister: Boolean(vm?.canAdminister), vmCanCancelObservation: Boolean(vm?.canCancelObservation),
+          vmCanForgetCommand: Boolean(vm?.canForgetCommand), vmCanReconcileCommand: Boolean(vm?.canReconcileCommand), vmAdminBlocked: Boolean(vm?.adminBlocked),
+          disclosureAccepted: document.getElementById('allowMeshSignalingInput').checked,
+          meshJoined: Boolean(mesh && !mesh.closed && mesh.generation > 0),
+          peersReachable: transport.openPeers().length > 0,
+          relayEnabled: publicRelayEnabled(),
+          hasObject: objects.some(e => e.verified),
+          hasPartial: objects.some(e => !e.verified),
+          placementObjectSelected: Boolean(liveDb.get(document.getElementById('placementObject').value).ok),
+          recoverablePlacement: Array.from(liveDb.placements.keys()).some(key => {
+            try { return liveDb.placementSummary(key).canRecoverFromCommitted; }
+            catch { return false; }
+          }),
+          hasJobs: jobs.length > 0,
+          unfinishedJobs: unfinished.length > 0,
+          replayedJobs: unfinished.length > 0 && unfinished.every(j => j.verification === 'replayed'),
+          vmBooting: vm?.phase === 'booting', vmReady: vm?.phase === 'ready', vmFailed: vm?.phase === 'failed',
+          authorityPinned: /^[0-9a-f]{64}$/.test(trustedAuthorityKey),
+          headRetained: Boolean(observer?.head),
+          dnsConfigured: /^[a-f0-9]{32}$/i.test(zoneId) && Boolean(document.getElementById('cfTokenInput').value.trim()),
+          publicationBusy: pointerWriteInFlight,
+          publicationUnknown: publication.outcome === 'unknown',
+          publicationPublished: publication.outcome === 'published',
+          policyBlocked: blocked, policyAttention: attention
+        };
+      },
+      onRefused: message => logWire('MODEL-REFUSED', message)
+    });
+    document.getElementById('allowMeshSignalingInput').addEventListener('change', () => {
+      if (!document.getElementById('allowMeshSignalingInput').checked) transport.close();
+      renderExperience();
+    });
+    for (const id of ['pointerAuthorityInput', 'dnsQueryInput', 'cfZoneInput', 'cfTokenInput', 'pointerJsonInput']) {
+      document.getElementById(id).addEventListener('input', renderExperience);
+    }
+    renderBudgetPolicy();
+    // No automatic public signaling, relay payload publication or job resumption.
+    renderPlacementControls();
+    renderExperience();
   </script>
 </body>
 </html>
