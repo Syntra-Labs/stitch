@@ -80,6 +80,15 @@ Formal status comes from the actual exact-revision SDK job, not this table. Node
 
 Tests alter fragment bytes, manifests, checkpoint states with recomputed digests, links, signers, revisions and budgets. Correctly hashing a forged state is not enough: semantic replay must reject it. Generated drift must fail before execution. These are deterministic tests, not physical three-peer reliability measurements.
 
-## Extending Stitch
+## Historical extension guidance
 
-New encodings specify exact decoding and all dependencies. New effects expose request/acknowledgment/commit/unknown states. Policies may propose choices but cannot bypass resource/safety admission. Extend LexLean semantics first, add positive and negative vectors, regenerate bindings and pass SDK/runtime gates. Do not introduce random weights or unrelated cellular automata merely to make a model appear richer.
+Peer-distributed storage and compute work is discontinued. The following
+guidance records the former extension contract; it does not authorize new
+work. See the [project status](../README.md#project-status-distributed-storage-and-compute-discontinued)
+and [contributor policy](../AGENTS.md).
+
+New encodings specified exact decoding and all dependencies. New effects
+exposed request/acknowledgment/commit/unknown states. Policies could propose
+choices but could not bypass resource/safety admission. Changes extended
+LexLean semantics first, added positive and negative vectors, regenerated
+bindings and passed SDK/runtime gates.

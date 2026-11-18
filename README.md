@@ -1,6 +1,39 @@
 # Stitch
 
-Recover exact objects and resume deterministic computation while the available peers change.
+## Project status: distributed storage and compute discontinued
+
+Further work on Stitch's peer-distributed storage and compute is not planned.
+The existing implementation and evidence remain available as historical
+research; they are not a recommendation to deploy or extend the fabric. The
+repository owner must explicitly approve any change to this decision. See
+[AGENTS.md](AGENTS.md) for the contributor and agent policy.
+
+The decision reflects the evidence available for our intended use, not a proof
+that distributed systems are infeasible:
+
+- Stitch implements committed fragments and replayable deterministic jobs,
+  but its pointers are single-writer, not multi-writer consensus. It does not
+  guarantee persistence after all copies are lost, exclusive job ownership,
+  or exactly-once effects. Its browser tests do not establish reliability
+  across physical network and NAT topologies.
+- [Holospaces](https://github.com/Hologram-Technologies/holospaces/blob/main/crates/holospaces-web/web/webrtc-content-net-test.mjs)
+  tests browser-to-browser content exchange. It is not evidence that a
+  persistent shared application has agreed on authoritative state.
+- [Malachite-USDC](https://github.com/UOR-Foundation/malachite-usdc)
+  experiments with consensus, but its reported network tests use single-host
+  emulation and its content-dissemination design needs further validation.
+- [MUDBenchmark](https://github.com/R4-Laboratories/MUDBenchmark) runs an
+  authoritative server. Its browser authentication vendors Prism ID from an
+  [afflom/stitch revision](https://github.com/afflom/stitch/blob/68a9222a075ba11473ae804c47b223daa7d162ce/src/prism-id.js);
+  that identity use is separate from this discontinued fabric and is not
+  withdrawn. Prism ID is not present on this branch.
+
+The shared workspace/failover demo and refresh-scheduling work are closed as
+not planned ([#3](https://github.com/Syntra-Tutor/stitch/issues/3),
+[#5](https://github.com/Syntra-Tutor/stitch/issues/5)). Existing functionality
+has not been disabled by this decision.
+
+## Historical implementation
 
 Stitch retains its five layers: object/ring operations, scheduling, storage, compute, and transport. A Prism/LexLean model defines the state and acceptance rules across those layers. The browser applies model-derived admission predicates and independently checks bytes and execution before accepting them.
 
